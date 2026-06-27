@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.187.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.189.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -247,6 +247,8 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_label_templates` | Lista os templates de etiquetas configurados numa empresa. |
 | `get_language` | Detalhes de um idioma pelo seu ID (nome, ISO 3166, bandeira). |
 | `list_languages` | Lista os idiomas (tabela de referência: `languageId`, nome, ISO 3166). |
+| `list_products_stock_movements` | Produtos com dados de stock e indicação de movimentos. ⚠️ deprecated (usar `stockProducts`). |
+| `list_products_stock_totals` | Totais de stock dos produtos (custo total, valor de venda). |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

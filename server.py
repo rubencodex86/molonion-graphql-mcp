@@ -8980,6 +8980,110 @@ async def list_languages(page: int | None = None, qty: int | None = None) -> Any
 
 
 # ---------------------------------------------------------------------------
+# Movimentos de stock
+# ---------------------------------------------------------------------------
+LIST_PRODUCTS_STOCK_MOVEMENTS_QUERY = """
+query ($companyId: Int!, $options: ListStockMovementOptions) {
+  listProductsStockMovements(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productId
+      reference
+      name
+      type
+      stock
+      hasStock
+      minStock
+      hasStockMovements
+      price
+      priceWithTaxes
+      costPrice
+      measurementUnitId
+      warehouseId
+      productCategoryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_products_stock_movements(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os produtos com os respetivos dados de stock e indicação de movimentos
+    (`hasStockMovements`), com os campos principais de cada produto: referência, nome,
+    tipo, stock atual e mínimo, preços e preço de custo.
+
+    DEPRECATED na API Moloni ON — preferir `stockProducts`. Mantida por cobertura; usa a
+    alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(LIST_PRODUCTS_STOCK_MOVEMENTS_QUERY, variables)
+        return unwrap(data, "listProductsStockMovements")
+    except MolonionError as e:
+        return _err(e)
+
+
+LIST_PRODUCTS_STOCK_TOTALS_QUERY = """
+query ($companyId: Int!, $options: ListStockTotalsOptions) {
+  listProductsStockTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      totalCosts
+      totalSales
+      usingLowestSupplierCost
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_products_stock_totals(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém os totais de stock dos produtos de uma empresa: o custo total em stock
+    (`totalCosts`), o valor total de venda (`totalSales`) e se está a usar o custo do
+    fornecedor mais baixo (`usingLowestSupplierCost`). Útil para valorização de
+    inventário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(LIST_PRODUCTS_STOCK_TOTALS_QUERY, variables)
+        return unwrap(data, "listProductsStockTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
