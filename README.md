@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.246.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.255.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -306,6 +306,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_migrated_invoice_receipts` | Lista (paginada) as faturas-recibo migradas de uma empresa. |
 | `get_migrated_invoice_relatable` | Faturas migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_invoices` | Lista (paginada) as faturas migradas de uma empresa. |
+| `get_migrated_purchase_order` | Detalhes de uma encomenda de compra migrada pelo seu ID (documento histórico). |
+| `get_migrated_purchase_order_pdf_token` | Token temporário para descarregar o PDF de uma encomenda de compra migrada. |
+| `get_migrated_purchase_order_zip_token` | Token temporário para descarregar várias encomendas de compra migradas em ZIP. |
+| `get_migrated_purchase_order_logs` | Histórico de alterações (logs) às encomendas de compra migradas. |
+| `get_migrated_purchase_order_mail_recipients` | Destinatários e estado de entrega de um envio por email de encomendas de compra migradas. |
+| `get_migrated_purchase_order_mails_history` | Histórico de emails enviados de uma encomenda de compra migrada. |
+| `get_migrated_purchase_order_next_number` | Próximo número disponível para uma encomenda de compra migrada numa série. |
+| `get_migrated_purchase_order_relatable` | Encomendas de compra migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_migrated_purchase_orders` | Lista (paginada) as encomendas de compra migradas de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
