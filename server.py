@@ -5496,6 +5496,117 @@ async def get_documents_logs(
 
 
 # ---------------------------------------------------------------------------
+# Tipos de documento (tabela de referência global)
+# ---------------------------------------------------------------------------
+DOCUMENT_TYPE_QUERY = """
+query ($documentTypeId: Int!) {
+  documentType(documentTypeId: $documentTypeId) {
+    errors { field msg }
+    data {
+      documentTypeId
+      apiCode
+      apiCodePlural
+      saftDocCode
+      group
+      entityType
+      title
+      titlePlural
+      salesOperator
+      costsOperator
+      isSelfPaid
+      generatesHash
+      useInPos
+      visible
+      canHaveOutOfSeqDate
+      reconcilesBalances
+      unreconcilable
+      minCopies
+      balanceMultiplier
+      billingMultiplier
+      cashflowMultiplier
+      stockMultiplier
+      vatMultiplier
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_type(document_type_id: int) -> Any:
+    """Obtém um tipo de documento pelo seu ID — tabela de referência global (faturas,
+    recibos, guias, etc.). Devolve o `apiCode` (usado noutras operações como
+    `get_document_next_number`/`get_document_relatable`), o código SAF-T (`saftDocCode`),
+    o título, o grupo e tipo de entidade, e várias regras fiscais/de comportamento
+    (operador de vendas/custos, gera hash, multiplicadores de saldo/faturação/stock/IVA,
+    etc.). Ao contrário da maioria das operações, não recebe `companyId`. As traduções e
+    as conversões possíveis (`canConvertTo`) não são incluídas neste selection set.
+
+    Args:
+        document_type_id: ID do tipo de documento a obter.
+    """
+    try:
+        data = await _client.query(
+            DOCUMENT_TYPE_QUERY, {"documentTypeId": document_type_id}
+        )
+        return unwrap(data, "documentType")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_TYPES_QUERY = """
+query ($options: DocumentTypeOptions) {
+  documentTypes(options: $options) {
+    errors { field msg }
+    data {
+      documentTypeId
+      apiCode
+      apiCodePlural
+      saftDocCode
+      group
+      entityType
+      title
+      titlePlural
+      salesOperator
+      costsOperator
+      isSelfPaid
+      generatesHash
+      useInPos
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_types(page: int | None = None, qty: int | None = None) -> Any:
+    """Lista os tipos de documento disponíveis na Moloni ON — tabela de referência global
+    (faturas, recibos, guias, etc.). Para cada tipo: o `documentTypeId`, o `apiCode`
+    (usado noutras operações), o código SAF-T (`saftDocCode`), o título e o grupo. Ao
+    contrário da maioria das operações, não recebe `companyId`. Para o detalhe completo
+    (regras fiscais, multiplicadores) de um tipo usa `get_document_type`.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_TYPES_QUERY, variables)
+        return unwrap(data, "documentTypes")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
