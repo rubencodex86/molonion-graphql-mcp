@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.76.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.79.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -145,6 +145,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_debit_note_next_number` | Próximo número disponível para uma nota de débito numa série. |
 | `get_debit_note_relatable` | Notas de débito de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_debit_notes` | Lista (paginada) as notas de débito de uma empresa. |
+| `get_delivery_method` | Detalhes de um método de entrega pelo seu ID (nome, default, visível). |
+| `get_delivery_method_logs` | Histórico de alterações (logs) aos métodos de entrega de uma empresa. |
+| `list_delivery_methods` | Lista os métodos de entrega configurados numa empresa. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |

@@ -3764,6 +3764,142 @@ async def list_debit_notes(
 
 
 # ---------------------------------------------------------------------------
+# Métodos de entrega
+# ---------------------------------------------------------------------------
+DELIVERY_METHOD_QUERY = """
+query ($companyId: Int!, $deliveryMethodId: Int!) {
+  deliveryMethod(companyId: $companyId, deliveryMethodId: $deliveryMethodId) {
+    errors { field msg }
+    data {
+      deliveryMethodId
+      name
+      visible
+      isDefault
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_delivery_method(company_id: int, delivery_method_id: int) -> Any:
+    """Obtém um método de entrega de uma empresa pelo seu ID: nome (`name`), se está
+    visível (`visible`), se é o método por omissão (`isDefault`) e se pode ser apagado
+    (`deletable`). O objeto `company` ligado não é incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_method_id: ID do método de entrega a obter.
+    """
+    variables = {"companyId": company_id, "deliveryMethodId": delivery_method_id}
+    try:
+        data = await _client.query(DELIVERY_METHOD_QUERY, variables)
+        return unwrap(data, "deliveryMethod")
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_METHOD_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  deliveryMethodLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_delivery_method_logs(
+    company_id: int,
+    delivery_method_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos métodos de entrega de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_method_id: opcional; filtra os logs de um método de entrega específico
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if delivery_method_id is not None:
+        options["relatedId"] = delivery_method_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DELIVERY_METHOD_LOGS_QUERY, variables)
+        return unwrap(data, "deliveryMethodLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_METHODS_QUERY = """
+query ($companyId: Int!, $options: DeliveryMethodOptions) {
+  deliveryMethods(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      deliveryMethodId
+      name
+      visible
+      isDefault
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_delivery_methods(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os métodos de entrega configurados numa empresa, cada um com o nome
+    (`name`), se está visível (`visible`), se é o método por omissão (`isDefault`) e se
+    pode ser apagado (`deletable`). Para obter um único pelo seu ID usa
+    `get_delivery_method`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DELIVERY_METHODS_QUERY, variables)
+        return unwrap(data, "deliveryMethods")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
