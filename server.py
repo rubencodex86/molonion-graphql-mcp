@@ -6567,6 +6567,145 @@ async def get_fiscal_zone_tax_settings(company_id: int, fiscal_zone: str) -> Any
 
 
 # ---------------------------------------------------------------------------
+# Zonas geográficas
+# ---------------------------------------------------------------------------
+GEOGRAPHIC_ZONE_QUERY = """
+query ($companyId: Int!, $geographicZoneId: Int!) {
+  geographicZone(companyId: $companyId, geographicZoneId: $geographicZoneId) {
+    errors { field msg }
+    data {
+      geographicZoneId
+      name
+      abbreviation
+      notes
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_geographic_zone(company_id: int, geographic_zone_id: int) -> Any:
+    """Obtém uma zona geográfica de uma empresa pelo seu ID: o nome (`name`), a
+    abreviatura (`abbreviation`), notas e a visibilidade. As zonas geográficas usam-se
+    para segmentar clientes/documentos por região. O objeto `company` ligado não é
+    incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        geographic_zone_id: ID da zona geográfica a obter.
+    """
+    variables = {"companyId": company_id, "geographicZoneId": geographic_zone_id}
+    try:
+        data = await _client.query(GEOGRAPHIC_ZONE_QUERY, variables)
+        return unwrap(data, "geographicZone")
+    except MolonionError as e:
+        return _err(e)
+
+
+GEOGRAPHIC_ZONE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  geographicZoneLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_geographic_zone_logs(
+    company_id: int,
+    geographic_zone_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às zonas geográficas de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        geographic_zone_id: opcional; filtra os logs de uma zona geográfica específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if geographic_zone_id is not None:
+        options["relatedId"] = geographic_zone_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(GEOGRAPHIC_ZONE_LOGS_QUERY, variables)
+        return unwrap(data, "geographicZoneLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+GEOGRAPHIC_ZONES_QUERY = """
+query ($companyId: Int!, $options: GeographicZoneOptions) {
+  geographicZones(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      geographicZoneId
+      name
+      abbreviation
+      notes
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_geographic_zones(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as zonas geográficas configuradas numa empresa, cada uma com o nome
+    (`name`), a abreviatura (`abbreviation`) e notas. Usadas para segmentar
+    clientes/documentos por região. Para obter uma única pelo seu ID usa
+    `get_geographic_zone`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(GEOGRAPHIC_ZONES_QUERY, variables)
+        return unwrap(data, "geographicZones")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
