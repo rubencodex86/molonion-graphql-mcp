@@ -13780,6 +13780,578 @@ async def get_price_class_products_applied(
 
 
 # ---------------------------------------------------------------------------
+# Produtos
+# ---------------------------------------------------------------------------
+PRODUCT_QUERY = """
+query ($companyId: Int!, $productId: Int!) {
+  product(companyId: $companyId, productId: $productId) {
+    errors { field msg }
+    data {
+      productId
+      type
+      reference
+      name
+      summary
+      notes
+      price
+      priceWithTaxes
+      hasStock
+      stock
+      minStock
+      hasStockMovements
+      costPrice
+      totalCostPrice
+      totalSale
+      img
+      exemptionReason
+      posFavorite
+      visible
+      variantsCount
+      parentId
+      productCategoryId
+      warehouseId
+      measurementUnitId
+      propertyGroupId
+      companyId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_product(company_id: int, product_id: int) -> Any:
+    """Obtém os detalhes de um produto pelo seu ID: identificação (`reference`, `name`,
+    `summary`), tipo (`type`), preços (`price`, `priceWithTaxes`, `costPrice`), stock
+    (`hasStock`, `stock`, `minStock`, `hasStockMovements`), motivo de isenção e os IDs das
+    entidades associadas (`productCategoryId`, `warehouseId`, `measurementUnitId`,
+    `parentId` para variantes) para encadear com outras operações. Os objetos ligados
+    completos (categoria, armazém, fornecedores, impostos, identificações, variantes,
+    campos personalizados) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_id: ID do produto a obter.
+    """
+    variables = {"companyId": company_id, "productId": product_id}
+    try:
+        data = await _client.query(PRODUCT_QUERY, variables)
+        return unwrap(data, "product")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORIES_QUERY = """
+query ($companyId: Int!, $options: ProductCategoryOptions) {
+  productCategories(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      summary
+      img
+      posVisible
+      visible
+      parentId
+      cntChildCategories
+      cntChildProducts
+      cntInactiveChildProducts
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_product_categories(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as categorias de produto de uma empresa (estrutura hierárquica de catálogo),
+    cada uma com o nome (`name`), o resumo, a categoria-pai (`parentId`) e as contagens de
+    subcategorias e produtos (`cntChildCategories`, `cntChildProducts`,
+    `cntInactiveChildProducts`). Os objetos ligados (empresa, pai, filhos) não são
+    incluídos neste selection set; usa `parentId` para reconstruir a árvore.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRODUCT_CATEGORIES_QUERY, variables)
+        return unwrap(data, "productCategories")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORY_QUERY = """
+query ($companyId: Int!, $productCategoryId: Int!) {
+  productCategory(companyId: $companyId, productCategoryId: $productCategoryId) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      summary
+      img
+      posVisible
+      visible
+      parentId
+      cntChildCategories
+      cntChildProducts
+      cntInactiveChildProducts
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_product_category(company_id: int, product_category_id: int) -> Any:
+    """Obtém uma categoria de produto de uma empresa pelo seu ID: o nome (`name`), o
+    resumo, a categoria-pai (`parentId`) e as contagens de subcategorias e produtos
+    (`cntChildCategories`, `cntChildProducts`, `cntInactiveChildProducts`). Os objetos
+    ligados (empresa, pai, filhos) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_category_id: ID da categoria de produto a obter.
+    """
+    variables = {"companyId": company_id, "productCategoryId": product_category_id}
+    try:
+        data = await _client.query(PRODUCT_CATEGORY_QUERY, variables)
+        return unwrap(data, "productCategory")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORY_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  productCategoryLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_product_category_logs(
+    company_id: int,
+    product_category_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às categorias de produto de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_category_id: opcional; filtra os logs de uma categoria específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if product_category_id is not None:
+        options["relatedId"] = product_category_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRODUCT_CATEGORY_LOGS_QUERY, variables)
+        return unwrap(data, "productCategoryLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+# `productDocuments` devolve a union `ProductDocumentRead` (25 tipos de documento onde o
+# produto aparece como linha). Como nas outras unions ([[molonion-union-types]]),
+# seleciona-se via inline fragments + `__typename`. Listamos os tipos de documento padrão
+# (omitimos RecurringAgreement/TableConsult/PurchaseRecurringAgreement, que não partilham
+# o conjunto comum — surgem na mesma via `__typename`).
+PRODUCT_DOCUMENT_TYPES = [
+    "InvoiceRead",
+    "SimplifiedInvoiceRead",
+    "InvoiceReceiptRead",
+    "CreditNoteRead",
+    "DebitNoteRead",
+    "ProFormaInvoiceRead",
+    "EstimateRead",
+    "BillsOfLadingRead",
+    "DeliveryNoteRead",
+    "CustomerReturnNoteRead",
+    "PurchaseOrderRead",
+    "SupplierPurchaseOrderRead",
+    "SupplierInvoiceRead",
+    "SupplierCreditNoteRead",
+    "SupplierBillsOfLadingRead",
+    "MigratedInvoiceRead",
+    "MigratedSimplifiedInvoiceRead",
+    "MigratedInvoiceReceiptRead",
+    "MigratedCreditNoteRead",
+    "MigratedDebitNoteRead",
+    "MigratedEstimateRead",
+    "MigratedPurchaseOrderRead",
+]
+_product_document_fragments = "\n".join(
+    f"      ... on {t} {{ {_DOC_FRAGMENT_FIELDS} }}"
+    for t in PRODUCT_DOCUMENT_TYPES
+)
+
+PRODUCT_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $productId: Int!, $options: ProductDocumentsOptions) {
+  productDocuments(companyId: $companyId, productId: $productId, options: $options) {
+    errors { field msg }
+    data {
+      __typename
+__FRAGMENTS__
+    }
+  }
+}
+""".replace("__FRAGMENTS__", _product_document_fragments)
+
+
+@mcp.tool()
+async def get_product_documents(
+    company_id: int,
+    product_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os documentos onde um produto aparece como linha (faturas, guias, notas,
+    encomendas, etc.), com os campos comuns de cada documento (número, data, série, total,
+    estado). O campo `__typename` identifica o tipo de cada documento. Útil para ver o
+    histórico de movimentação de um produto.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_id: ID do produto cujos documentos se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "productId": product_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRODUCT_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "productDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  productLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_product_logs(
+    company_id: int,
+    product_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos produtos de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_id: opcional; filtra os logs de um produto específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if product_id is not None:
+        options["relatedId"] = product_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRODUCT_LOGS_QUERY, variables)
+        return unwrap(data, "productLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCTS_QUERY = """
+query ($companyId: Int!, $options: ProductOptions) {
+  products(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productId
+      type
+      reference
+      name
+      price
+      priceWithTaxes
+      hasStock
+      stock
+      minStock
+      costPrice
+      productCategoryId
+      warehouseId
+      measurementUnitId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_products(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os produtos de uma empresa, com os campos principais de cada um:
+    referência, nome, tipo, preços (`price`, `priceWithTaxes`, `costPrice`), stock
+    (`hasStock`, `stock`, `minStock`) e os IDs de categoria/armazém/unidade. Para o detalhe
+    completo de um produto usa `get_product`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRODUCTS_QUERY, variables)
+        return unwrap(data, "products")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROFIT_MARGINS_BY_PRODUCT_QUERY = """
+query ($companyId: Int!, $options: ProfitMarginsOptions) {
+  profitMarginsByProduct(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productId
+      productParentId
+      avgCostPrice
+      avgSellingPrice
+      qtySold
+      totalProfitMargin
+      percentageProfitMargin
+      markupPercentage
+      markupIndex
+      product { productId reference name }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_profit_margins_by_product(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as margens de lucro por produto de uma empresa: para cada produto, o custo
+    e preço médios (`avgCostPrice`, `avgSellingPrice`), a quantidade vendida (`qtySold`),
+    a margem total e percentual (`totalProfitMargin`, `percentageProfitMargin`) e o markup
+    (`markupPercentage`, `markupIndex`). Inclui a identificação mínima do produto
+    (`product`: referência, nome). Útil para análise de rentabilidade.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PROFIT_MARGINS_BY_PRODUCT_QUERY, variables)
+        return unwrap(data, "profitMarginsByProduct")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: aqui o `options` é uma LISTA (`[ProfitMarginsOptions]`).
+PROFIT_MARGINS_PRODUCT_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $productId: Int!, $options: [ProfitMarginsOptions]) {
+  profitMarginsProductDocuments(companyId: $companyId, productId: $productId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      productId
+      productParentId
+      documentId
+      qty
+      price
+      grossValue
+      discountValue
+      taxesValue
+      retentionsValue
+      totalValue
+      product { productId reference name }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_profit_margins_product_documents(
+    company_id: int,
+    product_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as linhas de documento que contribuem para a margem de lucro de um produto:
+    para cada linha, o documento (`documentId`), a quantidade (`qty`), o preço (`price`),
+    o valor bruto/desconto/impostos/total e a identificação mínima do produto. Útil para
+    detalhar como se forma a margem de um produto.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_id: ID do produto cujas linhas de margem se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    opt: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        opt["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "productId": product_id}
+    if opt:
+        variables["options"] = [opt]
+    try:
+        data = await _client.query(PROFIT_MARGINS_PRODUCT_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "profitMarginsProductDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROFIT_MARGINS_TOTALS_QUERY = """
+query ($companyId: Int!, $options: ProfitMarginsTotalsOptions) {
+  profitMarginsTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productsCount
+      productsQtySold
+      totalProfitMargin
+      percentageProfitMargin
+      markupPercentage
+      markupIndex
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_profit_margins_totals(company_id: int) -> Any:
+    """Obtém os totais agregados de margem de lucro de uma empresa: o número de produtos
+    (`productsCount`), a quantidade total vendida (`productsQtySold`), a margem total e
+    percentual (`totalProfitMargin`, `percentageProfitMargin`) e o markup
+    (`markupPercentage`, `markupIndex`). Útil para uma vista global da rentabilidade.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        data = await _client.query(
+            PROFIT_MARGINS_TOTALS_QUERY, {"companyId": company_id}
+        )
+        return unwrap(data, "profitMarginsTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROFIT_MARGINS_TEMPLATES_QUERY = """
+query ($companyId: Int!) {
+  profitMarginsUserSettingsTemplates(companyId: $companyId) {
+    errors { field msg }
+    data {
+      userSettingsTemplateId
+      formName
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_profit_margins_templates(company_id: int) -> Any:
+    """Lista os modelos (templates) de definições do utilizador para o ecrã de análise de
+    margens de lucro — filtros/colunas guardados pelo utilizador para reutilizar. Cada
+    modelo tem `userSettingsTemplateId`, `formName` (o formulário a que se aplica) e
+    `name`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        data = await _client.query(
+            PROFIT_MARGINS_TEMPLATES_QUERY, {"companyId": company_id}
+        )
+        return unwrap(data, "profitMarginsUserSettingsTemplates")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

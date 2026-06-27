@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.290.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.301.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -350,6 +350,17 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_price_classes` | Lista as classes de preço configuradas numa empresa. |
 | `get_price_class_logs` | Histórico de alterações (logs) às classes de preço de uma empresa. |
 | `get_price_class_products_applied` | Número de produtos a que uma classe de preço está aplicada. |
+| `get_product` | Detalhes de um produto pelo seu ID (identificação, preços, stock, IDs associados). |
+| `list_product_categories` | Lista as categorias de produto (hierarquia, contagens de filhos). |
+| `get_product_category` | Detalhes de uma categoria de produto pelo seu ID (nome, pai, contagens). |
+| `get_product_category_logs` | Histórico de alterações (logs) às categorias de produto de uma empresa. |
+| `get_product_documents` | Documentos onde um produto aparece como linha (union; + `__typename`). |
+| `get_product_logs` | Histórico de alterações (logs) aos produtos de uma empresa. |
+| `list_products` | Lista (paginada) os produtos de uma empresa (referência, nome, preços, stock). |
+| `list_profit_margins_by_product` | Margens de lucro por produto (custo/preço médio, markup, qtd vendida). |
+| `list_profit_margins_product_documents` | Linhas de documento que formam a margem de um produto. |
+| `get_profit_margins_totals` | Totais agregados de margem de lucro (produtos, qtd, margem, markup). |
+| `list_profit_margins_templates` | Modelos de definições do utilizador para o ecrã de margens de lucro. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
