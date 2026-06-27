@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.34.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.43.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -117,6 +117,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_company_users` | Lista os utilizadores de uma empresa (identificação + `roleId` de cada um). |
 | `get_country` | Detalhes de um país pelo seu ID (ISO 3166-1, nome, VIES, bandeira). |
 | `list_countries` | Lista os países (tabela de referência: `countryId`, ISO 3166-1, nome, VIES). |
+| `get_credit_note` | Detalhes de uma nota de crédito pelo seu ID (documento, entidade, reconciliação). |
+| `get_credit_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de crédito. |
+| `get_credit_note_zip_token` | Token temporário para descarregar várias notas de crédito em ZIP. |
+| `get_credit_note_logs` | Histórico de alterações (logs) às notas de crédito de uma empresa. |
+| `get_credit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de crédito. |
+| `get_credit_note_mails_history` | Histórico de emails enviados de uma nota de crédito. |
+| `get_credit_note_next_number` | Próximo número disponível para uma nota de crédito numa série. |
+| `get_credit_note_relatable` | Notas de crédito de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_credit_notes` | Lista (paginada) as notas de crédito de uma empresa. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
