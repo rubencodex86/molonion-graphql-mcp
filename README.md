@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.273.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.274.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -333,6 +333,7 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_simplified_invoice_next_number` | Próximo número disponível para uma fatura simplificada migrada numa série. |
 | `get_migrated_simplified_invoice_relatable` | Faturas simplificadas migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_simplified_invoices` | Lista (paginada) as faturas simplificadas migradas de uma empresa. |
+| `list_notifications` | Lista as notificações do utilizador autenticado (lida, tipo, título, link). |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

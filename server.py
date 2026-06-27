@@ -12987,6 +12987,61 @@ async def list_migrated_simplified_invoices(
 
 
 # ---------------------------------------------------------------------------
+# Notificações
+# ---------------------------------------------------------------------------
+NOTIFICATIONS_QUERY = """
+query ($options: NotificationOptions, $userId: Int) {
+  notifications(options: $options, userId: $userId) {
+    errors { field msg }
+    data {
+      notificationId
+      ackd
+      type
+      title
+      titleParams
+      extraParams
+      path
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_notifications(
+    user_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as notificações do utilizador autenticado: para cada uma, se já foi lida
+    (`ackd`), o tipo (`type`), o título e os seus parâmetros (`title`, `titleParams`,
+    `extraParams`), o caminho/link (`path`) e a data (`createdAt`). Ao contrário da
+    maioria das operações, não recebe `companyId` (é a nível do utilizador). Os objetos
+    `user` e `company` ligados não são incluídos neste selection set.
+
+    Args:
+        user_id: opcional; ID do utilizador cujas notificações se pretendem (por omissão,
+            o utilizador autenticado).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    if user_id is not None:
+        variables["userId"] = user_id
+    try:
+        data = await _client.query(NOTIFICATIONS_QUERY, variables)
+        return unwrap(data, "notifications")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
