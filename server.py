@@ -8905,6 +8905,81 @@ async def list_label_templates(
 
 
 # ---------------------------------------------------------------------------
+# Idiomas (tabela de referência global)
+# ---------------------------------------------------------------------------
+LANGUAGE_QUERY = """
+query ($languageId: Int!) {
+  language(languageId: $languageId) {
+    errors { field msg }
+    data {
+      languageId
+      name
+      iso3166
+      flag
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_language(language_id: int) -> Any:
+    """Obtém um idioma pelo seu ID — tabela de referência global usada em traduções,
+    clientes e documentos. Devolve o nome (`name`), o código ISO 3166 (`iso3166`) e a
+    bandeira (`flag`). Ao contrário da maioria das operações, não recebe `companyId`.
+
+    Args:
+        language_id: ID do idioma a obter.
+    """
+    try:
+        data = await _client.query(LANGUAGE_QUERY, {"languageId": language_id})
+        return unwrap(data, "language")
+    except MolonionError as e:
+        return _err(e)
+
+
+LANGUAGES_QUERY = """
+query ($options: LanguageOptions) {
+  languages(options: $options) {
+    errors { field msg }
+    data {
+      languageId
+      name
+      iso3166
+      flag
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_languages(page: int | None = None, qty: int | None = None) -> Any:
+    """Lista os idiomas disponíveis na Moloni ON — tabela de referência global usada em
+    traduções, clientes e documentos. Para cada idioma: o `languageId` (usado noutras
+    operações), o nome (`name`), o código ISO 3166 (`iso3166`) e a bandeira (`flag`). Ao
+    contrário da maioria das operações, não recebe `companyId`.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(LANGUAGES_QUERY, variables)
+        return unwrap(data, "languages")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
