@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.322.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.331.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -382,6 +382,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_purchase_order_next_number` | Próximo número disponível para uma encomenda de compra numa série. |
 | `get_purchase_order_relatable` | Encomendas de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_purchase_orders` | Lista paginada das encomendas de compra de uma empresa. |
+| `get_purchase_recurring_agreement` | Detalhes de um acordo recorrente de compra pelo seu ID (documento-modelo, fornecedor, totais). |
+| `get_purchase_recurring_agreement_pdf_token` | Token temporário para descarregar o PDF de um acordo recorrente de compra. |
+| `get_purchase_recurring_agreement_zip_token` | Token temporário para descarregar vários acordos recorrentes de compra em ZIP. |
+| `get_purchase_recurring_agreement_logs` | Histórico de alterações (logs) aos acordos recorrentes de compra. |
+| `get_purchase_recurring_agreement_mail_recipients` | Destinatários e estado de entrega de um envio por email de acordos recorrentes de compra. |
+| `get_purchase_recurring_agreement_mails_history` | Histórico de envios por email de um acordo recorrente de compra. |
+| `get_purchase_recurring_agreement_next_number` | Próximo número disponível para um acordo recorrente de compra numa série. |
+| `get_purchase_recurring_agreement_relatable` | Acordos recorrentes de compra de um fornecedor relacionáveis com outro documento (deprecada). |
+| `list_purchase_recurring_agreements` | Lista paginada dos acordos recorrentes de compra de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

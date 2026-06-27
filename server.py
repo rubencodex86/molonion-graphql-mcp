@@ -15410,6 +15410,467 @@ async def list_purchase_orders(
         return _err(e)
 
 
+# ===========================================================================
+# Acordos recorrentes de compra (PurchaseRecurringAgreement)
+# ===========================================================================
+
+PURCHASE_RECURRING_AGREEMENT_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  purchaseRecurringAgreement(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscount
+      globalDiscountValue
+      commercialDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      expirationDate
+      maturityDateDays
+      yourReference
+      ourReference
+      salespersonCommission
+      economicActivityClassificationCodeId
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      importStatus
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement(
+    company_id: int, document_id: int
+) -> Any:
+    """Obtém os detalhes de um acordo recorrente de compra (documento-modelo que gera
+    compras a fornecedor de forma periódica) pelo seu ID de documento: dados do documento
+    (número, série, data, estado, totais), dados da entidade/fornecedor (`entityName`,
+    `entityVat`, morada), descontos, câmbio (`currencyExchangeTotalValue`,
+    `currencyExchangeExchange`), reconciliação, vencimento, comissão do vendedor, a zona
+    geográfica (`geographicZoneId`), o terminal (`terminalId`) e o código CAE
+    (`economicActivityClassificationCodeId`). As linhas de produtos, os impostos, o
+    fornecedor completo, os eventos de recorrência e os documentos relacionados não são
+    incluídos neste selection set — podem ser adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (acordo recorrente de compra) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(PURCHASE_RECURRING_AGREEMENT_QUERY, variables)
+        return unwrap(data, "purchaseRecurringAgreement")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  purchaseRecurringAgreementGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de um acordo recorrente de
+    compra. Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download do PDF. Nota: ao contrário de outras operações, não recebe `companyId` —
+    apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (acordo recorrente de compra) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            PURCHASE_RECURRING_AGREEMENT_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "purchaseRecurringAgreementGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  purchaseRecurringAgreementGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_zip_token(
+    company_id: int, full_path: str
+) -> Any:
+    """Gera um token temporário e seguro para descarregar vários acordos recorrentes de
+    compra como um arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam
+    para construir o URL de download. O `full_path` identifica o ZIP a descarregar
+    (caminho devolvido por uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(
+            PURCHASE_RECURRING_AGREEMENT_ZIP_TOKEN_QUERY, variables
+        )
+        return unwrap(data, "purchaseRecurringAgreementGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  purchaseRecurringAgreementLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos acordos recorrentes de compra de uma
+    empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez
+    (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de um acordo recorrente de compra específico
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASE_RECURRING_AGREEMENT_LOGS_QUERY, variables)
+        return unwrap(data, "purchaseRecurringAgreementLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  purchaseRecurringAgreementMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de acordos recorrentes de compra e o
+    estado de entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`).
+    Útil para confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os
+    logs detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_purchase_recurring_agreement_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            PURCHASE_RECURRING_AGREEMENT_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "purchaseRecurringAgreementMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  purchaseRecurringAgreementMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de um acordo recorrente de compra: cada
+    registo indica o email de destino, o conteúdo, o `deliveryId` (que liga aos
+    destinatários via `get_purchase_recurring_agreement_mail_recipients`) e a data de
+    envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (acordo recorrente de compra) cujos envios se
+            pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            PURCHASE_RECURRING_AGREEMENT_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "purchaseRecurringAgreementMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  purchaseRecurringAgreementNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para um acordo recorrente de compra numa dada
+    série de documentos. Devolve `number` (o próximo número) e `name` (o nome da série).
+    Útil antes de criar um novo acordo recorrente de compra, para saber o número que lhe
+    será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(
+            PURCHASE_RECURRING_AGREEMENT_NEXT_NUMBER_QUERY, variables
+        )
+        return unwrap(data, "purchaseRecurringAgreementNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: PurchaseRecurringAgreementOptions) {
+  purchaseRecurringAgreementRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchase_recurring_agreement_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os acordos recorrentes de compra de uma entidade (fornecedor) que podem ser
+    relacionados/ligados a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (fornecedor) cujos acordos relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            PURCHASE_RECURRING_AGREEMENT_RELATABLE_QUERY, variables
+        )
+        return unwrap(data, "purchaseRecurringAgreementRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENTS_QUERY = """
+query ($companyId: Int!, $options: PurchaseRecurringAgreementOptions) {
+  purchaseRecurringAgreements(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      expirationDate
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_purchase_recurring_agreements(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os acordos recorrentes de compra de uma empresa, com os campos
+    principais de cada um: número, data, validade (`expirationDate`), série,
+    entidade/fornecedor, valor total e estado. Para obter o detalhe completo de um acordo
+    usa `get_purchase_recurring_agreement`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASE_RECURRING_AGREEMENTS_QUERY, variables)
+        return unwrap(data, "purchaseRecurringAgreements")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
