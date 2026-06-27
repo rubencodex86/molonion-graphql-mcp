@@ -9263,6 +9263,225 @@ async def list_my_activity(page: int | None = None, qty: int | None = None) -> A
 
 
 # ---------------------------------------------------------------------------
+# Unidades de medida
+# ---------------------------------------------------------------------------
+MEASUREMENT_UNIT_QUERY = """
+query ($companyId: Int!, $measurementUnitId: Int!) {
+  measurementUnit(companyId: $companyId, measurementUnitId: $measurementUnitId) {
+    errors { field msg }
+    data {
+      measurementUnitId
+      name
+      abbreviation
+      measurementUnitUNECERId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_measurement_unit(company_id: int, measurement_unit_id: int) -> Any:
+    """Obtém uma unidade de medida de uma empresa pelo seu ID: o nome (`name`), a
+    abreviatura (`abbreviation`) e o código UN/ECE associado (`measurementUnitUNECERId`,
+    usado na comunicação à AT). Os objetos ligados (empresa, detalhe UN/ECE) não são
+    incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        measurement_unit_id: ID da unidade de medida a obter.
+    """
+    variables = {
+        "companyId": company_id,
+        "measurementUnitId": measurement_unit_id,
+    }
+    try:
+        data = await _client.query(MEASUREMENT_UNIT_QUERY, variables)
+        return unwrap(data, "measurementUnit")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: tabela de referência global de unidades (sem `companyId`); o argumento é
+# `unitDefaultId` e o tipo devolvido é MeasurementUnitDefaultRead.
+MEASUREMENT_UNIT_DEFAULT_QUERY = """
+query ($unitDefaultId: Int!) {
+  measurementUnitDefault(unitDefaultId: $unitDefaultId) {
+    errors { field msg }
+    data {
+      unitDefaultId
+      description
+      abbreviation
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_measurement_unit_default(unit_default_id: int) -> Any:
+    """Obtém uma unidade de medida da tabela de referência global (unidades por omissão
+    da Moloni ON) pelo seu ID: a descrição (`description`) e a abreviatura
+    (`abbreviation`). Ao contrário de `get_measurement_unit` (unidades da empresa), esta
+    é a tabela global e não recebe `companyId`. As traduções não são incluídas neste
+    selection set.
+
+    Args:
+        unit_default_id: ID da unidade de medida (global) a obter.
+    """
+    try:
+        data = await _client.query(
+            MEASUREMENT_UNIT_DEFAULT_QUERY, {"unitDefaultId": unit_default_id}
+        )
+        return unwrap(data, "measurementUnitDefault")
+    except MolonionError as e:
+        return _err(e)
+
+
+MEASUREMENT_UNIT_DEFAULTS_QUERY = """
+query ($options: MeasurementUnitDefaultOptions) {
+  measurementUnitDefaults(options: $options) {
+    errors { field msg }
+    data {
+      unitDefaultId
+      description
+      abbreviation
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_measurement_unit_defaults(
+    page: int | None = None, qty: int | None = None
+) -> Any:
+    """Lista as unidades de medida da tabela de referência global (unidades por omissão
+    da Moloni ON), cada uma com a descrição (`description`) e a abreviatura
+    (`abbreviation`). Ao contrário de `list_measurement_units` (unidades da empresa), esta
+    é a tabela global e não recebe `companyId`.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MEASUREMENT_UNIT_DEFAULTS_QUERY, variables)
+        return unwrap(data, "measurementUnitDefaults")
+    except MolonionError as e:
+        return _err(e)
+
+
+MEASUREMENT_UNIT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  measurementUnitLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_measurement_unit_logs(
+    company_id: int,
+    measurement_unit_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às unidades de medida de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        measurement_unit_id: opcional; filtra os logs de uma unidade específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if measurement_unit_id is not None:
+        options["relatedId"] = measurement_unit_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MEASUREMENT_UNIT_LOGS_QUERY, variables)
+        return unwrap(data, "measurementUnitLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+MEASUREMENT_UNITS_QUERY = """
+query ($companyId: Int!, $options: MeasurementUnitOptions) {
+  measurementUnits(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      measurementUnitId
+      name
+      abbreviation
+      measurementUnitUNECERId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_measurement_units(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as unidades de medida configuradas numa empresa, cada uma com o nome
+    (`name`), a abreviatura (`abbreviation`) e o código UN/ECE (`measurementUnitUNECERId`).
+    Para obter uma única pelo seu ID usa `get_measurement_unit`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MEASUREMENT_UNITS_QUERY, variables)
+        return unwrap(data, "measurementUnits")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
