@@ -19584,6 +19584,135 @@ async def get_salespersons_payments_pending_totals(
         return _err(e)
 
 
+# ===========================================================================
+# Extratos de vendas (SalesStatements)
+# ===========================================================================
+
+SALES_STATEMENTS_QUERY = """
+query ($companyId: Int!, $options: SalesStatementOptions) {
+  salesStatements(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      __typename
+      documentId
+      documentTypeId
+      documentSetName
+      number
+      date
+      status
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_statements(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o extrato de vendas a clientes: a lista de documentos de venda e o seu estado
+    de liquidação/reconciliação num período. Cada documento usa a interface `DocumentRead`
+    (campos comuns: número, série, data, estado, totais, reconciliação, entidade/cliente)
+    e `__typename` identifica o tipo concreto. Para campos específicos de um tipo usa a
+    tool dedicada.
+
+    Atenção: ao contrário do extrato de compras, esta devolve uma LISTA de envelopes — o
+    resultado já vem achatado numa única lista de documentos.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(SALES_STATEMENTS_QUERY, variables)
+        envelopes = (raw or {}).get("salesStatements") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'salesStatements' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_STATEMENTS_TOTALS_QUERY = """
+query ($companyId: Int!, $options: SalesStatementTotalsOptions) {
+  salesStatementsTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      grossValues
+      totalDiscountValues
+      taxesValues
+      retentionsValues
+      totalValues
+      productsCount
+      customersCount
+      docsCount
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_statements_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados do extrato de vendas a clientes (um único registo): os
+    valores totais (`grossValues`, `totalDiscountValues`, `taxesValues`,
+    `retentionsValues`, `totalValues`) e as contagens (`productsCount`, `customersCount`,
+    `docsCount`). Útil para uma vista global do extrato de vendas.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_STATEMENTS_TOTALS_QUERY, variables)
+        return unwrap(data, "salesStatementsTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
