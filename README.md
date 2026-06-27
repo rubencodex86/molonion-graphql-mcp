@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.277.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.286.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -337,6 +337,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_payment_method` | Detalhes de um método de pagamento pelo seu ID (nome, tipo, comissão, default). |
 | `get_payment_method_logs` | Histórico de alterações (logs) aos métodos de pagamento de uma empresa. |
 | `list_payment_methods` | Lista os métodos de pagamento configurados numa empresa. |
+| `get_payment_return` | Detalhes de uma devolução de pagamento pelo seu ID (documento, entidade, reconciliação). |
+| `get_payment_return_pdf_token` | Token temporário para descarregar o PDF de uma devolução de pagamento. |
+| `get_payment_return_zip_token` | Token temporário para descarregar várias devoluções de pagamento em ZIP. |
+| `get_payment_return_logs` | Histórico de alterações (logs) às devoluções de pagamento de uma empresa. |
+| `get_payment_return_mail_recipients` | Destinatários e estado de entrega de um envio por email de devoluções de pagamento. |
+| `get_payment_return_mails_history` | Histórico de emails enviados de uma devolução de pagamento. |
+| `get_payment_return_next_number` | Próximo número disponível para uma devolução de pagamento numa série. |
+| `get_payment_return_relatable` | Devoluções de pagamento de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_payment_returns` | Lista (paginada) as devoluções de pagamento de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
