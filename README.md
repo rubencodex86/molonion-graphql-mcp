@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.131.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.133.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -200,6 +200,8 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_events` | Lista os eventos de uma empresa (lembretes, tarefas, recorrência). |
 | `list_events_by_date` | Lista os eventos de uma empresa numa data específica (agenda). |
 | `list_events_month_by_date` | Lista os eventos de uma empresa no mês da data indicada (vista mensal). |
+| `list_fiscal_zones_tax_settings` | Definições de impostos por zona fiscal (regras de faturação por zona). |
+| `get_fiscal_zone_tax_settings` | Definições de impostos de uma zona fiscal específica (sem envelope). |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |

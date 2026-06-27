@@ -6460,6 +6460,113 @@ async def list_events_month_by_date(
 
 
 # ---------------------------------------------------------------------------
+# Zonas fiscais (definições de impostos)
+# ---------------------------------------------------------------------------
+FISCAL_ZONES_TAX_SETTINGS_QUERY = """
+query ($options: FiscalZoneTaxSettingsOptions, $includeGeneric: Boolean) {
+  fiscalZonesTaxSettings(options: $options, includeGeneric: $includeGeneric) {
+    errors { field msg }
+    data {
+      fiscalZone
+      hasFinancialDiscount
+      requireCustomerAddress
+      hasCommercialRegistryOffice
+      hasCommercialRegistryNumber
+      availabilityPhraseMandatory
+      allowZeroValue
+      allowVatZeroValue
+      defaultMaxOldness
+      additionalOutOfSeqDate
+      nullifiedAllowOutOfSeqDate
+      extraEditableDocuments
+      forbiddenDocumentTypeIds
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_fiscal_zones_tax_settings(
+    include_generic: bool | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as definições de impostos por zona fiscal da Moloni ON — regras que governam
+    a faturação em cada zona (ex. PT, PT-AC, PT-MA, ES, …). Para cada zona (`fiscalZone`):
+    se permite desconto financeiro (`hasFinancialDiscount`), se exige morada do cliente
+    (`requireCustomerAddress`), se permite valor/IVA zero (`allowZeroValue`,
+    `allowVatZeroValue`), a antiguidade máxima de datas (`defaultMaxOldness`) e os tipos
+    de documento proibidos (`forbiddenDocumentTypeIds`). Ao contrário da maioria das
+    operações, não recebe `companyId`. Os objetos ligados (tipos de financiamento, modos,
+    flags, isenções, limites) não são incluídos neste selection set.
+
+    Args:
+        include_generic: opcional; inclui também as definições genéricas (não específicas
+            de uma zona).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    if include_generic is not None:
+        variables["includeGeneric"] = include_generic
+    try:
+        data = await _client.query(FISCAL_ZONES_TAX_SETTINGS_QUERY, variables)
+        return unwrap(data, "fiscalZonesTaxSettings")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: ao contrário da maioria, esta query devolve o objeto DIRETAMENTE (sem envelope
+# `{errors, data}`) — não se aplica `unwrap()`.
+FISCAL_ZONE_TAX_SETTINGS_QUERY = """
+query ($companyId: Int!, $fiscalZone: String!) {
+  fiscalZoneTaxSettings(companyId: $companyId, fiscalZone: $fiscalZone) {
+    fiscalZone
+    hasFinancialDiscount
+    requireCustomerAddress
+    hasCommercialRegistryOffice
+    hasCommercialRegistryNumber
+    availabilityPhraseMandatory
+    allowZeroValue
+    allowVatZeroValue
+    defaultMaxOldness
+    additionalOutOfSeqDate
+    nullifiedAllowOutOfSeqDate
+    extraEditableDocuments
+    forbiddenDocumentTypeIds
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_fiscal_zone_tax_settings(company_id: int, fiscal_zone: str) -> Any:
+    """Obtém as definições de impostos de uma zona fiscal específica (ex. "PT", "PT-AC",
+    "ES") para uma empresa. Devolve as regras de faturação dessa zona: desconto
+    financeiro, morada do cliente obrigatória, valor/IVA zero permitido, antiguidade
+    máxima de datas e tipos de documento proibidos. Se a empresa não tiver definições
+    próprias para a zona, são devolvidas as definições gerais. Os objetos ligados (tipos
+    de financiamento, isenções, limites) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        fiscal_zone: código da zona fiscal (ex. "PT", "PT-AC", "PT-MA", "ES").
+    """
+    variables = {"companyId": company_id, "fiscalZone": fiscal_zone}
+    try:
+        data = await _client.query(FISCAL_ZONE_TAX_SETTINGS_QUERY, variables)
+        return (data or {}).get("fiscalZoneTaxSettings")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
