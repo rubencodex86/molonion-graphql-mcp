@@ -3132,6 +3132,60 @@ async def list_customer_return_notes(
         return _err(e)
 
 
+# Clientes — listagem (complemento de get_customer)
+CUSTOMERS_QUERY = """
+query ($companyId: Int!, $options: CustomerOptions) {
+  customers(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      customerId
+      number
+      name
+      vat
+      email
+      phone
+      address
+      city
+      zipCode
+      balance
+      creditLimit
+      isDefault
+      visible
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_customers(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os clientes de uma empresa, com os campos principais de cada um:
+    número, nome, NIF, contactos, morada e saldo/limite de crédito (`balance`,
+    `creditLimit`). Para obter o detalhe completo de um cliente usa `get_customer`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMERS_QUERY, variables)
+        return unwrap(data, "customers")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
