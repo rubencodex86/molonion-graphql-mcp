@@ -6187,6 +6187,279 @@ async def list_estimates(
 
 
 # ---------------------------------------------------------------------------
+# Eventos
+# ---------------------------------------------------------------------------
+EVENT_QUERY = """
+query ($companyId: Int!, $eventId: String!) {
+  event(companyId: $companyId, eventId: $eventId) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      isDraft
+      isHandled
+      documentId
+      eventDate
+      repetition
+      repetitionValue
+      monthlyValue
+      weeklySunday
+      weeklyMonday
+      weeklyTuesday
+      weeklyWednesday
+      weeklyThursday
+      weeklyFriday
+      weeklySaturday
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_event(company_id: int, event_id: str) -> Any:
+    """Obtém um evento pelo seu ID (ex. lembrete de pagamento, tarefa de seguimento): o
+    nome, a data (`eventDate`), se está tratado (`isHandled`) ou em rascunho (`isDraft`),
+    o documento associado (`documentId`) e a recorrência (`repetition`, `repetitionValue`,
+    `monthlyValue` e os dias da semana `weekly*`). Nota: o `event_id` é uma **string**. As
+    ações do evento (`eventActions`) não são incluídas neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        event_id: ID (string) do evento a obter.
+    """
+    variables = {"companyId": company_id, "eventId": event_id}
+    try:
+        data = await _client.query(EVENT_QUERY, variables)
+        return unwrap(data, "event")
+    except MolonionError as e:
+        return _err(e)
+
+
+EVENT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  eventLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_event_logs(
+    company_id: int,
+    related_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos eventos de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        related_id: opcional; filtra os logs de um evento específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if related_id is not None:
+        options["relatedId"] = related_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(EVENT_LOGS_QUERY, variables)
+        return unwrap(data, "eventLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+EVENTS_QUERY = """
+query ($companyId: Int!, $options: EventOptions) {
+  events(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      isDraft
+      isHandled
+      documentId
+      eventDate
+      repetition
+      repetitionValue
+      monthlyValue
+      weeklySunday
+      weeklyMonday
+      weeklyTuesday
+      weeklyWednesday
+      weeklyThursday
+      weeklyFriday
+      weeklySaturday
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_events(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os eventos de uma empresa (lembretes, tarefas de seguimento, etc.), cada um
+    com o nome, a data (`eventDate`), se está tratado (`isHandled`), o documento
+    associado (`documentId`) e a recorrência (`repetition`, dias da semana `weekly*`).
+    Para obter um único pelo seu ID usa `get_event`; para os de um documento específico
+    usa `get_document_events`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(EVENTS_QUERY, variables)
+        return unwrap(data, "events")
+    except MolonionError as e:
+        return _err(e)
+
+
+EVENTS_BY_DATE_QUERY = """
+query ($companyId: Int!, $date: DateTime, $options: EventOptions) {
+  eventsByDate(companyId: $companyId, date: $date, options: $options) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      isDraft
+      isHandled
+      documentId
+      eventDate
+      repetition
+      repetitionValue
+      monthlyValue
+      weeklySunday
+      weeklyMonday
+      weeklyTuesday
+      weeklyWednesday
+      weeklyThursday
+      weeklyFriday
+      weeklySaturday
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_events_by_date(
+    company_id: int,
+    date: str | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os eventos de uma empresa numa data específica (tendo em conta a
+    recorrência) — útil para um calendário/agenda. Cada evento traz o nome, a data, se
+    está tratado (`isHandled`), o documento associado e a recorrência.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        date: opcional; data (ISO 8601, ex. "2026-06-30") cujos eventos se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if date is not None:
+        variables["date"] = date
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(EVENTS_BY_DATE_QUERY, variables)
+        return unwrap(data, "eventsByDate")
+    except MolonionError as e:
+        return _err(e)
+
+
+EVENTS_MONTH_BY_DATE_QUERY = """
+query ($companyId: Int!, $date: DateTime) {
+  eventsMonthByDate(companyId: $companyId, date: $date) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      isDraft
+      isHandled
+      documentId
+      eventDate
+      repetition
+      repetitionValue
+      monthlyValue
+      weeklySunday
+      weeklyMonday
+      weeklyTuesday
+      weeklyWednesday
+      weeklyThursday
+      weeklyFriday
+      weeklySaturday
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_events_month_by_date(
+    company_id: int, date: str | None = None
+) -> Any:
+    """Lista os eventos de uma empresa para o mês inteiro da data indicada (tendo em
+    conta a recorrência) — útil para uma vista mensal de calendário. Cada evento traz o
+    nome, a data, se está tratado (`isHandled`), o documento associado e a recorrência.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        date: opcional; data (ISO 8601, ex. "2026-06-15") cujo mês se pretende.
+    """
+    variables: dict[str, Any] = {"companyId": company_id}
+    if date is not None:
+        variables["date"] = date
+    try:
+        data = await _client.query(EVENTS_MONTH_BY_DATE_QUERY, variables)
+        return unwrap(data, "eventsMonthByDate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
