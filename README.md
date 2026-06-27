@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.136.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.137.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -205,6 +205,7 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_geographic_zone` | Detalhes de uma zona geográfica pelo seu ID (nome, abreviatura, notas). |
 | `get_geographic_zone_logs` | Histórico de alterações (logs) às zonas geográficas de uma empresa. |
 | `list_geographic_zones` | Lista as zonas geográficas configuradas numa empresa. |
+| `get_at_inventory_file_token` | Token temporário para descarregar o ficheiro XML de inventário para a AT. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |

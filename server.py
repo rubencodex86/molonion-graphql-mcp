@@ -6706,6 +6706,43 @@ async def list_geographic_zones(
 
 
 # ---------------------------------------------------------------------------
+# AT / Inventário (tokens de ficheiro)
+# ---------------------------------------------------------------------------
+AT_INVENTORY_FILE_TOKEN_QUERY = """
+query ($companyId: Int!, $path: String!) {
+  getATInventoryFileToken(companyId: $companyId, path: $path) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_at_inventory_file_token(company_id: int, path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de inventário para a
+    Autoridade Tributária (AT) — o ficheiro XML de comunicação de inventário. Devolve
+    `token`, `path` e `filename`, que se combinam para construir o URL de download. O
+    `path` identifica o ficheiro a descarregar (caminho devolvido por uma operação de
+    geração do inventário).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        path: caminho do ficheiro de inventário a descarregar.
+    """
+    variables = {"companyId": company_id, "path": path}
+    try:
+        data = await _client.query(AT_INVENTORY_FILE_TOKEN_QUERY, variables)
+        return unwrap(data, "getATInventoryFileToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
