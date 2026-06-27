@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.182.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.185.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -242,6 +242,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_invoice_relatable` | Faturas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_invoices` | Lista (paginada) as faturas de uma empresa. |
 | `check_is_allowed` | Verifica se uma ação sobre um recurso é permitida (controlo de acesso + quotas). |
+| `get_label_template` | Detalhes de um template de etiquetas pelo seu ID (nome, tamanho, default). |
+| `get_label_template_logs` | Histórico de alterações (logs) aos templates de etiquetas. |
+| `list_label_templates` | Lista os templates de etiquetas configurados numa empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

@@ -8764,6 +8764,147 @@ async def check_is_allowed(
 
 
 # ---------------------------------------------------------------------------
+# Templates de etiquetas
+# ---------------------------------------------------------------------------
+LABEL_TEMPLATE_QUERY = """
+query ($companyId: Int!, $labelTemplateId: String!) {
+  labelTemplate(companyId: $companyId, labelTemplateId: $labelTemplateId) {
+    errors { field msg }
+    data {
+      labelTemplateId
+      name
+      isDefault
+      collate
+      size
+      obs
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_label_template(company_id: int, label_template_id: str) -> Any:
+    """Obtém um template de etiquetas de uma empresa pelo seu ID: o nome (`name`), se é o
+    template por omissão (`isDefault`), se agrupa (`collate`), o tamanho (`size`) e notas.
+    Usado para gerar etiquetas de produto/expedição. Nota: o `label_template_id` é uma
+    **string**. Os campos de layout da etiqueta (`fields`) e o objeto `company` não são
+    incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        label_template_id: ID (string) do template de etiquetas a obter.
+    """
+    variables = {"companyId": company_id, "labelTemplateId": label_template_id}
+    try:
+        data = await _client.query(LABEL_TEMPLATE_QUERY, variables)
+        return unwrap(data, "labelTemplate")
+    except MolonionError as e:
+        return _err(e)
+
+
+LABEL_TEMPLATE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  labelTemplateLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_label_template_logs(
+    company_id: int,
+    related_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos templates de etiquetas de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        related_id: opcional; filtra os logs de um template específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if related_id is not None:
+        options["relatedId"] = related_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(LABEL_TEMPLATE_LOGS_QUERY, variables)
+        return unwrap(data, "labelTemplateLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+LABEL_TEMPLATES_QUERY = """
+query ($companyId: Int!, $options: LabelTemplateOptions) {
+  labelTemplates(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      labelTemplateId
+      name
+      isDefault
+      collate
+      size
+      obs
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_label_templates(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os templates de etiquetas configurados numa empresa, cada um com o nome
+    (`name`), se é o template por omissão (`isDefault`) e o tamanho (`size`). Para obter
+    um único pelo seu ID usa `get_label_template`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(LABEL_TEMPLATES_QUERY, variables)
+        return unwrap(data, "labelTemplates")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
