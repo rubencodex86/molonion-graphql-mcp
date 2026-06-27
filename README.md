@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.48.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.54.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -131,6 +131,12 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_currency_denominations` | Lista as denominações (notas/moedas) de uma moeda (tipo, valor, imagem). |
 | `get_currency_exchange` | Taxa de câmbio entre duas moedas pelo seu ID (par, taxa, moedas from/to). |
 | `list_currency_exchanges` | Lista as taxas de câmbio configuradas (par, taxa, moedas from/to). |
+| `get_customer` | Detalhes de um cliente pelo seu ID (identificação, financeiro, IDs associados). |
+| `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
+| `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
+| `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
+| `get_customer_logs` | Histórico de alterações (logs) aos clientes de uma empresa. |
+| `get_customer_next_number` | Próximo número de cliente disponível numa empresa. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

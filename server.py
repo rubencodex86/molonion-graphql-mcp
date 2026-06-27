@@ -2361,6 +2361,336 @@ async def list_currency_exchanges(
 
 
 # ---------------------------------------------------------------------------
+# Clientes
+# ---------------------------------------------------------------------------
+CUSTOMER_QUERY = """
+query ($companyId: Int!, $customerId: Int!) {
+  customer(companyId: $companyId, customerId: $customerId) {
+    errors { field msg }
+    data {
+      customerId
+      number
+      name
+      vat
+      address
+      city
+      zipCode
+      email
+      website
+      phone
+      fax
+      contactName
+      contactEmail
+      contactPhone
+      notes
+      swift
+      iban
+      sepaId
+      sepaDate
+      discount
+      creditLimit
+      balance
+      paymentDay
+      notesOnDocs
+      documentNotes
+      exemptionReason
+      isDefault
+      visible
+      deletable
+      countryId
+      languageId
+      salespersonId
+      geographicZoneId
+      maturityDateId
+      paymentMethodId
+      deliveryMethodId
+      documentSetId
+      priceClassId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer(company_id: int, customer_id: int) -> Any:
+    """Obtém os detalhes de um cliente pelo seu ID: identificação (`name`, `vat`,
+    `number`, morada, contactos), dados financeiros (`discount`, `creditLimit`,
+    `balance`, `paymentDay`, dados SEPA/IBAN), notas e motivo de isenção, e os IDs das
+    entidades associadas (`countryId`, `salespersonId`, `paymentMethodId`,
+    `deliveryMethodId`, `documentSetId`, `priceClassId`, …) para encadear com outras
+    operações. Os objetos ligados completos (país, vendedor, impostos, moradas
+    alternativas, cópias, contagens de documentos) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente a obter.
+    """
+    variables = {"companyId": company_id, "customerId": customer_id}
+    try:
+        data = await _client.query(CUSTOMER_QUERY, variables)
+        return unwrap(data, "customer")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_HISTORY_QUERY = """
+query ($companyId: Int!, $options: CustomerHistoryOptions) {
+  customerHistory(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      customerId
+      docsCount
+      customerDebit
+      customerCredit
+      customerDateBalance
+      customerBalance
+      customer { customerId number name vat }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_customer_history(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o resumo de conta-corrente por cliente de uma empresa: para cada cliente,
+    o número de documentos (`docsCount`), o débito e crédito acumulados
+    (`customerDebit`/`customerCredit`) e os saldos (`customerDateBalance`,
+    `customerBalance`). Inclui a identificação mínima do cliente (`customer`: número,
+    nome, NIF). Útil para análise de saldos e cobranças.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_HISTORY_QUERY, variables)
+        return unwrap(data, "customerHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+# A conta-corrente de um cliente (customerHistoryCustomer) devolve uma LISTA da union
+# `CustomerHistoryDocumentRead` (24 tipos de documento). Numa union só se podem
+# selecionar campos via inline fragments; estes tipos de documento partilham um conjunto
+# comum (documentId/number/date/documentSetName/totalValue/status). Listamos apenas os
+# tipos do lado do cliente (os `Supplier*` são de compras e não aparecem aqui).
+CUSTOMER_HISTORY_DOC_TYPES = [
+    "InvoiceRead",
+    "SimplifiedInvoiceRead",
+    "InvoiceReceiptRead",
+    "ReceiptRead",
+    "CreditNoteRead",
+    "DebitNoteRead",
+    "SettlementNoteRead",
+    "ProFormaInvoiceRead",
+    "EstimateRead",
+    "BillsOfLadingRead",
+    "DeliveryNoteRead",
+    "CustomerReturnNoteRead",
+    "PaymentReturnRead",
+    "MigratedInvoiceRead",
+    "MigratedSimplifiedInvoiceRead",
+    "MigratedCreditNoteRead",
+    "MigratedReceiptRead",
+    "MigratedInvoiceReceiptRead",
+    "MigratedDebitNoteRead",
+    "MigratedEstimateRead",
+]
+_DOC_FRAGMENT_FIELDS = "documentId number date documentSetName totalValue status"
+_customer_history_fragments = "\n".join(
+    f"      ... on {t} {{ {_DOC_FRAGMENT_FIELDS} }}"
+    for t in CUSTOMER_HISTORY_DOC_TYPES
+)
+
+CUSTOMER_HISTORY_CUSTOMER_QUERY = """
+query ($companyId: Int!, $customerId: Int!, $options: CustomerHistoryOptions) {
+  customerHistoryCustomer(companyId: $companyId, customerId: $customerId, options: $options) {
+    errors { field msg }
+    accumulator
+    data {
+      __typename
+__FRAGMENTS__
+    }
+  }
+}
+""".replace("__FRAGMENTS__", _customer_history_fragments)
+
+
+@mcp.tool()
+async def get_customer_history_customer(
+    company_id: int,
+    customer_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o extrato de conta-corrente de um cliente: a lista de documentos que
+    movimentam a conta (faturas, recibos, notas de crédito/débito, etc.), cada um com o
+    tipo (`__typename`), `documentId`, número, data, série e valor. Devolve também o
+    `accumulator` (saldo acumulado). Cada documento é de um de vários tipos (a resposta é
+    uma union); por isso o campo `__typename` identifica o tipo de cada linha.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente cujo extrato se pretende.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "customerId": customer_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(CUSTOMER_HISTORY_CUSTOMER_QUERY, variables)
+        documents = unwrap(raw, "customerHistoryCustomer")  # valida erros do envelope
+        node = (raw or {}).get("customerHistoryCustomer") or {}
+        return {"accumulator": node.get("accumulator"), "documents": documents}
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: ao contrário da maioria das operações, esta devolve uma LISTA de envelopes
+# (`[CustomerHistoryUserSettingsTemplates]!`), não um único envelope — por isso o
+# `unwrap()` não se aplica; tratamos a lista à mão.
+CUSTOMER_HISTORY_TEMPLATES_QUERY = """
+query ($companyId: Int!) {
+  customerHistoryUserSettingsTemplates(companyId: $companyId) {
+    errors { field msg }
+    data {
+      userSettingsTemplateId
+      formName
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_customer_history_templates(company_id: int) -> Any:
+    """Lista os modelos (templates) de definições do utilizador para o ecrã de
+    conta-corrente de clientes — filtros/colunas guardados pelo utilizador para reutilizar.
+    Cada modelo tem `userSettingsTemplateId`, `formName` (o formulário a que se aplica) e
+    `name`. Os objetos ligados (utilizador, empresa e as definições guardadas) não são
+    incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        raw = await _client.query(
+            CUSTOMER_HISTORY_TEMPLATES_QUERY, {"companyId": company_id}
+        )
+        envelopes = (raw or {}).get("customerHistoryUserSettingsTemplates") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'customerHistoryUserSettingsTemplates' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  customerLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_logs(
+    company_id: int,
+    customer_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos clientes de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: opcional; filtra os logs de um cliente específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if customer_id is not None:
+        options["relatedId"] = customer_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_LOGS_QUERY, variables)
+        return unwrap(data, "customerLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: aqui o `data` do envelope é um escalar String (o próprio número), não um objeto.
+CUSTOMER_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!) {
+  customerNextNumber(companyId: $companyId) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_next_number(company_id: int) -> Any:
+    """Obtém o próximo número de cliente disponível numa empresa (o `number` sequencial
+    que será atribuído ao próximo cliente criado). Devolve o número como string. Útil
+    antes de criar um novo cliente.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        data = await _client.query(CUSTOMER_NEXT_NUMBER_QUERY, {"companyId": company_id})
+        return unwrap(data, "customerNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
