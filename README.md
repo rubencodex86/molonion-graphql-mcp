@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.67.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.76.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -136,6 +136,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_custom_field` | Detalhes de um campo personalizado pelo seu ID (nome, tipo, obrigatório, opções). |
 | `get_custom_field_logs` | Histórico de alterações (logs) aos campos personalizados de uma empresa. |
 | `list_custom_fields` | Lista os campos personalizados configurados numa empresa. |
+| `get_debit_note` | Detalhes de uma nota de débito pelo seu ID (documento, entidade, reconciliação, vencimento). |
+| `get_debit_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de débito. |
+| `get_debit_note_zip_token` | Token temporário para descarregar várias notas de débito em ZIP. |
+| `get_debit_note_logs` | Histórico de alterações (logs) às notas de débito de uma empresa. |
+| `get_debit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de débito. |
+| `get_debit_note_mails_history` | Histórico de emails enviados de uma nota de débito. |
+| `get_debit_note_next_number` | Próximo número disponível para uma nota de débito numa série. |
+| `get_debit_note_relatable` | Notas de débito de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_debit_notes` | Lista (paginada) as notas de débito de uma empresa. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
