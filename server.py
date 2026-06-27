@@ -18514,6 +18514,1076 @@ async def get_sales_pending_list_totals(
         return _err(e)
 
 
+# ===========================================================================
+# Vendedores (Salesperson)
+# ===========================================================================
+
+SALESPERSON_QUERY = """
+query ($companyId: Int!, $salespersonId: Int!) {
+  salesperson(companyId: $companyId, salespersonId: $salespersonId) {
+    errors { field msg }
+    data {
+      salespersonId
+      number
+      name
+      vat
+      email
+      phone
+      address
+      city
+      zipCode
+      website
+      contactName
+      contactEmail
+      contactPhone
+      baseCommission
+      documentCopies
+      notes
+      countryId
+      geographicZoneId
+      languageId
+      companyId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson(company_id: int, salesperson_id: int) -> Any:
+    """Obtém os detalhes de um vendedor pelo seu ID: o número (`number`), o nome, o NIF
+    (`vat`), os contactos (`email`, `phone`, morada), a taxa-base de comissão
+    (`baseCommission`), o número de cópias de documentos (`documentCopies`), as notas e
+    as chaves estrangeiras (`countryId`, `geographicZoneId`, `languageId`). Os clientes
+    atribuídos e os objetos aninhados (país, zona, idioma) não são incluídos neste
+    selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        salesperson_id: ID do vendedor a obter.
+    """
+    variables = {"companyId": company_id, "salespersonId": salesperson_id}
+    try:
+        data = await _client.query(SALESPERSON_QUERY, variables)
+        return unwrap(data, "salesperson")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_COMMISSIONS_QUERY = """
+query ($companyId: Int!, $options: SalespersonCommissionsOptions) {
+  salespersonCommissions(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      salespersonCommissionDocumentId
+      salespersonId
+      commission
+      reconciled
+      remaining
+      fullyReconciled
+      document {
+        __typename
+        documentId
+        documentTypeId
+        documentSetName
+        number
+        date
+        status
+        totalValue
+        entityVat
+        entityName
+        entityNumber
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_commissions(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as comissões de vendedores por documento: cada linha indica o vendedor
+    (`salespersonId`), o valor da comissão (`commission`), o valor já reconciliado
+    (`reconciled`), o que falta (`remaining`), se está totalmente reconciliado
+    (`fullyReconciled`) e o documento de origem aninhado (`document`, interface
+    `DocumentRead` com número, data, série, entidade, total; `__typename` dá o tipo).
+    Útil para apurar comissões a pagar/pagas por vendedor.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ex. por
+            vendedor ou intervalo de datas).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_COMMISSIONS_QUERY, variables)
+        return unwrap(data, "salespersonCommissions")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  salespersonLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_logs(
+    company_id: int,
+    salesperson_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos vendedores de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        salesperson_id: opcional; filtra os logs de um vendedor específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if salesperson_id is not None:
+        options["relatedId"] = salesperson_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_LOGS_QUERY, variables)
+        return unwrap(data, "salespersonLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  salespersonPayment(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      financialDiscount
+      salespersonCommission
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      yourReference
+      ourReference
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de um pagamento a vendedor (documento de liquidação que salda as
+    comissões de um vendedor) pelo seu ID de documento: dados do documento (número, série,
+    data, estado), o total (`totalValue`), o desconto financeiro (`financialDiscount`), a
+    comissão (`salespersonCommission`), o câmbio, o estado de reconciliação e os dados da
+    entidade/vendedor. As comissões saldadas, os pagamentos e a entidade completa não são
+    incluídos neste selection set — podem ser adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (pagamento a vendedor) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SALESPERSON_PAYMENT_QUERY, variables)
+        return unwrap(data, "salespersonPayment")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_COMMISSIONS_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: SalespersonPaymentCommissionsOptions) {
+  salespersonPaymentCommissions(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      salespersonPaymentDocumentId
+      salespersonCommissionDocumentId
+      reconciled
+      salespersonCommissionDocument {
+        salespersonCommissionDocumentId
+        salespersonId
+        commission
+        reconciled
+        remaining
+        fullyReconciled
+        document {
+          __typename
+          documentId
+          documentSetName
+          number
+          date
+          status
+          totalValue
+          entityName
+        }
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_commissions(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as comissões saldadas por um pagamento a vendedor: a ligação de reconciliação
+    entre o documento de pagamento e cada documento de comissão. Cada linha indica o
+    `reconciled` (valor reconciliado nessa ligação) e o documento de comissão aninhado
+    (`salespersonCommissionDocument`: vendedor, comissão, reconciliação e o documento de
+    venda de origem). Útil para ver que comissões foram pagas por um pagamento.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (pagamento a vendedor) cujas comissões se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_PAYMENT_COMMISSIONS_QUERY, variables)
+        return unwrap(data, "salespersonPaymentCommissions")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  salespersonPaymentGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de um pagamento a vendedor.
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de download
+    do PDF. Nota: ao contrário de outras operações, não recebe `companyId` — apenas o
+    `documentId`.
+
+    Args:
+        document_id: ID do documento (pagamento a vendedor) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            SALESPERSON_PAYMENT_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "salespersonPaymentGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  salespersonPaymentGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar vários pagamentos a vendedor como
+    um arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o
+    URL de download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por
+    uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(SALESPERSON_PAYMENT_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "salespersonPaymentGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  salespersonPaymentLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos pagamentos a vendedor de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`), os
+    valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`,
+    `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de um pagamento a vendedor específico
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_PAYMENT_LOGS_QUERY, variables)
+        return unwrap(data, "salespersonPaymentLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  salespersonPaymentMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de pagamentos a vendedor e o estado de
+    entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para
+    confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs
+    detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_salesperson_payment_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSON_PAYMENT_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "salespersonPaymentMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  salespersonPaymentMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de um pagamento a vendedor: cada registo indica
+    o email de destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_salesperson_payment_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (pagamento a vendedor) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSON_PAYMENT_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "salespersonPaymentMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  salespersonPaymentNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para um pagamento a vendedor numa dada série de
+    documentos. Devolve `number` (o próximo número) e `name` (o nome da série). Útil antes
+    de criar um novo pagamento a vendedor, para saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(
+            SALESPERSON_PAYMENT_NEXT_NUMBER_QUERY, variables
+        )
+        return unwrap(data, "salespersonPaymentNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SalespersonPaymentOptions) {
+  salespersonPaymentRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salesperson_payment_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os pagamentos a vendedor de uma entidade (vendedor) que podem ser
+    relacionados/ligados a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (vendedor) cujos pagamentos relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_PAYMENT_RELATABLE_QUERY, variables)
+        return unwrap(data, "salespersonPaymentRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENTS_QUERY = """
+query ($companyId: Int!, $options: SalespersonPaymentOptions) {
+  salespersonPayments(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_salesperson_payments(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os pagamentos a vendedor de uma empresa, com os campos principais
+    de cada um: número, data, série, entidade/vendedor, valor total, valor reconciliado
+    (`reconciledValue`, `reconciliationPercentage`) e estado. Para obter o detalhe
+    completo de um pagamento usa `get_salesperson_payment`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_PAYMENTS_QUERY, variables)
+        return unwrap(data, "salespersonPayments")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_QUERY = """
+query ($companyId: Int!, $options: SalespersonOptions) {
+  salespersons(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      salespersonId
+      number
+      name
+      vat
+      email
+      phone
+      baseCommission
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_salespersons(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os vendedores de uma empresa, cada um com `salespersonId`,
+    `number`, `name`, `vat`, contactos (`email`, `phone`), a taxa-base de comissão
+    (`baseCommission`) e `visible`. Para o detalhe completo de um vendedor usa
+    `get_salesperson`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSONS_QUERY, variables)
+        return unwrap(data, "salespersons")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_PAYMENTS_HISTORY_BY_SALESPERSON_QUERY = """
+query ($companyId: Int!, $options: SalespersonsPaymentsHistoryOptions) {
+  salespersonsPaymentsHistoryBySalesperson(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      salespersonId
+      docsCount
+      totalDocsValue
+      salesperson {
+        salespersonId
+        number
+        name
+        vat
+        baseCommission
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salespersons_payments_history_by_salesperson(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Histórico de pagamentos a vendedores agregado por vendedor: cada linha traz o
+    vendedor (`salesperson`: número, nome, NIF, comissão-base), o número de documentos
+    (`docsCount`) e o valor total dos documentos (`totalDocsValue`). Útil para uma vista
+    por vendedor do que já lhes foi pago/processado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSONS_PAYMENTS_HISTORY_BY_SALESPERSON_QUERY, variables
+        )
+        return unwrap(data, "salespersonsPaymentsHistoryBySalesperson")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_PAYMENTS_HISTORY_DOCS_QUERY = """
+query ($companyId: Int!, $options: SalespersonsPaymentsHistoryOptions) {
+  salespersonsPaymentsHistoryDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      documentTypeId
+      documentSetName
+      salespersonId
+      number
+      date
+      totalValue
+      yourReference
+      geographicZoneId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salespersons_payments_history_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Histórico de pagamentos a vendedores ao nível do DOCUMENTO: cada linha representa um
+    documento e traz `documentId`, `documentTypeId`, série (`documentSetName`), o vendedor
+    (`salespersonId`), número, data, valor total (`totalValue`), a referência
+    (`yourReference`) e a zona geográfica (`geographicZoneId`). Detalhe por documento, ao
+    contrário de `get_salespersons_payments_history_by_salesperson` que agrega por vendedor.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSONS_PAYMENTS_HISTORY_DOCS_QUERY, variables
+        )
+        return unwrap(data, "salespersonsPaymentsHistoryDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_PAYMENTS_HISTORY_TOTALS_QUERY = """
+query ($companyId: Int!, $options: SalespersonsPaymentsHistoryOptions) {
+  salespersonsPaymentsHistoryTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      docsCount
+      totalDocsValue
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salespersons_payments_history_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados do histórico de pagamentos a vendedores de uma empresa (um
+    único registo): o número de documentos (`docsCount`) e o valor total dos documentos
+    (`totalDocsValue`). Útil para uma vista global.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSONS_PAYMENTS_HISTORY_TOTALS_QUERY, variables
+        )
+        return unwrap(data, "salespersonsPaymentsHistoryTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_PAYMENTS_PENDING_BY_SALESPERSON_QUERY = """
+query ($companyId: Int!, $options: SalespersonsPaymentsPendingOptions) {
+  salespersonsPaymentsPendingBySalesperson(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      salespersonId
+      docsCount
+      totalDocsValue
+      totalCommission
+      totalReconciledCommission
+      totalRemainingCommission
+      salesperson {
+        salespersonId
+        number
+        name
+        vat
+        baseCommission
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salespersons_payments_pending_by_salesperson(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Comissões de vendedores pendentes (por pagar) agregadas por vendedor: cada linha
+    traz o vendedor (`salesperson`: número, nome, NIF, comissão-base), o número de
+    documentos (`docsCount`), o valor total dos documentos (`totalDocsValue`) e os totais
+    de comissão — total (`totalCommission`), já reconciliada/paga
+    (`totalReconciledCommission`) e em falta (`totalRemainingCommission`). Útil para saber
+    quanto falta pagar de comissões a cada vendedor.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSONS_PAYMENTS_PENDING_BY_SALESPERSON_QUERY, variables
+        )
+        return unwrap(data, "salespersonsPaymentsPendingBySalesperson")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_PAYMENTS_PENDING_DOCS_QUERY = """
+query ($companyId: Int!, $options: SalespersonsPaymentsPendingOptions) {
+  salespersonsPaymentsPendingDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      salespersonCommissionDocumentId
+      salespersonId
+      commission
+      reconciled
+      remaining
+      fullyReconciled
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        expirationDate
+        totalValue
+        salespersonCommission
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salespersons_payments_pending_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Comissões de vendedores pendentes (por pagar) ao nível do DOCUMENTO: cada linha
+    indica o vendedor (`salespersonId`), o valor da comissão (`commission`), o já
+    reconciliado/pago (`reconciled`), o que falta (`remaining`), se está totalmente
+    reconciliado (`fullyReconciled`) e o documento de origem aninhado (`document`: número,
+    data, vencimento, série, total, comissão, entidade/cliente). Detalhe por documento, ao
+    contrário de `get_salespersons_payments_pending_by_salesperson` que agrega por vendedor.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSONS_PAYMENTS_PENDING_DOCS_QUERY, variables
+        )
+        return unwrap(data, "salespersonsPaymentsPendingDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSONS_PAYMENTS_PENDING_TOTALS_QUERY = """
+query ($companyId: Int!, $options: SalespersonsPaymentsPendingOptions) {
+  salespersonsPaymentsPendingTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      docsCount
+      totalValue
+      avgCommission
+      avgDelayDays
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_salespersons_payments_pending_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados das comissões de vendedores pendentes (por pagar) de uma
+    empresa (um único registo): o número de documentos (`docsCount`), o valor total
+    pendente (`totalValue`), a comissão média (`avgCommission`) e o atraso médio em dias
+    (`avgDelayDays`). Útil para uma vista global das comissões por pagar.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALESPERSONS_PAYMENTS_PENDING_TOTALS_QUERY, variables
+        )
+        return unwrap(data, "salespersonsPaymentsPendingTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

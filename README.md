@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.377.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.397.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -437,6 +437,26 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_sales_pending_list_by_date` | Documentos de venda pendentes agrupados por data de vencimento (com saldo acumulado). |
 | `get_sales_pending_list_client` | Documentos de venda pendentes de um cliente (extrato de contas a receber, com saldo acumulado). |
 | `get_sales_pending_list_totals` | Totais agregados das vendas pendentes (montantes, percentagem, atraso). |
+| `get_salesperson` | Detalhes de um vendedor pelo seu ID (nome, contactos, comissão-base). |
+| `get_salesperson_commissions` | Comissões de vendedores por documento (valor, reconciliação, documento de origem). |
+| `get_salesperson_logs` | Histórico de alterações (logs) aos vendedores. |
+| `get_salesperson_payment` | Detalhes de um pagamento a vendedor pelo seu ID (liquidação de comissões). |
+| `get_salesperson_payment_commissions` | Comissões saldadas por um pagamento a vendedor (ligações de reconciliação). |
+| `get_salesperson_payment_pdf_token` | Token temporário para descarregar o PDF de um pagamento a vendedor. |
+| `get_salesperson_payment_zip_token` | Token temporário para descarregar vários pagamentos a vendedor em ZIP. |
+| `get_salesperson_payment_logs` | Histórico de alterações (logs) aos pagamentos a vendedor. |
+| `get_salesperson_payment_mail_recipients` | Destinatários e estado de entrega de um envio por email de pagamentos a vendedor. |
+| `get_salesperson_payment_mails_history` | Histórico de envios por email de um pagamento a vendedor. |
+| `get_salesperson_payment_next_number` | Próximo número disponível para um pagamento a vendedor numa série. |
+| `get_salesperson_payment_relatable` | Pagamentos a vendedor de uma entidade relacionáveis com outro documento (deprecada). |
+| `list_salesperson_payments` | Lista paginada dos pagamentos a vendedor de uma empresa. |
+| `list_salespersons` | Lista paginada dos vendedores de uma empresa. |
+| `get_salespersons_payments_history_by_salesperson` | Histórico de pagamentos a vendedores agregado por vendedor. |
+| `get_salespersons_payments_history_docs` | Histórico de pagamentos a vendedores ao nível do documento. |
+| `get_salespersons_payments_history_totals` | Totais agregados do histórico de pagamentos a vendedores. |
+| `get_salespersons_payments_pending_by_salesperson` | Comissões pendentes (por pagar) agregadas por vendedor. |
+| `get_salespersons_payments_pending_docs` | Comissões pendentes (por pagar) ao nível do documento. |
+| `get_salespersons_payments_pending_totals` | Totais agregados das comissões pendentes (valor, média, atraso). |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
