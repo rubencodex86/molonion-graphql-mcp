@@ -9084,6 +9084,147 @@ async def list_products_stock_totals(
 
 
 # ---------------------------------------------------------------------------
+# Datas de vencimento (condições de pagamento)
+# ---------------------------------------------------------------------------
+MATURITY_DATE_QUERY = """
+query ($companyId: Int!, $maturityDateId: Int!) {
+  maturityDate(companyId: $companyId, maturityDateId: $maturityDateId) {
+    errors { field msg }
+    data {
+      maturityDateId
+      name
+      days
+      discount
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_maturity_date(company_id: int, maturity_date_id: int) -> Any:
+    """Obtém uma data de vencimento (condição de pagamento) de uma empresa pelo seu ID:
+    o nome (`name`), os dias de prazo (`days`), o desconto associado (`discount`) e se é
+    a condição por omissão (`isDefault`). Usada nos documentos para calcular a data-limite
+    de pagamento. O objeto `company` ligado não é incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        maturity_date_id: ID da data de vencimento a obter.
+    """
+    variables = {"companyId": company_id, "maturityDateId": maturity_date_id}
+    try:
+        data = await _client.query(MATURITY_DATE_QUERY, variables)
+        return unwrap(data, "maturityDate")
+    except MolonionError as e:
+        return _err(e)
+
+
+MATURITY_DATE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  maturityDateLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_maturity_date_logs(
+    company_id: int,
+    maturity_date_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às datas de vencimento de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        maturity_date_id: opcional; filtra os logs de uma data de vencimento específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if maturity_date_id is not None:
+        options["relatedId"] = maturity_date_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MATURITY_DATE_LOGS_QUERY, variables)
+        return unwrap(data, "maturityDateLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+MATURITY_DATES_QUERY = """
+query ($companyId: Int!, $options: MaturityDateOptions) {
+  maturityDates(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      maturityDateId
+      name
+      days
+      discount
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_maturity_dates(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as datas de vencimento (condições de pagamento) configuradas numa empresa,
+    cada uma com o nome (`name`), os dias de prazo (`days`), o desconto (`discount`) e se
+    é a condição por omissão (`isDefault`). Para obter uma única pelo seu ID usa
+    `get_maturity_date`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MATURITY_DATES_QUERY, variables)
+        return unwrap(data, "maturityDates")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
