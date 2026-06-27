@@ -1,0 +1,16 @@
+# Segredos — NUNCA commitar
+.env
+
+# Ambiente virtual
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# IDE / SO
+.DS_Store
+.idea/
+.vscode/
