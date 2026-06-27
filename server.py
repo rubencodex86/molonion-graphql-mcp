@@ -7502,6 +7502,171 @@ async def get_xml_token(company_id: int, request: str, full_path: str) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Webhooks (hooks)
+# ---------------------------------------------------------------------------
+HOOK_QUERY = """
+query ($companyId: Int!, $hookId: String!) {
+  hook(companyId: $companyId, hookId: $hookId) {
+    errors { field msg }
+    data {
+      hookId
+      name
+      url
+      model
+      operation
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_hook(company_id: int, hook_id: str) -> Any:
+    """Obtém um webhook de uma empresa pelo seu ID: o nome (`name`), o URL de callback
+    (`url`) e os gatilhos — o(s) modelo(s) (`model`, ex. documento, cliente) e a(s)
+    operação(ões) (`operation`, ex. criação, alteração) que disparam o webhook. Nota: o
+    `hook_id` é uma **string**.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        hook_id: ID (string) do webhook a obter.
+    """
+    variables = {"companyId": company_id, "hookId": hook_id}
+    try:
+        data = await _client.query(HOOK_QUERY, variables)
+        return unwrap(data, "hook")
+    except MolonionError as e:
+        return _err(e)
+
+
+HOOK_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  hookLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_hook_logs(
+    company_id: int,
+    related_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos webhooks de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        related_id: opcional; filtra os logs de um webhook específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if related_id is not None:
+        options["relatedId"] = related_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(HOOK_LOGS_QUERY, variables)
+        return unwrap(data, "hookLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+HOOK_MODEL_OPERATIONS_QUERY = """
+query {
+  hookModelOperations {
+    errors { field msg }
+    data {
+      model
+      name
+      operations { operation name }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_hook_model_operations() -> Any:
+    """Lista o catálogo de gatilhos disponíveis para webhooks: para cada modelo
+    (`model`, ex. documento, cliente, produto) o nome legível (`name`) e as operações
+    disponíveis (`operations`, ex. criação, alteração, remoção). Usa isto para saber que
+    combinações `model`/`operation` podes configurar num webhook. Não recebe argumentos.
+    """
+    try:
+        data = await _client.query(HOOK_MODEL_OPERATIONS_QUERY)
+        return unwrap(data, "hookModelOperations")
+    except MolonionError as e:
+        return _err(e)
+
+
+HOOKS_QUERY = """
+query ($companyId: Int!, $options: HookOptions) {
+  hooks(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      hookId
+      name
+      url
+      model
+      operation
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_hooks(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os webhooks configurados numa empresa, cada um com o nome (`name`), o URL de
+    callback (`url`) e os gatilhos (`model`/`operation`). Para obter um único pelo seu ID
+    usa `get_hook`; para o catálogo de gatilhos disponíveis usa
+    `list_hook_model_operations`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(HOOKS_QUERY, variables)
+        return unwrap(data, "hooks")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
