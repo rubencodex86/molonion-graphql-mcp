@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.198.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.201.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -258,6 +258,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_measurement_unit_defaults` | Lista as unidades de medida da tabela global (sem `companyId`). |
 | `get_measurement_unit_logs` | Histórico de alterações (logs) às unidades de medida de uma empresa. |
 | `list_measurement_units` | Lista as unidades de medida configuradas numa empresa. |
+| `check_logged_in` | Verifica se a API Key está autenticada (booleano). |
+| `check_my_password` | Verifica se uma password corresponde à do utilizador autenticado (booleano). |
+| `list_my_two_factor_methods` | Lista os métodos 2FA configurados pelo utilizador autenticado. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

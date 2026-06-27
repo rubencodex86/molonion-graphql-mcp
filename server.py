@@ -9482,6 +9482,83 @@ async def list_measurement_units(
 
 
 # ---------------------------------------------------------------------------
+# Sessão (login)
+# ---------------------------------------------------------------------------
+# NOTA: devolve um escalar Boolean diretamente (sem envelope `{errors, data}`).
+ME_LOGGED_IN_QUERY = """
+query {
+  meLoggedIn
+}
+"""
+
+
+@mcp.tool()
+async def check_logged_in() -> Any:
+    """Verifica se o utilizador (a API Key) está autenticado. Devolve um booleano (`true`
+    se a sessão/credencial é válida). Forma leve de confirmar a autenticação; para o
+    utilizador e empresas usa `me`. Não recebe argumentos.
+    """
+    try:
+        data = await _client.query(ME_LOGGED_IN_QUERY)
+        return {"loggedIn": (data or {}).get("meLoggedIn")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: devolve um escalar Boolean diretamente (sem envelope `{errors, data}`).
+ME_PASSWORD_CHECK_QUERY = """
+query ($password: String!) {
+  mePasswordCheck(password: $password)
+}
+"""
+
+
+@mcp.tool()
+async def check_my_password(password: str) -> Any:
+    """Verifica se a password fornecida corresponde à do utilizador autenticado. Devolve
+    um booleano (`true` se a password está correta). Usado para confirmar a identidade
+    antes de operações sensíveis.
+
+    Nota: recebe a password do utilizador — usa apenas com credenciais autorizadas.
+
+    Args:
+        password: password do utilizador autenticado a verificar.
+    """
+    try:
+        data = await _client.query(ME_PASSWORD_CHECK_QUERY, {"password": password})
+        return {"valid": (data or {}).get("mePasswordCheck")}
+    except MolonionError as e:
+        return _err(e)
+
+
+ME_TWO_FACTOR_METHODS_QUERY = """
+query {
+  meTwoFactorMethods {
+    errors { field msg }
+    data {
+      method
+      default
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_my_two_factor_methods() -> Any:
+    """Lista os métodos de autenticação de dois fatores (2FA) configurados pelo
+    utilizador autenticado: o método (`method`, ex. app/SMS/email), se é o método por
+    omissão (`default`) e quando foi configurado (`createdAt`). Não recebe argumentos.
+    """
+    try:
+        data = await _client.query(ME_TWO_FACTOR_METHODS_QUERY)
+        return unwrap(data, "meTwoFactorMethods")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
