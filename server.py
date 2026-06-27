@@ -1399,6 +1399,239 @@ async def list_company_roles(
 
 
 # ---------------------------------------------------------------------------
+# Subscrições
+# ---------------------------------------------------------------------------
+COMPANY_SUBSCRIPTIONS_QUERY = """
+query ($companyId: Int!, $options: CompanySubscriptionOptions, $showExperimental: Boolean) {
+  companySubscriptions(companyId: $companyId, options: $options, showExperimental: $showExperimental) {
+    errors { field msg }
+    data {
+      subscriptionId
+      paymentMode
+      price
+      discount
+      upgradeDiscount
+      associatedCompanyVat
+      associatedCompanyNotes
+      startDate
+      endDate
+      paid
+      lastPaymentDate
+      notes
+      saleDocumentIssued
+      temporaryPaymentMode
+      temporaryPrice
+      temporaryExpiracy
+      paymentId
+      documentId
+      createdAt
+      updatedAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_company_subscriptions(
+    company_id: int,
+    show_experimental: bool | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as subscrições de uma empresa na Moloni ON: para cada uma, o plano e
+    modo de pagamento (`paymentMode`), preço e desconto (`price`/`discount`/
+    `upgradeDiscount`), período de vigência (`startDate`/`endDate`), estado de
+    pagamento (`paid`, `lastPaymentDate`), eventual alteração temporária de plano/preço
+    (`temporaryPaymentMode`/`temporaryPrice`/`temporaryExpiracy`) e o documento de venda
+    emitido (`documentId`, `saleDocumentIssued`). Os objetos ligados (plano, empresa,
+    empresa associada, extras e documentos da subscrição) e o bloco verboso de lembretes
+    de email (`mail1Sent`…`mail6Sent`) não são incluídos neste selection set — podem ser
+    adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        show_experimental: opcional; inclui também funcionalidades/planos experimentais.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    if show_experimental is not None:
+        variables["showExperimental"] = show_experimental
+    try:
+        data = await _client.query(COMPANY_SUBSCRIPTIONS_QUERY, variables)
+        return unwrap(data, "companySubscriptions")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
+# Utilizadores de empresa
+# ---------------------------------------------------------------------------
+COMPANY_USER_QUERY = """
+query ($userId: Int!, $companyId: Int!) {
+  companyUser(userId: $userId, companyId: $companyId) {
+    errors { field msg }
+    data {
+      userCompanyId
+      userId
+      roleId
+      companyId
+      deletable
+      createdAt
+      updatedAt
+      user {
+        userId
+        name
+        email
+        phone
+        img
+        createdAt
+        updatedAt
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_company_user(company_id: int, user_id: int) -> Any:
+    """Obtém o perfil de um utilizador dentro de uma empresa: a ligação
+    utilizador↔empresa (`userCompanyId`), o perfil de permissões atribuído (`roleId`)
+    e os dados de identificação do utilizador (`user`: nome, email, telefone, avatar).
+    Para as permissões detalhadas do perfil usa `get_company_role` com o `roleId`; o
+    objeto `role` completo e o objeto `company` não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        user_id: ID do utilizador a obter dentro da empresa.
+    """
+    variables = {"companyId": company_id, "userId": user_id}
+    try:
+        data = await _client.query(COMPANY_USER_QUERY, variables)
+        return unwrap(data, "companyUser")
+    except MolonionError as e:
+        return _err(e)
+
+
+COMPANY_USER_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  companyUserLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_company_user_logs(
+    company_id: int,
+    user_company_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos utilizadores de uma empresa:
+    criações, alterações de perfil/permissões e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez
+    (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        user_company_id: opcional; filtra os logs de uma ligação utilizador↔empresa
+            específica (corresponde a `relatedId`, o `userCompanyId` de `get_company_user`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if user_company_id is not None:
+        options["relatedId"] = user_company_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(COMPANY_USER_LOGS_QUERY, variables)
+        return unwrap(data, "companyUserLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+COMPANY_USERS_QUERY = """
+query ($companyId: Int!, $options: CompanyUserOptions) {
+  companyUsers(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      userCompanyId
+      userId
+      roleId
+      companyId
+      deletable
+      createdAt
+      updatedAt
+      user {
+        userId
+        name
+        email
+        phone
+        img
+        createdAt
+        updatedAt
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_company_users(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os utilizadores de uma empresa, com a identificação de cada um (`user`:
+    nome, email, telefone, avatar) e o perfil de permissões atribuído (`roleId`). Para
+    o detalhe de um único utilizador usa `get_company_user`; para as permissões do
+    perfil usa `get_company_role` com o `roleId`. Os objetos `role` e `company`
+    completos não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(COMPANY_USERS_QUERY, variables)
+        return unwrap(data, "companyUsers")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
