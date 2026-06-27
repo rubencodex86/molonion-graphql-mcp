@@ -7667,6 +7667,165 @@ async def list_hooks(
 
 
 # ---------------------------------------------------------------------------
+# Templates de identificação
+# ---------------------------------------------------------------------------
+IDENTIFICATION_TEMPLATE_QUERY = """
+query ($companyId: Int!, $identTemplateId: Int!) {
+  identificationTemplate(companyId: $companyId, identTemplateId: $identTemplateId) {
+    errors { field msg }
+    data {
+      identTemplateId
+      templateName
+      businessName
+      email
+      address
+      city
+      zipCode
+      phone
+      fax
+      website
+      obs
+      documentFooter
+      emailSenderName
+      emailSenderAddress
+      img
+      documentCompanyShowVATPrefix
+      visible
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_identification_template(
+    company_id: int, ident_template_id: int
+) -> Any:
+    """Obtém um template de identificação de uma empresa pelo seu ID. Os templates de
+    identificação permitem usar dados de identificação alternativos (nome comercial,
+    morada, contactos, rodapé, remetente de email, logótipo) num documento, em vez dos
+    dados-base da empresa. Devolve `templateName`, os dados de identificação e o rodapé
+    de documento. Os objetos ligados (empresa, país, dados bancários) não são incluídos
+    neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        ident_template_id: ID do template de identificação a obter.
+    """
+    variables = {"companyId": company_id, "identTemplateId": ident_template_id}
+    try:
+        data = await _client.query(IDENTIFICATION_TEMPLATE_QUERY, variables)
+        return unwrap(data, "identificationTemplate")
+    except MolonionError as e:
+        return _err(e)
+
+
+IDENTIFICATION_TEMPLATE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  identificationTemplateLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_identification_template_logs(
+    company_id: int,
+    ident_template_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos templates de identificação de uma
+    empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez
+    (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        ident_template_id: opcional; filtra os logs de um template específico (corresponde
+            a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if ident_template_id is not None:
+        options["relatedId"] = ident_template_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(IDENTIFICATION_TEMPLATE_LOGS_QUERY, variables)
+        return unwrap(data, "identificationTemplateLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+IDENTIFICATION_TEMPLATES_QUERY = """
+query ($companyId: Int!, $options: IdentificationTemplateOptions) {
+  identificationTemplates(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      identTemplateId
+      templateName
+      businessName
+      email
+      city
+      phone
+      website
+      img
+      visible
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_identification_templates(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os templates de identificação configurados numa empresa, cada um com o nome
+    (`templateName`), o nome comercial e os contactos principais. Permitem usar dados de
+    identificação alternativos em documentos. Para o detalhe completo de um template usa
+    `get_identification_template`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(IDENTIFICATION_TEMPLATES_QUERY, variables)
+        return unwrap(data, "identificationTemplates")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

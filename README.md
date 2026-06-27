@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.160.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.163.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -229,6 +229,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_hook_logs` | Histórico de alterações (logs) aos webhooks de uma empresa. |
 | `list_hook_model_operations` | Catálogo de gatilhos disponíveis para webhooks (modelo/operação). |
 | `list_hooks` | Lista os webhooks configurados numa empresa (nome, URL, gatilhos). |
+| `get_identification_template` | Detalhes de um template de identificação pelo seu ID (dados alternativos de documento). |
+| `get_identification_template_logs` | Histórico de alterações (logs) aos templates de identificação. |
+| `list_identification_templates` | Lista os templates de identificação configurados numa empresa. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
