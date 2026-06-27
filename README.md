@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.363.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.366.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -423,6 +423,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_recurring_agreement_next_number` | Próximo número disponível para um acordo recorrente de venda numa série. |
 | `get_recurring_agreement_relatable` | Acordos recorrentes de venda de um cliente relacionáveis com outro documento (deprecada). |
 | `list_recurring_agreements` | Lista paginada dos acordos recorrentes de venda de uma empresa. |
+| `get_retention` | Detalhes de uma retenção na fonte pelo seu ID (nome, taxa). |
+| `get_retention_logs` | Histórico de alterações (logs) às retenções. |
+| `list_retentions` | Lista paginada das retenções na fonte de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

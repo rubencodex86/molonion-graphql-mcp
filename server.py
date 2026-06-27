@@ -17650,6 +17650,142 @@ async def list_recurring_agreements(
         return _err(e)
 
 
+# ===========================================================================
+# Retenções na fonte (Retention)
+# ===========================================================================
+
+RETENTION_QUERY = """
+query ($companyId: Int!, $retentionId: Int!) {
+  retention(companyId: $companyId, retentionId: $retentionId) {
+    errors { field msg }
+    data {
+      retentionId
+      name
+      value
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_retention(company_id: int, retention_id: int) -> Any:
+    """Obtém os detalhes de uma retenção na fonte pelo seu ID: o nome (`name`), a taxa
+    (`value`, em percentagem), se está visível (`visible`) e se é removível (`deletable`).
+    As retenções aplicam-se às linhas dos documentos para reter parte do valor (ex. IRS).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        retention_id: ID da retenção a obter.
+    """
+    variables = {"companyId": company_id, "retentionId": retention_id}
+    try:
+        data = await _client.query(RETENTION_QUERY, variables)
+        return unwrap(data, "retention")
+    except MolonionError as e:
+        return _err(e)
+
+
+RETENTION_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  retentionLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_retention_logs(
+    company_id: int,
+    retention_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às retenções de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        retention_id: opcional; filtra os logs de uma retenção específica (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if retention_id is not None:
+        options["relatedId"] = retention_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RETENTION_LOGS_QUERY, variables)
+        return unwrap(data, "retentionLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+RETENTIONS_QUERY = """
+query ($companyId: Int!, $options: RetentionOptions) {
+  retentions(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      retentionId
+      name
+      value
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_retentions(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as retenções na fonte de uma empresa, cada uma com `retentionId`,
+    `name`, a taxa (`value`, em percentagem) e `visible`. Útil para escolher a retenção a
+    aplicar a uma linha de documento.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RETENTIONS_QUERY, variables)
+        return unwrap(data, "retentions")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
