@@ -4970,6 +4970,532 @@ async def list_documents(
 
 
 # ---------------------------------------------------------------------------
+# Séries de documentos (document sets)
+# ---------------------------------------------------------------------------
+DOCUMENT_SET_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  documentSet(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      documentSetId
+      name
+      visible
+      isDefault
+      companyId
+      economicActivityClassificationCodeId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_set(company_id: int, document_set_id: int) -> Any:
+    """Obtém uma série de documentos de uma empresa pelo seu ID: o nome (`name`), se está
+    visível (`visible`), se é a série por omissão (`isDefault`), o código de atividade
+    económica associado (`economicActivityClassificationCodeId`) e se pode ser apagada
+    (`deletable`). Os objetos ligados (empresa, template de identificação, tipos de
+    documento, bloqueios) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos a obter.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(DOCUMENT_SET_QUERY, variables)
+        return unwrap(data, "documentSet")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: esta operação devolve uma LISTA de envelopes (como
+# `customerHistoryUserSettingsTemplates`) — o `unwrap()` não se aplica; tratamos à mão.
+DOCUMENT_SET_AT_CODES_VALIDATION_QUERY = """
+query ($companyId: Int!, $codes: [String!], $documentSetId: Int) {
+  documentSetATCodesAvailableValidation(companyId: $companyId, codes: $codes, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      code
+      isAvailable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def validate_document_set_at_codes_available(
+    company_id: int,
+    codes: list[str] | None = None,
+    document_set_id: int | None = None,
+) -> Any:
+    """Valida se códigos de série da Autoridade Tributária (AT) estão disponíveis para
+    uma série de documentos. Para cada código, devolve `code` e `isAvailable` (se ainda
+    está livre para usar). Útil antes de configurar/comunicar uma série à AT.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        codes: opcional; lista de códigos AT a validar.
+        document_set_id: opcional; ID da série de documentos em contexto.
+    """
+    variables: dict[str, Any] = {"companyId": company_id}
+    if codes is not None:
+        variables["codes"] = codes
+    if document_set_id is not None:
+        variables["documentSetId"] = document_set_id
+    try:
+        raw = await _client.query(DOCUMENT_SET_AT_CODES_VALIDATION_QUERY, variables)
+        envelopes = (raw or {}).get("documentSetATCodesAvailableValidation") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'documentSetATCodesAvailableValidation' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: o `data` do envelope é um escalar Boolean (resultado da validação).
+DOCUMENT_SET_AT_CODE_VALIDATION_QUERY = """
+query ($companyId: Int!, $documentTypeId: Int!, $code: String!) {
+  documentSetATCodeValidation(companyId: $companyId, documentTypeId: $documentTypeId, code: $code) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def validate_document_set_at_code(
+    company_id: int, document_type_id: int, code: str
+) -> Any:
+    """Valida um único código de série da Autoridade Tributária (AT) para um tipo de
+    documento. Devolve um booleano (`true` se o código é válido/disponível para esse
+    tipo de documento).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_type_id: ID do tipo de documento.
+        code: código AT da série a validar.
+    """
+    variables = {
+        "companyId": company_id,
+        "documentTypeId": document_type_id,
+        "code": code,
+    }
+    try:
+        data = await _client.query(DOCUMENT_SET_AT_CODE_VALIDATION_QUERY, variables)
+        return unwrap(data, "documentSetATCodeValidation")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_AT_STATUS_QUERY = """
+query ($companyId: Int!, $documentSetATStatusId: Int!) {
+  documentSetATStatus(companyId: $companyId, documentSetATStatusId: $documentSetATStatusId) {
+    errors { field msg }
+    data {
+      documentSetATStatusId
+      logDate
+      communicationStatus
+      actionType
+      resultCode
+      resultMsg
+      documentSetId
+      documentTypeId
+      isRetriable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_set_at_status(
+    company_id: int, document_set_at_status_id: int
+) -> Any:
+    """Obtém o estado da comunicação de uma série de documentos com a Autoridade
+    Tributária (AT) pelo seu ID: a data (`logDate`), o estado (`communicationStatus`), o
+    tipo de ação (`actionType`), o resultado devolvido pela AT (`resultCode`,
+    `resultMsg`), a série e tipo de documento (`documentSetId`, `documentTypeId`) e se a
+    comunicação é repetível (`isRetriable`). Os objetos `documentSet` e `documentType`
+    completos não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_at_status_id: ID do estado AT da série a obter.
+    """
+    variables = {
+        "companyId": company_id,
+        "documentSetATStatusId": document_set_at_status_id,
+    }
+    try:
+        data = await _client.query(DOCUMENT_SET_AT_STATUS_QUERY, variables)
+        return unwrap(data, "documentSetATStatus")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_AT_STATUSES_QUERY = """
+query ($companyId: Int!, $options: DocumentSetATStatusOptions) {
+  documentSetATStatuses(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentSetATStatusId
+      logDate
+      communicationStatus
+      actionType
+      resultCode
+      resultMsg
+      documentSetId
+      documentTypeId
+      isRetriable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_set_at_statuses(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de estados da comunicação de séries de documentos com a
+    Autoridade Tributária (AT) de uma empresa, cada um com a data (`logDate`), o estado
+    (`communicationStatus`), o tipo de ação (`actionType`), o resultado (`resultCode`,
+    `resultMsg`), a série/tipo (`documentSetId`, `documentTypeId`) e se é repetível
+    (`isRetriable`). Para obter um único pelo seu ID usa `get_document_set_at_status`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_SET_AT_STATUSES_QUERY, variables)
+        return unwrap(data, "documentSetATStatuses")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_AT_STATUS_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  documentSetATStatusLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_set_at_status_logs(
+    company_id: int,
+    related_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos estados da comunicação de séries de
+    documentos com a Autoridade Tributária (AT) de uma empresa. Cada entrada indica a
+    operação (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a
+    fez (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        related_id: opcional; filtra os logs de um estado AT de série específico
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if related_id is not None:
+        options["relatedId"] = related_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_SET_AT_STATUS_LOGS_QUERY, variables)
+        return unwrap(data, "documentSetATStatusLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  documentSetLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_set_logs(
+    company_id: int,
+    document_set_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às séries de documentos de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: opcional; filtra os logs de uma série específica (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_set_id is not None:
+        options["relatedId"] = document_set_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_SET_LOGS_QUERY, variables)
+        return unwrap(data, "documentSetLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SETS_QUERY = """
+query ($companyId: Int!, $options: DocumentSetOptions) {
+  documentSets(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentSetId
+      name
+      visible
+      isDefault
+      companyId
+      economicActivityClassificationCodeId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_sets(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as séries de documentos configuradas numa empresa, cada uma com o nome
+    (`name`), se está visível (`visible`), se é a série por omissão (`isDefault`) e o
+    código de atividade económica associado. Para obter uma única pelo seu ID usa
+    `get_document_set`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_SETS_QUERY, variables)
+        return unwrap(data, "documentSets")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: devolve uma LISTA de envelopes (cada um com `data: [DocumentSetRead]`) — o
+# `unwrap()` não se aplica; tratamos à mão.
+DOCUMENT_SETS_FOR_DOCUMENT_QUERY = """
+query ($companyId: Int!, $documentTypeId: Int!) {
+  documentSetsForDocument(companyId: $companyId, documentTypeId: $documentTypeId) {
+    errors { field msg }
+    data {
+      documentSetId
+      name
+      visible
+      isDefault
+      companyId
+      economicActivityClassificationCodeId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_sets_for_document(
+    company_id: int, document_type_id: int
+) -> Any:
+    """Lista as séries de documentos (numeração) disponíveis para um dado tipo de
+    documento numa empresa. Cada série traz o nome (`name`), se é a série por omissão
+    (`isDefault`) e se está visível (`visible`). Útil para escolher a série ao criar um
+    documento de um tipo específico.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_type_id: ID do tipo de documento.
+    """
+    variables = {"companyId": company_id, "documentTypeId": document_type_id}
+    try:
+        raw = await _client.query(DOCUMENT_SETS_FOR_DOCUMENT_QUERY, variables)
+        envelopes = (raw or {}).get("documentSetsForDocument") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'documentSetsForDocument' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SETS_FOR_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $documentTypeIds: [Int!]) {
+  documentSetsForDocuments(companyId: $companyId, documentTypeIds: $documentTypeIds) {
+    errors { field msg }
+    data {
+      documentTypeId
+      documentSets {
+        documentSetId
+        name
+        visible
+        isDefault
+        companyId
+        economicActivityClassificationCodeId
+        deletable
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_sets_for_documents(
+    company_id: int, document_type_ids: list[int]
+) -> Any:
+    """Lista as séries de documentos (numeração) disponíveis para vários tipos de
+    documento de uma só vez. Devolve, para cada tipo (`documentTypeId`), a lista de
+    séries (`documentSets`) disponíveis (nome, default, visível). Versão em lote de
+    `list_document_sets_for_document`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_type_ids: lista de IDs de tipos de documento.
+    """
+    variables = {"companyId": company_id, "documentTypeIds": document_type_ids}
+    try:
+        data = await _client.query(DOCUMENT_SETS_FOR_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "documentSetsForDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENTS_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  documentsLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_documents_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos documentos de uma empresa, de qualquer
+    tipo (versão genérica). Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`). Para um tipo específico há tools dedicadas (ex.
+    `get_credit_note_logs`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de um documento específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENTS_LOGS_QUERY, variables)
+        return unwrap(data, "documentsLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

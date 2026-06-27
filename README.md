@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.101.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.112.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -170,6 +170,17 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_document_print_models` | Lista os modelos de impressão de documento (sem template/css). |
 | `get_document_relatable` | Documentos de uma entidade relacionáveis a outro documento (genérico, por `apiCode`). ✅ recomendado. |
 | `list_documents` | Lista (paginada) os documentos de uma empresa, de qualquer tipo (+ `__typename`). |
+| `get_document_set` | Detalhes de uma série de documentos pelo seu ID (nome, default, visível). |
+| `validate_document_set_at_codes_available` | Valida se códigos AT de série estão disponíveis (`code`, `isAvailable`). |
+| `validate_document_set_at_code` | Valida um código AT de série para um tipo de documento (booleano). |
+| `get_document_set_at_status` | Estado da comunicação de uma série de documentos com a AT pelo seu ID. |
+| `list_document_set_at_statuses` | Histórico de estados da comunicação de séries de documentos com a AT. |
+| `get_document_set_at_status_logs` | Histórico de alterações (logs) aos estados AT de séries de documentos. |
+| `get_document_set_logs` | Histórico de alterações (logs) às séries de documentos de uma empresa. |
+| `list_document_sets` | Lista as séries de documentos configuradas numa empresa. |
+| `list_document_sets_for_document` | Séries de numeração disponíveis para um tipo de documento. |
+| `list_document_sets_for_documents` | Séries de numeração para vários tipos de documento de uma vez (agrupadas por tipo). |
+| `get_documents_logs` | Histórico de alterações (logs) aos documentos de uma empresa (genérico). |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
