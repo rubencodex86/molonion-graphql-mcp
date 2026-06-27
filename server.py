@@ -13042,6 +13042,147 @@ async def list_notifications(
 
 
 # ---------------------------------------------------------------------------
+# Métodos de pagamento
+# ---------------------------------------------------------------------------
+PAYMENT_METHOD_QUERY = """
+query ($companyId: Int!, $paymentMethodId: Int!) {
+  paymentMethod(companyId: $companyId, paymentMethodId: $paymentMethodId) {
+    errors { field msg }
+    data {
+      paymentMethodId
+      name
+      type
+      commission
+      fixedCommission
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_payment_method(company_id: int, payment_method_id: int) -> Any:
+    """Obtém um método de pagamento de uma empresa pelo seu ID: o nome (`name`), o tipo
+    (`type`), a comissão (`commission`/`fixedCommission`) e se é o método por omissão
+    (`isDefault`). O objeto `company` ligado não é incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        payment_method_id: ID do método de pagamento a obter.
+    """
+    variables = {"companyId": company_id, "paymentMethodId": payment_method_id}
+    try:
+        data = await _client.query(PAYMENT_METHOD_QUERY, variables)
+        return unwrap(data, "paymentMethod")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_METHOD_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  paymentMethodLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_payment_method_logs(
+    company_id: int,
+    payment_method_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos métodos de pagamento de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        payment_method_id: opcional; filtra os logs de um método de pagamento específico
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if payment_method_id is not None:
+        options["relatedId"] = payment_method_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PAYMENT_METHOD_LOGS_QUERY, variables)
+        return unwrap(data, "paymentMethodLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_METHODS_QUERY = """
+query ($companyId: Int!, $options: PaymentMethodOptions) {
+  paymentMethods(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      paymentMethodId
+      name
+      type
+      commission
+      fixedCommission
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_payment_methods(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os métodos de pagamento configurados numa empresa, cada um com o nome
+    (`name`), o tipo (`type`), a comissão (`commission`/`fixedCommission`) e se é o método
+    por omissão (`isDefault`). Para obter um único pelo seu ID usa `get_payment_method`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PAYMENT_METHODS_QUERY, variables)
+        return unwrap(data, "paymentMethods")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
