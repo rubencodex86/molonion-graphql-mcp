@@ -17786,6 +17786,734 @@ async def list_retentions(
         return _err(e)
 
 
+# ===========================================================================
+# Análise de vendas (SalesAnalysis)
+# ===========================================================================
+
+SALES_ANALYSIS_BY_DATE_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisOptions) {
+  salesAnalysisByDate(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      salesAnalysisByDateId
+      productId
+      productParentId
+      productCategoryId
+      name
+      reference
+      date
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      stock
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_by_date(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de vendas agregada por data, ao nível do produto. Cada linha representa um
+    produto num período e traz `name`/`reference`, a(s) `date`(s), a quantidade vendida
+    (`qty`), os valores (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`) e o `stock`. Útil para relatórios de vendas por período.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON: passa uma lista de dicionários, ex.
+    `[{"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"},
+      {"field": "date", "comparison": "LESS_OR_EQUAL", "value": "2026-03-31"}]`.
+    Os nomes de `field`/`comparison` válidos são os dos enums `SalesAnalysisFilterField`
+    e `Comparison` da API.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ver acima).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_ANALYSIS_BY_DATE_QUERY, variables)
+        return unwrap(data, "salesAnalysisByDate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_ANALYSIS_BY_DATE_DOCS_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisOptions) {
+  salesAnalysisByDateDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      documentId
+      productId
+      productParentId
+      name
+      reference
+      price
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      stock
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        year
+        totalValue
+        status
+        nullified
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_by_date_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de vendas por data ao nível da LINHA de documento (detalhe por documento),
+    ao contrário de `get_sales_analysis_by_date` que agrega por produto/período. Cada
+    linha traz o produto (`name`/`reference`, `price`, `qty`, valores) e o(s) documento(s)
+    de origem aninhado(s) (`document`: número, data, série, entidade/cliente, total,
+    estado).
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_ANALYSIS_BY_DATE_DOCS_QUERY, variables)
+        return unwrap(data, "salesAnalysisByDateDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_ANALYSIS_BY_PRODUCT_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisOptions) {
+  salesAnalysisByProduct(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productId
+      productParentId
+      productCategoryId
+      name
+      reference
+      date
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      stock
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_by_product(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de vendas agregada por produto. Cada linha representa um produto e traz
+    `name`/`reference`, a(s) `date`(s) das vendas, a quantidade total vendida (`qty`),
+    os valores (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`) e o `stock`. Útil para saber o que mais se vendeu.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_ANALYSIS_BY_PRODUCT_QUERY, variables)
+        return unwrap(data, "salesAnalysisByProduct")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_ANALYSIS_BY_PRODUCT_CATEGORY_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisOptions) {
+  salesAnalysisByProductCategory(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      date
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_by_product_category(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de vendas agregada por categoria de produto. Cada linha representa uma
+    categoria (`productCategoryId`, `name`) e traz a(s) `date`(s), a quantidade vendida
+    (`qty`) e os valores (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`). Útil para ver a distribuição das vendas por categoria.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALES_ANALYSIS_BY_PRODUCT_CATEGORY_QUERY, variables
+        )
+        return unwrap(data, "salesAnalysisByProductCategory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_ANALYSIS_BY_PRODUCT_CATEGORY_DOCS_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisOptions) {
+  salesAnalysisByProductCategoryDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      documentId
+      productCategoryId
+      productId
+      productParentId
+      name
+      reference
+      price
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        year
+        totalValue
+        status
+        nullified
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_by_product_category_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de vendas por categoria de produto ao nível da LINHA de documento (detalhe
+    por documento), ao contrário de `get_sales_analysis_by_product_category` que agrega
+    por categoria. Cada linha traz a categoria (`productCategoryId`), o produto
+    (`name`/`reference`, `price`, `qty`, valores) e o(s) documento(s) de origem
+    aninhado(s) (`document`: número, data, série, entidade/cliente, total, estado).
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SALES_ANALYSIS_BY_PRODUCT_CATEGORY_DOCS_QUERY, variables
+        )
+        return unwrap(data, "salesAnalysisByProductCategoryDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_ANALYSIS_BY_PRODUCT_DOCS_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisOptions) {
+  salesAnalysisByProductDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      documentId
+      productId
+      productParentId
+      name
+      reference
+      price
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        year
+        totalValue
+        status
+        nullified
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_by_product_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de vendas por produto ao nível da LINHA de documento (detalhe por
+    documento), ao contrário de `get_sales_analysis_by_product` que agrega por produto.
+    Cada linha traz o produto (`name`/`reference`, `price`, `qty`, valores) e o(s)
+    documento(s) de origem aninhado(s) (`document`: número, data, série, entidade/cliente,
+    total, estado).
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_ANALYSIS_BY_PRODUCT_DOCS_QUERY, variables)
+        return unwrap(data, "salesAnalysisByProductDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_ANALYSIS_TOTALS_QUERY = """
+query ($companyId: Int!, $options: SalesAnalysisTotalsOptions) {
+  salesAnalysisTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      grossValue
+      discountValue
+      taxesValue
+      retentionsValue
+      totalValue
+      docsCount
+      productsCount
+      customersCount
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_analysis_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados da análise de vendas de uma empresa (um único registo):
+    valores totais (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`) e contagens (`docsCount`, `productsCount`, `customersCount`). Útil para
+    uma vista global das vendas num período.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`). Nota: esta operação não tem paginação.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_ANALYSIS_TOTALS_QUERY, variables)
+        return unwrap(data, "salesAnalysisTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_PENDING_LIST_QUERY = """
+query ($companyId: Int!, $options: SalesPendingListOptions) {
+  salesPendingList(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      customer {
+        customerId
+        name
+        vat
+      }
+      docsCount
+      ammountTotal
+      ammountPaid
+      ammountPending
+      delay
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_pending_list(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Lista as vendas pendentes (por receber) agrupadas por cliente. Para cada cliente
+    (`customer`: `customerId`, `name`, `vat`) traz o número de documentos pendentes
+    (`docsCount`), o montante total (`ammountTotal`), o já recebido (`ammountPaid`), o
+    pendente (`ammountPending`) e o atraso médio em dias (`delay`). Útil para gerir
+    contas a receber de clientes.
+
+    Atenção: ao contrário das outras operações, esta devolve uma LISTA de envelopes
+    (um por cliente) — o resultado já vem achatado numa única lista de registos.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(SALES_PENDING_LIST_QUERY, variables)
+        envelopes = (raw or {}).get("salesPendingList") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'salesPendingList' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_PENDING_LIST_BY_DATE_QUERY = """
+query ($companyId: Int!, $options: [SalesPendingListOptions]) {
+  salesPendingListByDate(companyId: $companyId, options: $options) {
+    errors { field msg }
+    accumulator
+    data {
+      __typename
+      documentId
+      documentTypeId
+      documentSetName
+      number
+      date
+      status
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_pending_list_by_date(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Lista os documentos de venda pendentes (por receber) agrupados por data de
+    vencimento — para acompanhar recebimentos de clientes futuros e em atraso. Devolve
+    uma lista de grupos; cada grupo traz `accumulator` (saldo acumulado do grupo) e
+    `documents`, a lista de documentos pendentes desse vencimento.
+
+    Cada documento usa a interface `DocumentRead` (campos comuns: número, série, data,
+    estado, totais, reconciliação, entidade/cliente) e `__typename` identifica o tipo
+    concreto. Para campos específicos de um tipo usa a tool dedicada.
+
+    Atenção: ao contrário das outras operações, esta devolve uma LISTA de envelopes (um
+    por grupo de vencimento), cada um com o seu `accumulator` — por isso o resultado é
+    uma lista de grupos, não uma lista achatada de documentos.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = [options]
+    try:
+        raw = await _client.query(SALES_PENDING_LIST_BY_DATE_QUERY, variables)
+        envelopes = (raw or {}).get("salesPendingListByDate") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'salesPendingListByDate' devolveu erros.",
+                errors=errs,
+            )
+        return [
+            {
+                "accumulator": env.get("accumulator"),
+                "documents": env.get("data") or [],
+            }
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_PENDING_LIST_CLIENT_QUERY = """
+query ($companyId: Int!, $customerId: Int, $options: SalesPendingListOptions) {
+  salesPendingListClient(companyId: $companyId, customerId: $customerId, options: $options) {
+    errors { field msg }
+    accumulator
+    data {
+      __typename
+      documentId
+      documentTypeId
+      documentSetName
+      number
+      date
+      status
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_pending_list_client(
+    company_id: int,
+    customer_id: int | None = None,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Lista os documentos de venda pendentes (por receber) de um cliente — o extrato de
+    contas a receber desse cliente. Devolve `accumulator` (saldo acumulado) e
+    `documents`, a lista de documentos pendentes.
+
+    Cada documento usa a interface `DocumentRead` (campos comuns: número, série, data,
+    estado, totais, reconciliação, entidade/cliente) e `__typename` identifica o tipo
+    concreto. Para campos específicos de um tipo usa a tool dedicada.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: opcional; ID do cliente cujo extrato de pendentes se pretende.
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if customer_id is not None:
+        variables["customerId"] = customer_id
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(SALES_PENDING_LIST_CLIENT_QUERY, variables)
+        documents = unwrap(raw, "salesPendingListClient")  # valida erros
+        node = (raw or {}).get("salesPendingListClient") or {}
+        return {"accumulator": node.get("accumulator"), "documents": documents}
+    except MolonionError as e:
+        return _err(e)
+
+
+SALES_PENDING_LIST_TOTALS_QUERY = """
+query ($companyId: Int!, $options: SalesPendingListTotalsOptions) {
+  salesPendingListTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      docsCount
+      ammountTotal
+      ammountPaid
+      ammountPending
+      ammountPendingPercent
+      delayAverage
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_sales_pending_list_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados das vendas pendentes (por receber) de uma empresa (um
+    único registo): o número de documentos pendentes (`docsCount`), o montante total
+    (`ammountTotal`), o já recebido (`ammountPaid`), o pendente (`ammountPending`), a
+    percentagem pendente (`ammountPendingPercent`) e o atraso médio em dias
+    (`delayAverage`). Útil para uma vista global das contas a receber.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALES_PENDING_LIST_TOTALS_QUERY, variables)
+        return unwrap(data, "salesPendingListTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

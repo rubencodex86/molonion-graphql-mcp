@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.366.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.377.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -426,6 +426,17 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_retention` | Detalhes de uma retenção na fonte pelo seu ID (nome, taxa). |
 | `get_retention_logs` | Histórico de alterações (logs) às retenções. |
 | `list_retentions` | Lista paginada das retenções na fonte de uma empresa. |
+| `get_sales_analysis_by_date` | Análise de vendas por data, ao nível do produto (qty e valores por período). |
+| `get_sales_analysis_by_date_docs` | Análise de vendas por data ao nível da linha de documento (com o documento de origem). |
+| `get_sales_analysis_by_product` | Análise de vendas agregada por produto (qty e valores totais). |
+| `get_sales_analysis_by_product_category` | Análise de vendas agregada por categoria de produto. |
+| `get_sales_analysis_by_product_category_docs` | Análise de vendas por categoria ao nível da linha de documento (com o documento de origem). |
+| `get_sales_analysis_by_product_docs` | Análise de vendas por produto ao nível da linha de documento (com o documento de origem). |
+| `get_sales_analysis_totals` | Totais agregados da análise de vendas (valores e contagens). |
+| `get_sales_pending_list` | Vendas pendentes (por receber) agrupadas por cliente. |
+| `get_sales_pending_list_by_date` | Documentos de venda pendentes agrupados por data de vencimento (com saldo acumulado). |
+| `get_sales_pending_list_client` | Documentos de venda pendentes de um cliente (extrato de contas a receber, com saldo acumulado). |
+| `get_sales_pending_list_totals` | Totais agregados das vendas pendentes (montantes, percentagem, atraso). |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
