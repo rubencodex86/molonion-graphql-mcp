@@ -1632,6 +1632,100 @@ async def list_company_users(
 
 
 # ---------------------------------------------------------------------------
+# Países (tabela de referência global)
+# ---------------------------------------------------------------------------
+COUNTRIES_QUERY = """
+query ($options: CountryOptions) {
+  countries(options: $options) {
+    errors { field msg }
+    data {
+      countryId
+      iso3166_1
+      title
+      img
+      viesCountry
+      visible
+      ordering
+      languageId
+      notes
+      deletable
+      createdAt
+      updatedAt
+    }
+  }
+}
+"""
+
+
+COUNTRY_QUERY = """
+query ($countryId: Int!) {
+  country(countryId: $countryId) {
+    errors { field msg }
+    data {
+      countryId
+      iso3166_1
+      title
+      img
+      viesCountry
+      visible
+      ordering
+      languageId
+      notes
+      deletable
+      createdAt
+      updatedAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_country(country_id: int) -> Any:
+    """Obtém um país pelo seu ID — tabela de referência global usada em moradas e
+    configuração fiscal. Devolve o código ISO 3166-1 (`iso3166_1`), o nome (`title`),
+    se é país VIES/UE (`viesCountry`) e a bandeira (`img`). Ao contrário da maioria das
+    operações, não recebe `companyId`. Os objetos ligados (idioma, regimes fiscais
+    especiais, traduções) não são incluídos neste selection set. Para listar todos os
+    países usa `list_countries`.
+
+    Args:
+        country_id: ID do país a obter (obtém-se via `list_countries`).
+    """
+    try:
+        data = await _client.query(COUNTRY_QUERY, {"countryId": country_id})
+        return unwrap(data, "country")
+    except MolonionError as e:
+        return _err(e)
+
+
+@mcp.tool()
+async def list_countries(page: int | None = None, qty: int | None = None) -> Any:
+    """Lista os países disponíveis na Moloni ON — tabela de referência global usada em
+    moradas, configuração fiscal e zonas fiscais. Para cada país: o `countryId` (usado
+    noutras operações), o código ISO 3166-1 (`iso3166_1`), o nome (`title`), se é país
+    VIES/UE (`viesCountry`) e a bandeira (`img`). Ao contrário da maioria das operações,
+    não recebe `companyId`. Os objetos ligados (idioma, regimes fiscais especiais,
+    traduções) não são incluídos neste selection set.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(COUNTRIES_QUERY, variables)
+        return unwrap(data, "countries")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

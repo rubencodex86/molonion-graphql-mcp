@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.32.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.34.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -115,6 +115,8 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_company_user` | Perfil de um utilizador numa empresa (identificação, `roleId`, ligação utilizador↔empresa). |
 | `get_company_user_logs` | Histórico de alterações (logs) aos utilizadores de uma empresa. |
 | `list_company_users` | Lista os utilizadores de uma empresa (identificação + `roleId` de cada um). |
+| `get_country` | Detalhes de um país pelo seu ID (ISO 3166-1, nome, VIES, bandeira). |
+| `list_countries` | Lista os países (tabela de referência: `countryId`, ISO 3166-1, nome, VIES). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
