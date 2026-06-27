@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.255.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.264.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -315,6 +315,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_purchase_order_next_number` | Próximo número disponível para uma encomenda de compra migrada numa série. |
 | `get_migrated_purchase_order_relatable` | Encomendas de compra migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_purchase_orders` | Lista (paginada) as encomendas de compra migradas de uma empresa. |
+| `get_migrated_receipt` | Detalhes de um recibo migrado pelo seu ID (documento histórico). |
+| `get_migrated_receipt_pdf_token` | Token temporário para descarregar o PDF de um recibo migrado. |
+| `get_migrated_receipt_zip_token` | Token temporário para descarregar vários recibos migrados em ZIP. |
+| `get_migrated_receipt_logs` | Histórico de alterações (logs) aos recibos migrados. |
+| `get_migrated_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de recibos migrados. |
+| `get_migrated_receipt_mails_history` | Histórico de emails enviados de um recibo migrado. |
+| `get_migrated_receipt_next_number` | Próximo número disponível para um recibo migrado numa série. |
+| `get_migrated_receipt_relatable` | Recibos migrados de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_migrated_receipts` | Lista (paginada) os recibos migrados de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
