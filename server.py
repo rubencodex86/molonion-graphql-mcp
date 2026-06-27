@@ -4340,6 +4340,636 @@ async def list_delivery_notes(
 
 
 # ---------------------------------------------------------------------------
+# Documentos (genérico — qualquer tipo de documento)
+# ---------------------------------------------------------------------------
+# `document` devolve a interface `DocumentRead` (campos comuns a todos os tipos de
+# documento); `__typename` identifica o tipo concreto. Os campos específicos de cada
+# tipo obtêm-se com a tool dedicada (get_invoice, get_credit_note, …).
+DOCUMENT_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  document(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      __typename
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      yourReference
+      ourReference
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document(company_id: int, document_id: int) -> Any:
+    """Obtém um documento genérico pelo seu ID, seja qual for o tipo (fatura, nota de
+    crédito, guia, recibo, etc.). Devolve os campos comuns a todos os documentos
+    (interface `DocumentRead`): número, série, data, estado, totais, reconciliação, dados
+    da entidade e hash. O campo `__typename` identifica o tipo concreto do documento.
+    Para os campos específicos de um tipo usa a tool dedicada (ex. `get_credit_note`,
+    `get_delivery_note`). As linhas de produtos e os impostos não são incluídos.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(DOCUMENT_QUERY, variables)
+        return unwrap(data, "document")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: o nome da operação é capitalizado (`DocumentATCommunicationStatuses`).
+DOCUMENT_AT_COMMUNICATION_STATUSES_QUERY = """
+query ($companyId: Int!, $communicationType: [DocumentATCommunicationTypeEnum]) {
+  DocumentATCommunicationStatuses(companyId: $companyId, communicationType: $communicationType) {
+    errors { field msg }
+    data {
+      documentATCommunicationStatusId
+      logDate
+      actionType
+      atReturnStatus
+      atReturnCode
+      atReturnMsg
+      documentATId
+      isRetriable
+      isMarkableAsSolved
+      isFAQRequired
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_at_communication_statuses(
+    company_id: int,
+    communication_type: list[str] | None = None,
+) -> Any:
+    """Lista o estado da comunicação de documentos com a Autoridade Tributária (AT) de
+    uma empresa: para cada entrada, a data (`logDate`), o tipo de ação (`actionType`),
+    o estado devolvido pela AT (`atReturnStatus`, `atReturnCode`, `atReturnMsg`), o
+    identificador AT do documento (`documentATId`) e se a comunicação é repetível
+    (`isRetriable`), marcável como resolvida (`isMarkableAsSolved`) ou exige FAQ
+    (`isFAQRequired`). Útil para diagnosticar falhas de envio para a AT.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        communication_type: opcional; lista de tipos de comunicação a filtrar (valores
+            do enum `DocumentATCommunicationTypeEnum`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id}
+    if communication_type is not None:
+        variables["communicationType"] = communication_type
+    try:
+        data = await _client.query(
+            DOCUMENT_AT_COMMUNICATION_STATUSES_QUERY, variables
+        )
+        return unwrap(data, "DocumentATCommunicationStatuses")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_EVENTS_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  documentEvents(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      isDraft
+      isHandled
+      documentId
+      eventDate
+      repetition
+      repetitionValue
+      monthlyValue
+      weeklySunday
+      weeklyMonday
+      weeklyTuesday
+      weeklyWednesday
+      weeklyThursday
+      weeklyFriday
+      weeklySaturday
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_events(company_id: int, document_id: int) -> Any:
+    """Lista os eventos associados a um documento (ex. lembretes de pagamento, tarefas de
+    seguimento). Para cada evento: o nome, a data (`eventDate`), se está tratado
+    (`isHandled`) ou em rascunho (`isDraft`) e a recorrência (`repetition`,
+    `repetitionValue`, `monthlyValue` e os dias da semana `weekly*`). As ações do evento
+    (`eventActions`) não são incluídas neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento cujos eventos se pretendem.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(DOCUMENT_EVENTS_QUERY, variables)
+        return unwrap(data, "documentEvents")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_LINK_QUERY = """
+query ($documentLinkId: String!) {
+  documentLink(documentLinkId: $documentLinkId) {
+    errors { field msg }
+    data {
+      documentLinkId
+      expiracy
+      file
+      filename
+      token
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_link(document_link_id: str) -> Any:
+    """Obtém um link público partilhável de documento pelo seu ID — um URL de acesso
+    só-de-leitura ao(s) documento(s) sem autenticação. Devolve a data de expiração
+    (`expiracy`), o ficheiro/nome (`file`/`filename`) e o `token`. Nota: ao contrário da
+    maioria das operações, não recebe `companyId` — apenas o `documentLinkId` (string).
+    Os documentos associados e os dados da empresa não são incluídos neste selection set.
+
+    Args:
+        document_link_id: ID (string) do link de documento a obter.
+    """
+    try:
+        data = await _client.query(
+            DOCUMENT_LINK_QUERY, {"documentLinkId": document_link_id}
+        )
+        return unwrap(data, "documentLink")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_MAIL_MESSAGE_TEMPLATE_QUERY = """
+query ($companyId: Int!, $documentMailMessageTemplateId: Int!) {
+  documentMailMessageTemplate(companyId: $companyId, documentMailMessageTemplateId: $documentMailMessageTemplateId) {
+    errors { field msg }
+    data {
+      documentMailMessageTemplateId
+      name
+      content
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_mail_message_template(
+    company_id: int, document_mail_message_template_id: int
+) -> Any:
+    """Obtém um modelo (template) de mensagem de email para documentos pelo seu ID: o
+    nome (`name`) e o conteúdo (`content`) da mensagem. Usado ao enviar documentos por
+    email para reaproveitar texto.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_mail_message_template_id: ID do modelo de mensagem a obter.
+    """
+    variables = {
+        "companyId": company_id,
+        "documentMailMessageTemplateId": document_mail_message_template_id,
+    }
+    try:
+        data = await _client.query(DOCUMENT_MAIL_MESSAGE_TEMPLATE_QUERY, variables)
+        return unwrap(data, "documentMailMessageTemplate")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_MAIL_MESSAGE_TEMPLATE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  documentMailMessageTemplateLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_mail_message_template_logs(
+    company_id: int,
+    template_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos modelos de mensagem de email para
+    documentos de uma empresa: criações, modificações e remoções. Cada entrada indica a
+    operação (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a
+    fez (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        template_id: opcional; filtra os logs de um modelo específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if template_id is not None:
+        options["relatedId"] = template_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_MAIL_MESSAGE_TEMPLATE_LOGS_QUERY, variables)
+        return unwrap(data, "documentMailMessageTemplateLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_MAIL_MESSAGE_TEMPLATES_QUERY = """
+query ($companyId: Int!, $options: DocumentMailMessageTemplateOptions) {
+  documentMailMessageTemplates(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailMessageTemplateId
+      name
+      content
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_mail_message_templates(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os modelos (templates) de mensagem de email para documentos configurados
+    numa empresa, cada um com o nome (`name`) e o conteúdo (`content`). Para obter um
+    único pelo seu ID usa `get_document_mail_message_template`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_MAIL_MESSAGE_TEMPLATES_QUERY, variables)
+        return unwrap(data, "documentMailMessageTemplates")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!, $apiCode: ApiCode!) {
+  documentNextNumber(companyId: $companyId, documentSetId: $documentSetId, apiCode: $apiCode) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_next_number(
+    company_id: int, document_set_id: int, api_code: str
+) -> Any:
+    """Obtém o próximo número disponível para um documento numa dada série, para
+    qualquer tipo de documento (versão genérica). Devolve `number` (o próximo número) e
+    `name` (o nome da série). Ao contrário das versões por tipo (ex.
+    `get_credit_note_next_number`), aqui o tipo de documento é indicado pelo `api_code`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+        api_code: código do tipo de documento (valor do enum `ApiCode`, ex.
+            "invoices", "creditNotes", "deliveryNotes").
+    """
+    variables = {
+        "companyId": company_id,
+        "documentSetId": document_set_id,
+        "apiCode": api_code,
+    }
+    try:
+        data = await _client.query(DOCUMENT_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "documentNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_PRINT_MODEL_QUERY = """
+query ($documentPrintModelId: Int!) {
+  documentPrintModel(documentPrintModelId: $documentPrintModelId) {
+    errors { field msg }
+    data {
+      documentPrintModelId
+      title
+      description
+      template
+      css
+      img
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_print_model(document_print_model_id: int) -> Any:
+    """Obtém um modelo de impressão de documento pelo seu ID: título, descrição, o
+    `template` (HTML) e o `css` que definem o layout do documento imprimido, a imagem
+    (`img`) e a visibilidade (`visible`). Nota: ao contrário da maioria das operações,
+    não recebe `companyId`. As traduções não são incluídas neste selection set.
+
+    Args:
+        document_print_model_id: ID do modelo de impressão a obter.
+    """
+    try:
+        data = await _client.query(
+            DOCUMENT_PRINT_MODEL_QUERY, {"documentPrintModelId": document_print_model_id}
+        )
+        return unwrap(data, "documentPrintModel")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_PRINT_MODEL_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  documentPrintModelLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_print_model_logs(
+    company_id: int,
+    document_print_model_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos modelos de impressão de documento de
+    uma empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez
+    (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_print_model_id: opcional; filtra os logs de um modelo de impressão
+            específico (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_print_model_id is not None:
+        options["relatedId"] = document_print_model_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_PRINT_MODEL_LOGS_QUERY, variables)
+        return unwrap(data, "documentPrintModelLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_PRINT_MODELS_QUERY = """
+query ($options: DocumentPrintModelOptions) {
+  documentPrintModels(options: $options) {
+    errors { field msg }
+    data {
+      documentPrintModelId
+      title
+      description
+      img
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_document_print_models(
+    page: int | None = None, qty: int | None = None
+) -> Any:
+    """Lista os modelos de impressão de documento disponíveis na Moloni ON, cada um com o
+    título, a descrição, a imagem (`img`) e a visibilidade (`visible`). Ao contrário da
+    maioria das operações, não recebe `companyId`. O `template` (HTML) e o `css` de cada
+    modelo são omitidos nesta listagem (são pesados) — usa `get_document_print_model`
+    para os obter.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_PRINT_MODELS_QUERY, variables)
+        return unwrap(data, "documentPrintModels")
+    except MolonionError as e:
+        return _err(e)
+
+
+# `documentRelatable` é a alternativa RECOMENDADA aos vários `*Relatable` deprecated.
+# Devolve a interface `DocumentRead` (campos comuns); o tipo a procurar indica-se no
+# `apiCode`.
+DOCUMENT_RELATABLE_QUERY = """
+query ($companyId: Int!, $apiCode: ApiCode!, $entityId: Int!, $options: DocumentOptions) {
+  documentRelatable(companyId: $companyId, apiCode: $apiCode, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      __typename
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_relatable(
+    company_id: int,
+    api_code: str,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os documentos de uma entidade que podem ser relacionados/ligados a outro
+    documento. Versão genérica e **recomendada** (substitui os `*Relatable` deprecated):
+    o tipo de documento a procurar indica-se no `api_code`. Cada documento traz os campos
+    comuns (número, data, série, total, estado) e o `__typename` identifica o tipo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        api_code: código do tipo de documento a procurar (valor do enum `ApiCode`, ex.
+            "invoices", "billsOfLading", "creditNotes").
+        entity_id: ID da entidade (cliente/fornecedor) cujos documentos relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "apiCode": api_code,
+        "entityId": entity_id,
+    }
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENT_RELATABLE_QUERY, variables)
+        return unwrap(data, "documentRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENTS_QUERY = """
+query ($companyId: Int!, $options: DocumentOptions) {
+  documents(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      __typename
+      documentId
+      documentTypeId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_documents(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os documentos de uma empresa, de qualquer tipo (faturas, notas
+    de crédito, guias, recibos, etc.). Cada documento traz os campos comuns (número,
+    data, série, entidade, total, estado) e o `__typename` identifica o tipo concreto.
+    Para o detalhe completo de um documento usa `get_document` (ou a tool dedicada ao
+    tipo).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(DOCUMENTS_QUERY, variables)
+        return unwrap(data, "documents")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

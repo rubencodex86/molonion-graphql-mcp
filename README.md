@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.88.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.101.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -157,6 +157,19 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_delivery_note_next_number` | Próximo número disponível para uma guia de remessa numa série. |
 | `get_delivery_note_relatable` | Guias de remessa de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_delivery_notes` | Lista (paginada) as guias de remessa de uma empresa. |
+| `get_document` | Documento genérico pelo seu ID (campos comuns a qualquer tipo + `__typename`). |
+| `list_document_at_communication_statuses` | Estado da comunicação de documentos com a AT (diagnóstico de envios). |
+| `get_document_events` | Eventos associados a um documento (lembretes, tarefas, recorrência). |
+| `get_document_link` | Link público partilhável de documento pelo seu ID (expiração, ficheiro, token). |
+| `get_document_mail_message_template` | Modelo de mensagem de email para documentos pelo seu ID (nome, conteúdo). |
+| `get_document_mail_message_template_logs` | Histórico de alterações (logs) aos modelos de mensagem de email para documentos. |
+| `list_document_mail_message_templates` | Lista os modelos de mensagem de email para documentos configurados numa empresa. |
+| `get_document_next_number` | Próximo número de documento (genérico, por `apiCode`) numa série. |
+| `get_document_print_model` | Modelo de impressão de documento pelo seu ID (template HTML, CSS, título). |
+| `get_document_print_model_logs` | Histórico de alterações (logs) aos modelos de impressão de documento. |
+| `list_document_print_models` | Lista os modelos de impressão de documento (sem template/css). |
+| `get_document_relatable` | Documentos de uma entidade relacionáveis a outro documento (genérico, por `apiCode`). ✅ recomendado. |
+| `list_documents` | Lista (paginada) os documentos de uma empresa, de qualquer tipo (+ `__typename`). |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
