@@ -6742,6 +6742,210 @@ async def get_at_inventory_file_token(company_id: int, path: str) -> Any:
         return _err(e)
 
 
+# Empresa por slug — mesmo subconjunto curado de CompanyRead que `get_company`.
+COMPANY_BY_SLUG_QUERY = """
+query ($slug: String!) {
+  getCompanyBySlug(slug: $slug) {
+    errors { field msg }
+    data {
+      companyId
+      name
+      slug
+      vat
+      email
+      address
+      city
+      zipCode
+      phone
+      fax
+      website
+      countryId
+      isConfirmed
+      visible
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_company_by_slug(slug: str) -> Any:
+    """Obtém uma empresa pelo seu `slug` (identificador textual usado no URL), em vez do
+    ID numérico. Devolve o subconjunto de identificação/contacto (nome, NIF, morada,
+    contactos). Ao contrário de `get_company`, não recebe `companyId` — útil quando só se
+    conhece o slug. Para o detalhe completo por ID usa `get_company`.
+
+    Args:
+        slug: identificador textual (slug) da empresa.
+    """
+    try:
+        data = await _client.query(COMPANY_BY_SLUG_QUERY, {"slug": slug})
+        return unwrap(data, "getCompanyBySlug")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_GDPR_FILE_TOKEN_QUERY = """
+query ($companyId: Int!, $customerId: Int!) {
+  getCustomerGdprFileToken(companyId: $companyId, customerId: $customerId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_gdpr_file_token(company_id: int, customer_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de RGPD (GDPR)
+    associado a um cliente. Devolve `token`, `path` e `filename`, que se combinam para
+    construir o URL de download do ficheiro.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente cujo ficheiro RGPD se pretende.
+    """
+    variables = {"companyId": company_id, "customerId": customer_id}
+    try:
+        data = await _client.query(CUSTOMER_GDPR_FILE_TOKEN_QUERY, variables)
+        return unwrap(data, "getCustomerGdprFileToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RELATED_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $customerId: Int!, $options: CustomerRelatedDocumentsOptions) {
+  getCustomerRelatedDocuments(companyId: $companyId, customerId: $customerId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      documentSetName
+      number
+      date
+      year
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      suspended
+      nullified
+      deletable
+      pdfExport
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_customer_related_documents(
+    company_id: int,
+    customer_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os documentos associados a um cliente (faturas, recibos, etc.), com os
+    campos principais de cada um: número, data, série, valor total, valor reconciliado e
+    estado. Útil para ver o histórico documental de um cliente. Os objetos ligados (tipo
+    de documento, vendedor, etc.) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente cujos documentos relacionados se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "customerId": customer_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_RELATED_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "getCustomerRelatedDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_ATTACHMENT_TOKEN_QUERY = """
+query ($companyId: Int!, $apiCodePlural: String!, $documentId: Int!) {
+  getDocumentAttachmentToken(companyId: $companyId, apiCodePlural: $apiCodePlural, documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_document_attachment_token(
+    company_id: int, api_code_plural: str, document_id: int
+) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de anexo de um
+    documento. Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download. O tipo de documento indica-se pelo `api_code_plural`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        api_code_plural: código (plural) do tipo de documento (ex. "invoices",
+            "creditNotes"; obtém-se via `get_document_type`/`list_document_types`).
+        document_id: ID do documento cujo anexo se pretende.
+    """
+    variables = {
+        "companyId": company_id,
+        "apiCodePlural": api_code_plural,
+        "documentId": document_id,
+    }
+    try:
+        data = await _client.query(DOCUMENT_ATTACHMENT_TOKEN_QUERY, variables)
+        return unwrap(data, "getDocumentAttachmentToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+EDI_XML_TOKEN_QUERY = """
+query ($companyId: Int!, $path: String!) {
+  getEDIXMLToken(companyId: $companyId, path: $path) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_edi_xml_token(company_id: int, path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar um ficheiro XML de EDI
+    (Electronic Data Interchange) de um documento. Devolve `token`, `path` e `filename`,
+    que se combinam para construir o URL de download. O `path` identifica o ficheiro a
+    descarregar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        path: caminho do ficheiro XML de EDI a descarregar.
+    """
+    variables = {"companyId": company_id, "path": path}
+    try:
+        data = await _client.query(EDI_XML_TOKEN_QUERY, variables)
+        return unwrap(data, "getEDIXMLToken")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
