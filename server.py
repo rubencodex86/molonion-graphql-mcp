@@ -2155,6 +2155,212 @@ async def list_credit_notes(
 
 
 # ---------------------------------------------------------------------------
+# Moedas (tabela de referência global)
+# ---------------------------------------------------------------------------
+CURRENCIES_QUERY = """
+query ($options: CurrencyOptions) {
+  currencies(options: $options) {
+    errors { field msg }
+    data {
+      currencyId
+      iso4217
+      symbol
+      symbolPosition
+      numberDecimalPlaces
+      largeCurrency
+      description
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+CURRENCY_QUERY = """
+query ($currencyId: Int!) {
+  currency(currencyId: $currencyId) {
+    errors { field msg }
+    data {
+      currencyId
+      iso4217
+      symbol
+      symbolPosition
+      numberDecimalPlaces
+      largeCurrency
+      description
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_currency(currency_id: int) -> Any:
+    """Obtém uma moeda pelo seu ID — tabela de referência global usada em documentos e
+    câmbios. Devolve o código ISO 4217 (`iso4217`), o símbolo e a sua posição
+    (`symbol`/`symbolPosition`) e o número de casas decimais (`numberDecimalPlaces`). Ao
+    contrário da maioria das operações, não recebe `companyId`. Os objetos ligados
+    (traduções, denominações) não são incluídos neste selection set. Para listar todas
+    as moedas usa `list_currencies`.
+
+    Args:
+        currency_id: ID da moeda a obter (obtém-se via `list_currencies`).
+    """
+    try:
+        data = await _client.query(CURRENCY_QUERY, {"currencyId": currency_id})
+        return unwrap(data, "currency")
+    except MolonionError as e:
+        return _err(e)
+
+
+@mcp.tool()
+async def list_currencies(page: int | None = None, qty: int | None = None) -> Any:
+    """Lista as moedas disponíveis na Moloni ON — tabela de referência global usada em
+    documentos e câmbios. Para cada moeda: o `currencyId` (usado noutras operações), o
+    código ISO 4217 (`iso4217`), o símbolo e a sua posição (`symbol`/`symbolPosition`)
+    e o número de casas decimais (`numberDecimalPlaces`). Ao contrário da maioria das
+    operações, não recebe `companyId`. Os objetos ligados (traduções, denominações) não
+    são incluídos neste selection set.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CURRENCIES_QUERY, variables)
+        return unwrap(data, "currencies")
+    except MolonionError as e:
+        return _err(e)
+
+
+CURRENCY_DENOMINATIONS_QUERY = """
+query ($currencyId: Int!) {
+  currencyDenominations(currencyId: $currencyId) {
+    errors { field msg }
+    data {
+      currencyDenominationId
+      currencyId
+      type
+      value
+      img
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_currency_denominations(currency_id: int) -> Any:
+    """Lista as denominações (notas e moedas) de uma moeda — útil para contagem de caixa
+    e fecho de POS. Para cada denominação: o tipo (`type`: nota/moeda), o valor facial
+    (`value`) e a imagem (`img`). Ao contrário da maioria das operações, não recebe
+    `companyId`.
+
+    Args:
+        currency_id: ID da moeda cujas denominações se pretendem (obtém-se via
+            `list_currencies`).
+    """
+    try:
+        data = await _client.query(
+            CURRENCY_DENOMINATIONS_QUERY, {"currencyId": currency_id}
+        )
+        return unwrap(data, "currencyDenominations")
+    except MolonionError as e:
+        return _err(e)
+
+
+CURRENCY_EXCHANGE_QUERY = """
+query ($currencyExchangeId: Int!) {
+  currencyExchange(currencyExchangeId: $currencyExchangeId) {
+    errors { field msg }
+    data {
+      currencyExchangeId
+      pair
+      name
+      exchange
+      visible
+      from { currencyId iso4217 symbol }
+      to { currencyId iso4217 symbol }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_currency_exchange(currency_exchange_id: int) -> Any:
+    """Obtém uma taxa de câmbio entre duas moedas pelo seu ID. Devolve o par
+    (`pair`, ex. "EUR/USD"), o nome, a taxa (`exchange`) e as moedas de origem (`from`)
+    e destino (`to`), cada uma com o `currencyId`, código ISO 4217 e símbolo. Ao
+    contrário da maioria das operações, não recebe `companyId`.
+
+    Args:
+        currency_exchange_id: ID da taxa de câmbio a obter.
+    """
+    try:
+        data = await _client.query(
+            CURRENCY_EXCHANGE_QUERY, {"currencyExchangeId": currency_exchange_id}
+        )
+        return unwrap(data, "currencyExchange")
+    except MolonionError as e:
+        return _err(e)
+
+
+CURRENCY_EXCHANGES_QUERY = """
+query ($options: CurrencyExchangeOptions) {
+  currencyExchanges(options: $options) {
+    errors { field msg }
+    data {
+      currencyExchangeId
+      pair
+      name
+      exchange
+      visible
+      from { currencyId iso4217 symbol }
+      to { currencyId iso4217 symbol }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_currency_exchanges(
+    page: int | None = None, qty: int | None = None
+) -> Any:
+    """Lista as taxas de câmbio configuradas na Moloni ON. Para cada uma: o par
+    (`pair`, ex. "EUR/USD"), o nome, a taxa (`exchange`) e as moedas de origem (`from`)
+    e destino (`to`) com o `currencyId`, código ISO 4217 e símbolo. Ao contrário da
+    maioria das operações, não recebe `companyId`. Para obter uma única pelo seu ID usa
+    `get_currency_exchange`.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CURRENCY_EXCHANGES_QUERY, variables)
+        return unwrap(data, "currencyExchanges")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

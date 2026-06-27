@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.43.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.48.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -126,6 +126,11 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_credit_note_next_number` | Próximo número disponível para uma nota de crédito numa série. |
 | `get_credit_note_relatable` | Notas de crédito de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_credit_notes` | Lista (paginada) as notas de crédito de uma empresa. |
+| `get_currency` | Detalhes de uma moeda pelo seu ID (ISO 4217, símbolo, casas decimais). |
+| `list_currencies` | Lista as moedas (tabela de referência: `currencyId`, ISO 4217, símbolo, decimais). |
+| `get_currency_denominations` | Lista as denominações (notas/moedas) de uma moeda (tipo, valor, imagem). |
+| `get_currency_exchange` | Taxa de câmbio entre duas moedas pelo seu ID (par, taxa, moedas from/to). |
+| `list_currency_exchanges` | Lista as taxas de câmbio configuradas (par, taxa, moedas from/to). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
