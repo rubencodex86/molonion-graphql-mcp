@@ -14351,6 +14351,450 @@ async def list_profit_margins_templates(company_id: int) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Faturas pró-forma (ProForma)
+# ===========================================================================
+
+PRO_FORMA_INVOICE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  proFormaInvoice(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      expirationDate
+      maturityDateDays
+      maturityDateName
+      yourReference
+      ourReference
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      deliveryMethodName
+      deliveryVehicleName
+      deliveryVehicleLicensePlate
+      deliveryLoadDate
+      deliveryLoadAddress
+      deliveryLoadCity
+      deliveryLoadZipCode
+      deliveryUnloadAddress
+      deliveryUnloadCity
+      deliveryUnloadZipCode
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma fatura pró-forma pelo seu ID de documento. A pró-forma
+    é um documento preliminar (proposta/confirmação de encomenda) emitido antes da
+    fatura final. Inclui os dados do documento (número, série, data, estado, totais),
+    os dados da entidade/cliente (`entityName`, `entityVat`, morada), o estado de
+    reconciliação, a validade/vencimento (`expirationDate`, `maturityDateDays`,
+    `maturityDateName`) e os dados de transporte (método de entrega, veículo/matrícula,
+    carga/descarga). As linhas de produtos, os impostos, o cliente completo, os
+    documentos relacionados e os dados AT não são incluídos neste selection set — podem
+    ser adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (fatura pró-forma) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_QUERY, variables)
+        return unwrap(data, "proFormaInvoice")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  proFormaInvoiceGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma fatura pró-forma.
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download do PDF. Nota: ao contrário de outras operações, não recebe `companyId` —
+    apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (fatura pró-forma) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            PRO_FORMA_INVOICE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "proFormaInvoiceGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  proFormaInvoiceGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias faturas pró-forma como um
+    arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o
+    URL de download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por
+    uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "proFormaInvoiceGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  proFormaInvoiceLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às faturas pró-forma de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma fatura pró-forma específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_LOGS_QUERY, variables)
+        return unwrap(data, "proFormaInvoiceLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  proFormaInvoiceMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de faturas pró-forma e o estado de
+    entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para
+    confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs
+    detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_pro_forma_invoice_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_MAIL_RECIPIENTS_QUERY, variables)
+        return unwrap(data, "proFormaInvoiceMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  proFormaInvoiceMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de uma fatura pró-forma: cada registo indica
+    o email de destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_pro_forma_invoice_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (fatura pró-forma) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_MAILS_HISTORY_QUERY, variables)
+        return unwrap(data, "proFormaInvoiceMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  proFormaInvoiceNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma fatura pró-forma numa dada série de
+    documentos. Devolve `number` (o próximo número) e `name` (o nome da série). Útil
+    antes de criar uma nova pró-forma, para saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "proFormaInvoiceNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: ProFormaInvoiceOptions) {
+  proFormaInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pro_forma_invoice_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as faturas pró-forma de uma entidade que podem ser relacionadas/ligadas a
+    outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (cliente) cujas pró-formas relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRO_FORMA_INVOICE_RELATABLE_QUERY, variables)
+        return unwrap(data, "proFormaInvoiceRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICES_QUERY = """
+query ($companyId: Int!, $options: ProFormaInvoiceOptions) {
+  proFormaInvoices(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      expirationDate
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_pro_forma_invoices(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as faturas pró-forma de uma empresa, com os campos principais de
+    cada uma: número, data, validade (`expirationDate`), série, entidade, valor total e
+    estado. Para obter o detalhe completo de uma pró-forma usa `get_pro_forma_invoice`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRO_FORMA_INVOICES_QUERY, variables)
+        return unwrap(data, "proFormaInvoices")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
