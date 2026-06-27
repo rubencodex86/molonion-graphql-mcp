@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.54.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.63.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -137,6 +137,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
 | `get_customer_logs` | Histórico de alterações (logs) aos clientes de uma empresa. |
 | `get_customer_next_number` | Próximo número de cliente disponível numa empresa. |
+| `get_customer_return_note` | Detalhes de uma nota de devolução de cliente (documento, entidade, reconciliação, transporte). |
+| `get_customer_return_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de devolução de cliente. |
+| `get_customer_return_note_zip_token` | Token temporário para descarregar várias notas de devolução de cliente em ZIP. |
+| `get_customer_return_note_logs` | Histórico de alterações (logs) às notas de devolução de cliente. |
+| `get_customer_return_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de devolução de cliente. |
+| `get_customer_return_note_mails_history` | Histórico de emails enviados de uma nota de devolução de cliente. |
+| `get_customer_return_note_next_number` | Próximo número disponível para uma nota de devolução de cliente numa série. |
+| `get_customer_return_note_relatable` | Notas de devolução de cliente de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_customer_return_notes` | Lista (paginada) as notas de devolução de cliente de uma empresa. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

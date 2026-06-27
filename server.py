@@ -2691,6 +2691,448 @@ async def get_customer_next_number(company_id: int) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Notas de devolução de cliente (documentos)
+# ---------------------------------------------------------------------------
+CUSTOMER_RETURN_NOTE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  customerReturnNote(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      yourReference
+      ourReference
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      deliveryMethodName
+      deliveryVehicleName
+      deliveryVehicleLicensePlate
+      deliveryLoadDate
+      deliveryLoadAddress
+      deliveryLoadCity
+      deliveryLoadZipCode
+      deliveryUnloadAddress
+      deliveryUnloadCity
+      deliveryUnloadZipCode
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma nota de devolução de cliente pelo seu ID de documento:
+    dados do documento (número, série, data, estado, totais), dados da entidade/cliente
+    (`entityName`, `entityVat`, morada), o estado de reconciliação (`reconciledValue`,
+    `remainingReconciledValue`, `reconciliationPercentage`) e os dados de transporte
+    (método de entrega, veículo/matrícula, datas e moradas de carga/descarga). As linhas
+    de produtos, os impostos, o cliente completo, os documentos relacionados e os dados
+    AT não são incluídos neste selection set — podem ser adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de devolução) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_QUERY, variables)
+        return unwrap(data, "customerReturnNote")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  customerReturnNoteGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma nota de devolução
+    de cliente. Devolve `token`, `path` e `filename`, que se combinam para construir o
+    URL de download do PDF. Nota: ao contrário de outras operações, não recebe
+    `companyId` — apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (nota de devolução) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            CUSTOMER_RETURN_NOTE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "customerReturnNoteGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  customerReturnNoteGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias notas de devolução de
+    cliente como um arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam
+    para construir o URL de download. O `full_path` identifica o ZIP a descarregar
+    (caminho devolvido por uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "customerReturnNoteGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  customerReturnNoteLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às notas de devolução de cliente de uma
+    empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez
+    (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma nota de devolução específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_LOGS_QUERY, variables)
+        return unwrap(data, "customerReturnNoteLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  customerReturnNoteMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de notas de devolução de cliente e o
+    estado de entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`).
+    Útil para confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os
+    logs detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_customer_return_note_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_MAIL_RECIPIENTS_QUERY, variables)
+        return unwrap(data, "customerReturnNoteMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  customerReturnNoteMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de emails enviados de uma nota de devolução de cliente: para
+    cada envio, o email, o conteúdo, a data (`createdAt`) e o `deliveryId`. Usa o
+    `deliveryId` de um envio em `get_customer_return_note_mail_recipients` para ver os
+    destinatários e o estado de entrega desse envio.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de devolução) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_MAILS_HISTORY_QUERY, variables)
+        return unwrap(data, "customerReturnNoteMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  customerReturnNoteNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma nota de devolução de cliente numa dada
+    série de documentos. Devolve `number` (o próximo número) e `name` (o nome da série).
+    Útil antes de criar uma nova nota de devolução, para saber o número que lhe será
+    atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "customerReturnNoteNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: CustomerReturnNoteOptions) {
+  customerReturnNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_customer_return_note_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as notas de devolução de cliente de uma entidade que podem ser
+    relacionadas/ligadas a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (cliente) cujas notas de devolução relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTE_RELATABLE_QUERY, variables)
+        return unwrap(data, "customerReturnNoteRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTES_QUERY = """
+query ($companyId: Int!, $options: CustomerReturnNoteOptions) {
+  customerReturnNotes(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_customer_return_notes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as notas de devolução de cliente de uma empresa, com os campos
+    principais de cada uma: número, data, série, entidade, valor total e estado de
+    reconciliação (`reconciledValue`, `remainingReconciledValue`). Para obter o detalhe
+    completo de uma nota de devolução usa `get_customer_return_note`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOMER_RETURN_NOTES_QUERY, variables)
+        return unwrap(data, "customerReturnNotes")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
