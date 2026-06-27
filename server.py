@@ -3187,6 +3187,151 @@ async def list_customers(
 
 
 # ---------------------------------------------------------------------------
+# Campos personalizados (custom fields)
+# ---------------------------------------------------------------------------
+CUSTOM_FIELD_QUERY = """
+query ($companyId: Int!, $customFieldId: String!) {
+  customField(companyId: $companyId, customFieldId: $customFieldId) {
+    errors { field msg }
+    data {
+      customFieldId
+      name
+      type
+      mandatory
+      printOnDocuments
+      companyId
+      deletable
+      options { optionId ordering value }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_custom_field(company_id: int, custom_field_id: str) -> Any:
+    """Obtém um campo personalizado (custom field) de uma empresa pelo seu ID: o nome
+    (`name`), o tipo (`type`: texto, número, seleção, …), se é obrigatório (`mandatory`),
+    se é impresso nos documentos (`printOnDocuments`) e, para campos de seleção, a lista
+    de valores possíveis (`options`: `optionId`, `value`, `ordering`). Nota: o
+    `custom_field_id` é uma **string**, não um inteiro. O objeto `company` ligado não é
+    incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        custom_field_id: ID (string) do campo personalizado a obter.
+    """
+    variables = {"companyId": company_id, "customFieldId": custom_field_id}
+    try:
+        data = await _client.query(CUSTOM_FIELD_QUERY, variables)
+        return unwrap(data, "customField")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOM_FIELD_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  customFieldLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_custom_field_logs(
+    company_id: int,
+    related_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos campos personalizados de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        related_id: opcional; filtra os logs de um campo personalizado específico
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if related_id is not None:
+        options["relatedId"] = related_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOM_FIELD_LOGS_QUERY, variables)
+        return unwrap(data, "customFieldLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOM_FIELDS_QUERY = """
+query ($companyId: Int!, $options: CustomFieldOptions) {
+  customFields(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      customFieldId
+      name
+      type
+      mandatory
+      printOnDocuments
+      companyId
+      deletable
+      options { optionId ordering value }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_custom_fields(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os campos personalizados (custom fields) configurados numa empresa, cada um
+    com o nome (`name`), tipo (`type`), se é obrigatório (`mandatory`), se é impresso nos
+    documentos (`printOnDocuments`) e, para campos de seleção, os valores possíveis
+    (`options`). Para obter um único pelo seu ID usa `get_custom_field`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(CUSTOM_FIELDS_QUERY, variables)
+        return unwrap(data, "customFields")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

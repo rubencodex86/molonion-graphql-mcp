@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.64.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.67.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -133,6 +133,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_currency_exchanges` | Lista as taxas de câmbio configuradas (par, taxa, moedas from/to). |
 | `get_customer` | Detalhes de um cliente pelo seu ID (identificação, financeiro, IDs associados). |
 | `list_customers` | Lista (paginada) os clientes de uma empresa (identificação, contactos, saldo). |
+| `get_custom_field` | Detalhes de um campo personalizado pelo seu ID (nome, tipo, obrigatório, opções). |
+| `get_custom_field_logs` | Histórico de alterações (logs) aos campos personalizados de uma empresa. |
+| `list_custom_fields` | Lista os campos personalizados configurados numa empresa. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
