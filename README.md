@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.163.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.170.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -232,6 +232,13 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_identification_template` | Detalhes de um template de identificação pelo seu ID (dados alternativos de documento). |
 | `get_identification_template_logs` | Histórico de alterações (logs) aos templates de identificação. |
 | `list_identification_templates` | Lista os templates de identificação configurados numa empresa. |
+| `get_invoice` | Detalhes de uma fatura pelo seu ID (documento, entidade, reconciliação, vencimento, transporte). |
+| `get_invoice_pdf_token` | Token temporário para descarregar o PDF de uma fatura. |
+| `get_invoice_zip_token` | Token temporário para descarregar várias faturas em ZIP. |
+| `get_invoice_logs` | Histórico de alterações (logs) às faturas de uma empresa. |
+| `get_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas. |
+| `get_invoice_mails_history` | Histórico de emails enviados de uma fatura. |
+| `get_invoice_next_number` | Próximo número disponível para uma fatura numa série. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
