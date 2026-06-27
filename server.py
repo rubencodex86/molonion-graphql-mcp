@@ -8714,6 +8714,56 @@ async def list_invoices(
 
 
 # ---------------------------------------------------------------------------
+# Autorização (controlo de acesso / limites de recursos)
+# ---------------------------------------------------------------------------
+IS_ALLOWED_QUERY = """
+query ($companyId: Int!, $resource: String!, $action: String) {
+  isAllowed(companyId: $companyId, resource: $resource, action: $action) {
+    errors { field msg }
+    data {
+      allowed
+      actualLimit
+      usedResources
+      remainingResources
+      totalSupplements
+      supplementsToUse
+      supplementsUsed
+      totalRollover
+      rolloversToUse
+      rolloversUsed
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def check_is_allowed(
+    company_id: int, resource: str, action: str | None = None
+) -> Any:
+    """Verifica se uma ação sobre um recurso é permitida numa empresa (controlo de
+    acesso e limites do plano). Devolve `allowed` (se é permitido) e os contadores de
+    uso do recurso: limite atual (`actualLimit`), usados (`usedResources`), restantes
+    (`remainingResources`) e os suplementos/rollovers (`totalSupplements`,
+    `remainingResources`, `totalRollover`, etc.). Útil para saber se ainda há quota antes
+    de criar um documento/entidade.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        resource: identificador do recurso (ex. tipo de documento/entidade).
+        action: opcional; ação a verificar (ex. criação).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "resource": resource}
+    if action is not None:
+        variables["action"] = action
+    try:
+        data = await _client.query(IS_ALLOWED_QUERY, variables)
+        return unwrap(data, "isAllowed")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
