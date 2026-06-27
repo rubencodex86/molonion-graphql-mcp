@@ -9225,6 +9225,44 @@ async def list_maturity_dates(
 
 
 # ---------------------------------------------------------------------------
+# Atividade do utilizador
+# ---------------------------------------------------------------------------
+ME_ACTIVITY_QUERY = """
+query ($options: MeActivityOptions) {
+  meActivity(options: $options) {
+    errors { field msg }
+    data {
+      apiClient { apiClientId name }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_my_activity(page: int | None = None, qty: int | None = None) -> Any:
+    """Lista a atividade recente do utilizador autenticado — os clientes de API
+    (`apiClient`: `apiClientId`, `name`) através dos quais houve sessão/atividade. Ao
+    contrário da maioria das operações, não recebe `companyId` (é a nível do utilizador).
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(ME_ACTIVITY_QUERY, variables)
+        return unwrap(data, "meActivity")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------
