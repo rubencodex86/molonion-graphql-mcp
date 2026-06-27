@@ -6947,6 +6947,561 @@ async def get_edi_xml_token(company_id: int, path: str) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Famílias (taxonomia de canais/marketplaces)
+# ---------------------------------------------------------------------------
+FAMILY_QUERY = """
+query ($channel: String!, $defaultLanguageId: Int!, $itemId: String, $parentId: String, $companyId: Int) {
+  getFamily(channel: $channel, defaultLanguageId: $defaultLanguageId, itemId: $itemId, parentId: $parentId, companyId: $companyId) {
+    errors { field msg }
+    data {
+      id
+      title
+      channel
+      channelTitle
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_family(
+    channel: str,
+    default_language_id: int,
+    item_id: str | None = None,
+    parent_id: str | None = None,
+    company_id: int | None = None,
+) -> Any:
+    """Obtém uma família da taxonomia de um canal/marketplace (ex. categorias de produto
+    de um canal de venda externo). Devolve o `id`, o título (`title`), o canal (`channel`)
+    e o título do canal (`channelTitle`). Pode navegar a árvore via `parent_id`.
+
+    Args:
+        channel: identificador do canal/marketplace.
+        default_language_id: ID do idioma para os títulos.
+        item_id: opcional; ID da família a obter.
+        parent_id: opcional; ID da família-pai (para listar os filhos).
+        company_id: opcional; ID da empresa (obtém-se via `me`).
+    """
+    variables: dict[str, Any] = {
+        "channel": channel,
+        "defaultLanguageId": default_language_id,
+    }
+    if item_id is not None:
+        variables["itemId"] = item_id
+    if parent_id is not None:
+        variables["parentId"] = parent_id
+    if company_id is not None:
+        variables["companyId"] = company_id
+    try:
+        data = await _client.query(FAMILY_QUERY, variables)
+        return unwrap(data, "getFamily")
+    except MolonionError as e:
+        return _err(e)
+
+
+IMPORT_SHEET_ERRORS_TOKEN_QUERY = """
+query ($companyId: Int!, $sheetId: String!) {
+  getImportSheetErrorsToken(companyId: $companyId, sheetId: $sheetId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_import_sheet_errors_token(company_id: int, sheet_id: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de erros de uma
+    folha de importação (os erros detetados ao importar uma folha de cálculo). Devolve
+    `token`, `path` e `filename`, que se combinam para construir o URL de download.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        sheet_id: ID (string) da folha de importação cujos erros se pretendem.
+    """
+    variables = {"companyId": company_id, "sheetId": sheet_id}
+    try:
+        data = await _client.query(IMPORT_SHEET_ERRORS_TOKEN_QUERY, variables)
+        return unwrap(data, "getImportSheetErrorsToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+IMPORT_SHEET_WARNINGS_TOKEN_QUERY = """
+query ($companyId: Int!, $sheetId: String!) {
+  getImportSheetWarningsToken(companyId: $companyId, sheetId: $sheetId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_import_sheet_warnings_token(company_id: int, sheet_id: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de avisos de uma
+    folha de importação (os avisos não-bloqueantes detetados ao importar uma folha de
+    cálculo). Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        sheet_id: ID (string) da folha de importação cujos avisos se pretendem.
+    """
+    variables = {"companyId": company_id, "sheetId": sheet_id}
+    try:
+        data = await _client.query(IMPORT_SHEET_WARNINGS_TOKEN_QUERY, variables)
+        return unwrap(data, "getImportSheetWarningsToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+IMPORT_TOKEN_QUERY = """
+query ($companyId: Int!, $importJobId: String!) {
+  getImportToken(companyId: $companyId, importJobId: $importJobId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_import_token(company_id: int, import_job_id: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro importado de um
+    trabalho de importação. Devolve `token`, `path` e `filename`, que se combinam para
+    construir o URL de download.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        import_job_id: ID (string) do trabalho de importação.
+    """
+    variables = {"companyId": company_id, "importJobId": import_job_id}
+    try:
+        data = await _client.query(IMPORT_TOKEN_QUERY, variables)
+        return unwrap(data, "getImportToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_PDF_TOKEN_QUERY = """
+query ($companyId: Int!, $request: String!, $fullPath: String!) {
+  getPDFToken(companyId: $companyId, request: $request, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_pdf_token(company_id: int, request: str, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar um ficheiro PDF (versão
+    genérica). Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download. O `request` identifica o tipo de pedido e o `full_path` o ficheiro.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        request: identificador do pedido/tipo de PDF.
+        full_path: caminho completo do ficheiro PDF a descarregar.
+    """
+    variables = {"companyId": company_id, "request": request, "fullPath": full_path}
+    try:
+        data = await _client.query(GET_PDF_TOKEN_QUERY, variables)
+        return unwrap(data, "getPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+POSSIBLE_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $type: Int!, $options: PossibleDocumentsOptions) {
+  getPossibleDocuments(companyId: $companyId, type: $type, options: $options) {
+    errors { field msg }
+    data {
+      __typename
+      documentId
+      documentTypeId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_possible_documents(
+    company_id: int,
+    remittance_type: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os documentos elegíveis para inclusão numa remessa bancária (SEPA),
+    filtrados pela categoria da remessa (débito direto ou transferência a crédito). Cada
+    documento traz os campos comuns (número, data, série, entidade, total, valor por
+    reconciliar) e o `__typename` identifica o tipo. Útil ao montar uma remessa.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        remittance_type: categoria da remessa (inteiro; débito direto vs. transferência).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "type": remittance_type}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(POSSIBLE_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "getPossibleDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+SAFT_IMPORTER_ERRORS_FILE_TOKEN_QUERY = """
+query ($companyId: Int!, $jobId: String!) {
+  getSAFTImporterErrorsFileToken(companyId: $companyId, jobId: $jobId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_saft_importer_errors_file_token(company_id: int, job_id: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de erros de um
+    trabalho de importação SAF-T (Standard Audit File for Tax). Devolve `token`, `path`
+    e `filename`, que se combinam para construir o URL de download.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        job_id: ID (string) do trabalho de importação SAF-T.
+    """
+    variables = {"companyId": company_id, "jobId": job_id}
+    try:
+        data = await _client.query(SAFT_IMPORTER_ERRORS_FILE_TOKEN_QUERY, variables)
+        return unwrap(data, "getSAFTImporterErrorsFileToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SAFT_IMPORTER_WARNINGS_FILE_TOKEN_QUERY = """
+query ($companyId: Int!, $jobId: String!) {
+  getSAFTImporterWarningsFileToken(companyId: $companyId, jobId: $jobId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_saft_importer_warnings_file_token(company_id: int, job_id: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro de avisos de um
+    trabalho de importação SAF-T (Standard Audit File for Tax). Devolve `token`, `path`
+    e `filename`, que se combinam para construir o URL de download.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        job_id: ID (string) do trabalho de importação SAF-T.
+    """
+    variables = {"companyId": company_id, "jobId": job_id}
+    try:
+        data = await _client.query(SAFT_IMPORTER_WARNINGS_FILE_TOKEN_QUERY, variables)
+        return unwrap(data, "getSAFTImporterWarningsFileToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SAFT_IMPORT_TOKEN_QUERY = """
+query ($companyId: Int!, $jobId: String!) {
+  getSaftImportToken(companyId: $companyId, jobId: $jobId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_saft_import_token(company_id: int, job_id: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro SAF-T (Standard
+    Audit File for Tax) previamente importado num trabalho de importação. Devolve
+    `token`, `path` e `filename`, que se combinam para construir o URL de download.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        job_id: ID (string) do trabalho de importação SAF-T.
+    """
+    variables = {"companyId": company_id, "jobId": job_id}
+    try:
+        data = await _client.query(SAFT_IMPORT_TOKEN_QUERY, variables)
+        return unwrap(data, "getSaftImportToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SAFT_XML_TOKEN_QUERY = """
+query ($companyId: Int!, $path: String!) {
+  getSAFTXMLToken(companyId: $companyId, path: $path) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_saft_xml_token(company_id: int, path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar o ficheiro XML SAF-T(PT) de uma
+    empresa (o ficheiro de auditoria fiscal para a AT). Devolve `token`, `path` e
+    `filename`, que se combinam para construir o URL de download. O `path` identifica o
+    ficheiro a descarregar (caminho devolvido por uma operação de geração do SAF-T).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        path: caminho do ficheiro SAF-T a descarregar.
+    """
+    variables = {"companyId": company_id, "path": path}
+    try:
+        data = await _client.query(SAFT_XML_TOKEN_QUERY, variables)
+        return unwrap(data, "getSAFTXMLToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_RELATED_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $salespersonId: Int!, $options: SalespersonRelatedDocumentsOptions) {
+  getSalespersonRelatedDocuments(companyId: $companyId, salespersonId: $salespersonId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      documentSetName
+      number
+      date
+      year
+      totalValue
+      grossValue
+      totalDiscountValue
+      salespersonCommission
+      reconciledValue
+      reconciliationPercentage
+      status
+      suspended
+      nullified
+      deletable
+      pdfExport
+      entityVat
+      entityName
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_salesperson_related_documents(
+    company_id: int,
+    salesperson_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os documentos associados a um vendedor (salesperson), com os campos
+    principais de cada um: número, data, série, valores (total, bruto, desconto) e, em
+    particular, a comissão do vendedor (`salespersonCommission`). Útil para apurar
+    comissões. Os objetos ligados (cliente, tipo de documento, etc.) não são incluídos
+    neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        salesperson_id: ID do vendedor cujos documentos se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "salespersonId": salesperson_id,
+    }
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SALESPERSON_RELATED_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "getSalespersonRelatedDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RELATED_DOCUMENTS_QUERY = """
+query ($companyId: Int!, $supplierId: Int!, $options: SupplierRelatedDocumentsOptions) {
+  getSupplierRelatedDocuments(companyId: $companyId, supplierId: $supplierId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      documentSetName
+      number
+      date
+      year
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      suspended
+      nullified
+      deletable
+      pdfExport
+      entityVat
+      entityName
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_supplier_related_documents(
+    company_id: int,
+    supplier_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os documentos associados a um fornecedor (faturas de compra, etc.), com os
+    campos principais de cada um: número, data, série, valor total, valor reconciliado e
+    estado. Útil para ver o histórico documental de um fornecedor. Os objetos ligados
+    (tipo de documento, etc.) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        supplier_id: ID do fornecedor cujos documentos se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "supplierId": supplier_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_RELATED_DOCUMENTS_QUERY, variables)
+        return unwrap(data, "getSupplierRelatedDocuments")
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_XLSX_TOKEN_QUERY = """
+query ($companyId: Int!, $request: String!, $fullPath: String!) {
+  getXLSXToken(companyId: $companyId, request: $request, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_xlsx_token(company_id: int, request: str, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar um ficheiro XLSX (Excel).
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download. O `request` identifica o tipo de pedido e o `full_path` o ficheiro.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        request: identificador do pedido/tipo de XLSX.
+        full_path: caminho completo do ficheiro XLSX a descarregar.
+    """
+    variables = {"companyId": company_id, "request": request, "fullPath": full_path}
+    try:
+        data = await _client.query(GET_XLSX_TOKEN_QUERY, variables)
+        return unwrap(data, "getXLSXToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_XML_TOKEN_QUERY = """
+query ($companyId: Int!, $request: String!, $fullPath: String!) {
+  getXMLToken(companyId: $companyId, request: $request, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_xml_token(company_id: int, request: str, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar um ficheiro XML (versão
+    genérica). Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download. O `request` identifica o tipo de pedido e o `full_path` o ficheiro.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        request: identificador do pedido/tipo de XML.
+        full_path: caminho completo do ficheiro XML a descarregar.
+    """
+    variables = {"companyId": company_id, "request": request, "fullPath": full_path}
+    try:
+        data = await _client.query(GET_XML_TOKEN_QUERY, variables)
+        return unwrap(data, "getXMLToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.142.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.156.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -211,6 +211,20 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_customer_related_documents` | Documentos associados a um cliente (número, data, total, reconciliação, estado). |
 | `get_document_attachment_token` | Token temporário para descarregar o anexo de um documento. |
 | `get_edi_xml_token` | Token temporário para descarregar o ficheiro XML de EDI de um documento. |
+| `get_family` | Família da taxonomia de um canal/marketplace (id, título, canal). |
+| `get_import_sheet_errors_token` | Token temporário para descarregar o ficheiro de erros de uma folha de importação. |
+| `get_import_sheet_warnings_token` | Token temporário para descarregar o ficheiro de avisos de uma folha de importação. |
+| `get_import_token` | Token temporário para descarregar o ficheiro importado de um trabalho de importação. |
+| `get_pdf_token` | Token temporário para descarregar um ficheiro PDF (genérico). |
+| `list_possible_documents` | Documentos elegíveis para uma remessa bancária (SEPA), por categoria. |
+| `get_saft_importer_errors_file_token` | Token temporário para descarregar o ficheiro de erros de uma importação SAF-T. |
+| `get_saft_importer_warnings_file_token` | Token temporário para descarregar o ficheiro de avisos de uma importação SAF-T. |
+| `get_saft_import_token` | Token temporário para descarregar o ficheiro SAF-T importado. |
+| `get_saft_xml_token` | Token temporário para descarregar o ficheiro XML SAF-T(PT) de uma empresa. |
+| `list_salesperson_related_documents` | Documentos associados a um vendedor (com comissão). |
+| `list_supplier_related_documents` | Documentos associados a um fornecedor (número, data, total, estado). |
+| `get_xlsx_token` | Token temporário para descarregar um ficheiro XLSX (Excel). |
+| `get_xml_token` | Token temporário para descarregar um ficheiro XML (genérico). |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
