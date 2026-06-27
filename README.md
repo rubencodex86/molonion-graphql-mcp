@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.331.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.345.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -391,6 +391,20 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_purchase_recurring_agreement_next_number` | Próximo número disponível para um acordo recorrente de compra numa série. |
 | `get_purchase_recurring_agreement_relatable` | Acordos recorrentes de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_purchase_recurring_agreements` | Lista paginada dos acordos recorrentes de compra de uma empresa. |
+| `get_purchases_analysis_by_date` | Análise de compras por data, ao nível do produto (qty e valores por período). |
+| `get_purchases_analysis_by_date_docs` | Análise de compras por data ao nível da linha de documento (com o documento de origem). |
+| `get_purchases_analysis_by_product` | Análise de compras agregada por produto (qty e valores totais). |
+| `get_purchases_analysis_by_product_category` | Análise de compras agregada por categoria de produto. |
+| `get_purchases_analysis_by_product_category_docs` | Análise de compras por categoria ao nível da linha de documento (com o documento de origem). |
+| `get_purchases_analysis_by_product_docs` | Análise de compras por produto ao nível da linha de documento (com o documento de origem). |
+| `get_purchases_analysis_totals` | Totais agregados da análise de compras (valores e contagens). |
+| `get_purchases_pending_list` | Compras pendentes (por liquidar) agrupadas por fornecedor. |
+| `get_purchases_pending_list_by_date` | Documentos de compra pendentes agrupados por data de vencimento (com saldo acumulado). |
+| `get_purchases_pending_list_supplier` | Documentos de compra pendentes de um fornecedor (extrato de contas a pagar, com saldo acumulado). |
+| `get_purchases_pending_list_totals` | Totais agregados das compras pendentes (montantes, contagens, atraso). |
+| `list_purchases_pending_list_templates` | Modelos de definições do utilizador para o ecrã de compras pendentes. |
+| `get_purchases_statements` | Extrato de compras a fornecedores (documentos e estado de liquidação). |
+| `get_purchases_statements_totals` | Totais agregados do extrato de compras (valores e contagens). |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

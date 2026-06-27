@@ -15871,6 +15871,892 @@ async def list_purchase_recurring_agreements(
         return _err(e)
 
 
+# ===========================================================================
+# Análise de compras (PurchasesAnalysis)
+# ===========================================================================
+
+PURCHASES_ANALYSIS_BY_DATE_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisOptions) {
+  purchasesAnalysisByDate(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      purchasesAnalysisByDateId
+      productId
+      productParentId
+      productCategoryId
+      name
+      reference
+      date
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      stock
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_by_date(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de compras agregada por data, ao nível do produto. Cada linha representa um
+    produto num período e traz `name`/`reference`, a(s) `date`(s), a quantidade comprada
+    (`qty`), os valores (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`) e o `stock`. Útil para relatórios de compras por período.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON: passa uma lista de dicionários, ex.
+    `[{"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"},
+      {"field": "date", "comparison": "LESS_OR_EQUAL", "value": "2026-03-31"}]`.
+    Os nomes de `field`/`comparison` válidos são os dos enums `PurchasesAnalysisFilterField`
+    e `Comparison` da API.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ver acima).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_ANALYSIS_BY_DATE_QUERY, variables)
+        return unwrap(data, "purchasesAnalysisByDate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_ANALYSIS_BY_DATE_DOCS_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisOptions) {
+  purchasesAnalysisByDateDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      productId
+      productParentId
+      name
+      reference
+      price
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      stock
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        year
+        totalValue
+        status
+        nullified
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_by_date_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de compras por data ao nível da LINHA de documento (detalhe por documento),
+    ao contrário de `get_purchases_analysis_by_date` que agrega por produto/período. Cada
+    linha traz o produto (`name`/`reference`, `price`, `qty`, valores) e o documento de
+    origem aninhado (`document`: número, data, série, entidade/fornecedor, total, estado).
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários, ex.
+    `[{"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"}]`
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_ANALYSIS_BY_DATE_DOCS_QUERY, variables)
+        return unwrap(data, "purchasesAnalysisByDateDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_ANALYSIS_BY_PRODUCT_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisOptions) {
+  purchasesAnalysisByProduct(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productId
+      productParentId
+      productCategoryId
+      name
+      reference
+      date
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      stock
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_by_product(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de compras agregada por produto. Cada linha representa um produto e traz
+    `name`/`reference`, a(s) `date`(s) das compras, a quantidade total comprada (`qty`),
+    os valores (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`) e o `stock`. Útil para saber o que mais se comprou a fornecedores.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_ANALYSIS_BY_PRODUCT_QUERY, variables)
+        return unwrap(data, "purchasesAnalysisByProduct")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_ANALYSIS_BY_PRODUCT_CATEGORY_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisOptions) {
+  purchasesAnalysisByProductCategory(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      date
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_by_product_category(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de compras agregada por categoria de produto. Cada linha representa uma
+    categoria (`productCategoryId`, `name`) e traz a(s) `date`(s), a quantidade comprada
+    (`qty`) e os valores (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`). Útil para ver a distribuição das compras por categoria.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            PURCHASES_ANALYSIS_BY_PRODUCT_CATEGORY_QUERY, variables
+        )
+        return unwrap(data, "purchasesAnalysisByProductCategory")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_ANALYSIS_BY_PRODUCT_CATEGORY_DOCS_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisOptions) {
+  purchasesAnalysisByProductCategoryDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      productCategoryId
+      productId
+      productParentId
+      name
+      reference
+      price
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        year
+        totalValue
+        status
+        nullified
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_by_product_category_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de compras por categoria de produto ao nível da LINHA de documento (detalhe
+    por documento), ao contrário de `get_purchases_analysis_by_product_category` que
+    agrega por categoria. Cada linha traz a categoria (`productCategoryId`), o produto
+    (`name`/`reference`, `price`, `qty`, valores) e o(s) documento(s) de origem
+    aninhado(s) (`document`: número, data, série, entidade/fornecedor, total, estado).
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            PURCHASES_ANALYSIS_BY_PRODUCT_CATEGORY_DOCS_QUERY, variables
+        )
+        return unwrap(data, "purchasesAnalysisByProductCategoryDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_ANALYSIS_BY_PRODUCT_DOCS_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisOptions) {
+  purchasesAnalysisByProductDocs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentProductId
+      productId
+      productParentId
+      name
+      reference
+      price
+      qty
+      discountValue
+      grossValue
+      taxesValue
+      retentionsValue
+      totalValue
+      document {
+        documentId
+        documentSetName
+        number
+        date
+        year
+        totalValue
+        status
+        nullified
+        entityVat
+        entityName
+        entityNumber
+        geographicZoneId
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_by_product_docs(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Análise de compras por produto ao nível da LINHA de documento (detalhe por
+    documento), ao contrário de `get_purchases_analysis_by_product` que agrega por
+    produto. Cada linha traz o produto (`name`/`reference`, `price`, `qty`, valores) e
+    o(s) documento(s) de origem aninhado(s) (`document`: número, data, série,
+    entidade/fornecedor, total, estado).
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            PURCHASES_ANALYSIS_BY_PRODUCT_DOCS_QUERY, variables
+        )
+        return unwrap(data, "purchasesAnalysisByProductDocs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_ANALYSIS_TOTALS_QUERY = """
+query ($companyId: Int!, $options: PurchasesAnalysisTotalsOptions) {
+  purchasesAnalysisTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      grossValue
+      discountValue
+      taxesValue
+      retentionsValue
+      totalValue
+      docsCount
+      productsCount
+      suppliersCount
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_analysis_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados da análise de compras de uma empresa (um único registo):
+    valores totais (`grossValue`, `discountValue`, `taxesValue`, `retentionsValue`,
+    `totalValue`) e contagens (`docsCount`, `productsCount`, `suppliersCount`). Útil para
+    uma vista global das compras num período.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`). Nota: esta operação não tem paginação.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_ANALYSIS_TOTALS_QUERY, variables)
+        return unwrap(data, "purchasesAnalysisTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_PENDING_LIST_QUERY = """
+query ($companyId: Int!, $options: PurchasesPendingListOptions) {
+  purchasesPendingList(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      supplier {
+        supplierId
+        name
+        vat
+      }
+      docsCount
+      ammountTotal
+      ammountPaid
+      ammountPending
+      delay
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_pending_list(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Lista as compras pendentes (por liquidar) agrupadas por fornecedor. Para cada
+    fornecedor (`supplier`: `supplierId`, `name`, `vat`) traz o número de documentos
+    pendentes (`docsCount`), o montante total (`ammountTotal`), o já pago (`ammountPaid`),
+    o pendente (`ammountPending`) e o atraso médio em dias (`delay`). Útil para gerir
+    contas a pagar a fornecedores.
+
+    Atenção: ao contrário das outras operações, esta devolve uma LISTA de envelopes
+    (um por fornecedor) — o resultado já vem achatado numa única lista de registos.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(PURCHASES_PENDING_LIST_QUERY, variables)
+        envelopes = (raw or {}).get("purchasesPendingList") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'purchasesPendingList' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_PENDING_LIST_BY_DATE_QUERY = """
+query ($companyId: Int!, $options: [PurchasesPendingListOptions]) {
+  purchasesPendingListByDate(companyId: $companyId, options: $options) {
+    errors { field msg }
+    accumulator
+    data {
+      __typename
+      documentId
+      documentTypeId
+      documentSetName
+      number
+      date
+      status
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_pending_list_by_date(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Lista os documentos de compra pendentes (por liquidar) agrupados por data de
+    vencimento — para acompanhar pagamentos a fornecedores futuros e em atraso. Devolve
+    uma lista de grupos; cada grupo traz `accumulator` (saldo acumulado do grupo) e
+    `documents`, a lista de documentos pendentes desse vencimento.
+
+    Cada documento usa a interface `DocumentRead` (campos comuns: número, série, data,
+    estado, totais, reconciliação, entidade/fornecedor) e `__typename` identifica o tipo
+    concreto. Para campos específicos de um tipo usa a tool dedicada.
+
+    Atenção: ao contrário das outras operações, esta devolve uma LISTA de envelopes (um
+    por grupo de vencimento), cada um com o seu `accumulator` — por isso o resultado é
+    uma lista de grupos, não uma lista achatada de documentos.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = [options]
+    try:
+        raw = await _client.query(PURCHASES_PENDING_LIST_BY_DATE_QUERY, variables)
+        envelopes = (raw or {}).get("purchasesPendingListByDate") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'purchasesPendingListByDate' devolveu erros.",
+                errors=errs,
+            )
+        return [
+            {
+                "accumulator": env.get("accumulator"),
+                "documents": env.get("data") or [],
+            }
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_PENDING_LIST_SUPPLIER_QUERY = """
+query ($companyId: Int!, $supplierId: Int, $options: PurchasesPendingListOptions) {
+  purchasesPendingListSupplier(companyId: $companyId, supplierId: $supplierId, options: $options) {
+    errors { field msg }
+    accumulator
+    data {
+      __typename
+      documentId
+      documentTypeId
+      documentSetName
+      number
+      date
+      status
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_pending_list_supplier(
+    company_id: int,
+    supplier_id: int | None = None,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Lista os documentos de compra pendentes (por liquidar) de um fornecedor — o extrato
+    de contas a pagar a esse fornecedor. Devolve `accumulator` (saldo acumulado) e
+    `documents`, a lista de documentos pendentes.
+
+    Cada documento usa a interface `DocumentRead` (campos comuns: número, série, data,
+    estado, totais, reconciliação, entidade/fornecedor) e `__typename` identifica o tipo
+    concreto. Para campos específicos de um tipo usa a tool dedicada.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        supplier_id: opcional; ID do fornecedor cujo extrato de pendentes se pretende.
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if supplier_id is not None:
+        variables["supplierId"] = supplier_id
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(PURCHASES_PENDING_LIST_SUPPLIER_QUERY, variables)
+        documents = unwrap(raw, "purchasesPendingListSupplier")  # valida erros
+        node = (raw or {}).get("purchasesPendingListSupplier") or {}
+        return {"accumulator": node.get("accumulator"), "documents": documents}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_PENDING_LIST_TOTALS_QUERY = """
+query ($companyId: Int!, $options: PurchasesPendingListTotalsOptions) {
+  purchasesPendingListTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      docsCount
+      ammountTotal
+      ammountPaid
+      ammountPending
+      suppliersCount
+      delay
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_pending_list_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados das compras pendentes (por liquidar) de uma empresa (um
+    único registo): o número de documentos pendentes (`docsCount`), o montante total
+    (`ammountTotal`), o já pago (`ammountPaid`), o pendente (`ammountPending`), o número
+    de fornecedores (`suppliersCount`) e o atraso médio em dias (`delay`). Útil para uma
+    vista global das contas a pagar.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON —
+    passa uma lista de dicionários (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_PENDING_LIST_TOTALS_QUERY, variables)
+        return unwrap(data, "purchasesPendingListTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: tal como `customerHistoryUserSettingsTemplates`, esta devolve uma LISTA de
+# envelopes (`[PurchasesPendingListUserSettingsTemplates]!`), não um único envelope —
+# por isso o `unwrap()` não se aplica; tratamos a lista à mão.
+PURCHASES_PENDING_LIST_TEMPLATES_QUERY = """
+query ($companyId: Int!) {
+  purchasesPendingListUserSettingsTemplates(companyId: $companyId) {
+    errors { field msg }
+    data {
+      userSettingsTemplateId
+      formName
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_purchases_pending_list_templates(company_id: int) -> Any:
+    """Lista os modelos (templates) de definições do utilizador para o ecrã das compras
+    pendentes — filtros/colunas guardados pelo utilizador para reutilizar. Cada modelo
+    tem `userSettingsTemplateId`, `formName` (o formulário a que se aplica) e `name`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        raw = await _client.query(
+            PURCHASES_PENDING_LIST_TEMPLATES_QUERY, {"companyId": company_id}
+        )
+        envelopes = (
+            raw or {}
+        ).get("purchasesPendingListUserSettingsTemplates") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'purchasesPendingListUserSettingsTemplates' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_STATEMENTS_QUERY = """
+query ($companyId: Int!, $options: PurchasesStatementOptions) {
+  purchasesStatements(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      __typename
+      documentId
+      documentTypeId
+      documentSetName
+      number
+      date
+      status
+      totalValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      entityVat
+      entityName
+      entityNumber
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_statements(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o extrato de compras a fornecedores: a lista de documentos de compra e o seu
+    estado de liquidação/reconciliação num período. Cada documento usa a interface
+    `DocumentRead` (campos comuns: número, série, data, estado, totais, reconciliação,
+    entidade/fornecedor) e `__typename` identifica o tipo concreto. Para campos
+    específicos de um tipo usa a tool dedicada.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_STATEMENTS_QUERY, variables)
+        return unwrap(data, "purchasesStatements")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASES_STATEMENTS_TOTALS_QUERY = """
+query ($companyId: Int!, $options: PurchasesStatementTotalsOptions) {
+  purchasesStatementsTotals(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      grossValues
+      totalDiscountValues
+      taxesValues
+      retentionsValues
+      totalValues
+      productsCount
+      suppliersCount
+      docsCount
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_purchases_statements_totals(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém os totais agregados do extrato de compras a fornecedores (um único registo):
+    os valores totais (`grossValues`, `totalDiscountValues`, `taxesValues`,
+    `retentionsValues`, `totalValues`) e as contagens (`productsCount`, `suppliersCount`,
+    `docsCount`). Útil para uma vista global do extrato de compras.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_purchases_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PURCHASES_STATEMENTS_TOTALS_QUERY, variables)
+        return unwrap(data, "purchasesStatementsTotals")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
