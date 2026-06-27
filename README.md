@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.201.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.210.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -261,6 +261,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `check_logged_in` | Verifica se a API Key está autenticada (booleano). |
 | `check_my_password` | Verifica se uma password corresponde à do utilizador autenticado (booleano). |
 | `list_my_two_factor_methods` | Lista os métodos 2FA configurados pelo utilizador autenticado. |
+| `get_migrated_credit_note` | Detalhes de uma nota de crédito migrada pelo seu ID (documento histórico). |
+| `get_migrated_credit_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de crédito migrada. |
+| `get_migrated_credit_note_zip_token` | Token temporário para descarregar várias notas de crédito migradas em ZIP. |
+| `get_migrated_credit_note_logs` | Histórico de alterações (logs) às notas de crédito migradas. |
+| `get_migrated_credit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de crédito migradas. |
+| `get_migrated_credit_note_mails_history` | Histórico de emails enviados de uma nota de crédito migrada. |
+| `get_migrated_credit_note_next_number` | Próximo número disponível para uma nota de crédito migrada numa série. |
+| `get_migrated_credit_note_relatable` | Notas de crédito migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
+| `list_migrated_credit_notes` | Lista (paginada) as notas de crédito migradas de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
