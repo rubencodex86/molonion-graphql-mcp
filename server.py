@@ -16757,6 +16757,440 @@ async def get_purchases_statements_totals(
         return _err(e)
 
 
+# ===========================================================================
+# Recibos (Receipt)
+# ===========================================================================
+
+RECEIPT_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  receipt(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      financialDiscount
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      yourReference
+      ourReference
+      economicActivityClassificationCodeId
+      economicActivityClassificationCodeCode
+      economicActivityClassificationCodeName
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de um recibo (documento de liquidação que salda faturas/notas)
+    pelo seu ID de documento: dados do documento (número, série, data, estado), o total
+    (`totalValue`), o desconto financeiro (`financialDiscount`), o câmbio
+    (`currencyExchangeTotalValue`, `currencyExchangeExchange`), o estado de reconciliação
+    (`reconciledValue`, `remainingReconciledValue`, `reconciliationPercentage`,
+    `totalRelatedAppliedValue`), os dados da entidade/cliente e o código CAE. Os documentos
+    saldados (`payments`/documentos relacionados), a entidade completa e os dados AT não
+    são incluídos neste selection set — podem ser adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (recibo) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(RECEIPT_QUERY, variables)
+        return unwrap(data, "receipt")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  receiptGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de um recibo. Devolve
+    `token`, `path` e `filename`, que se combinam para construir o URL de download do
+    PDF. Nota: ao contrário de outras operações, não recebe `companyId` — apenas o
+    `documentId`.
+
+    Args:
+        document_id: ID do documento (recibo) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            RECEIPT_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "receiptGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  receiptGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar vários recibos como um arquivo
+    ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por uma
+    operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(RECEIPT_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "receiptGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  receiptLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos recibos de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de um recibo específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RECEIPT_LOGS_QUERY, variables)
+        return unwrap(data, "receiptLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  receiptMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de recibos e o estado de entrega de
+    cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para confirmar a
+    quem foi enviado o documento e se a entrega teve sucesso. Os logs detalhados de cada
+    destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_receipt_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RECEIPT_MAIL_RECIPIENTS_QUERY, variables)
+        return unwrap(data, "receiptMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  receiptMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de um recibo: cada registo indica o email de
+    destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_receipt_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (recibo) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RECEIPT_MAILS_HISTORY_QUERY, variables)
+        return unwrap(data, "receiptMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  receiptNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_next_number(company_id: int, document_set_id: int) -> Any:
+    """Obtém o próximo número disponível para um recibo numa dada série de documentos.
+    Devolve `number` (o próximo número) e `name` (o nome da série). Útil antes de criar
+    um novo recibo, para saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(RECEIPT_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "receiptNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPT_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: ReceiptOptions) {
+  receiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_receipt_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os recibos de uma entidade que podem ser relacionados/ligados a outro
+    documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (cliente) cujos recibos relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RECEIPT_RELATABLE_QUERY, variables)
+        return unwrap(data, "receiptRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECEIPTS_QUERY = """
+query ($companyId: Int!, $options: ReceiptOptions) {
+  receipts(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_receipts(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os recibos de uma empresa, com os campos principais de cada um:
+    número, data, série, entidade/cliente, valor total, valor reconciliado
+    (`reconciledValue`, `reconciliationPercentage`) e estado. Para obter o detalhe
+    completo de um recibo usa `get_receipt`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(RECEIPTS_QUERY, variables)
+        return unwrap(data, "receipts")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
