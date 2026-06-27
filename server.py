@@ -9987,6 +9987,431 @@ async def list_migrated_credit_notes(
         return _err(e)
 
 
+MIGRATED_DEBIT_NOTE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  migratedDebitNote(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      expirationDate
+      maturityDateDays
+      maturityDateName
+      salespersonCommission
+      notes
+      notesRelatedDocs
+      pdfExport
+      downloads
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma nota de débito migrada (documento histórico importado de
+    outro sistema) pelo seu ID de documento: dados do documento, totais, reconciliação,
+    dados da entidade, vencimento (`expirationDate`, `maturityDateDays`, `maturityDateName`)
+    e comissão do vendedor. As linhas de produtos, os impostos, o cliente e os documentos
+    relacionados não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de débito migrada) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(MIGRATED_DEBIT_NOTE_QUERY, variables)
+        return unwrap(data, "migratedDebitNote")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  migratedDebitNoteGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma nota de débito
+    migrada. Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download do PDF. Nota: ao contrário de outras operações, não recebe `companyId` —
+    apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (nota de débito migrada) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            MIGRATED_DEBIT_NOTE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "migratedDebitNoteGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  migratedDebitNoteGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias notas de débito migradas
+    como um arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para
+    construir o URL de download. O `full_path` identifica o ZIP a descarregar (caminho
+    devolvido por uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(MIGRATED_DEBIT_NOTE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "migratedDebitNoteGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  migratedDebitNoteLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às notas de débito migradas de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma nota de débito migrada específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MIGRATED_DEBIT_NOTE_LOGS_QUERY, variables)
+        return unwrap(data, "migratedDebitNoteLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  migratedDebitNoteMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de notas de débito migradas e o
+    estado de entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`).
+    Útil para confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os
+    logs detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_migrated_debit_note_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            MIGRATED_DEBIT_NOTE_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "migratedDebitNoteMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  migratedDebitNoteMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de emails enviados de uma nota de débito migrada: para cada
+    envio, o email, o conteúdo, a data (`createdAt`) e o `deliveryId`. Usa o `deliveryId`
+    de um envio em `get_migrated_debit_note_mail_recipients` para ver os destinatários e
+    o estado de entrega desse envio.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de débito migrada) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            MIGRATED_DEBIT_NOTE_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "migratedDebitNoteMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  migratedDebitNoteNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma nota de débito migrada numa dada série
+    de documentos. Devolve `number` (o próximo número) e `name` (o nome da série).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(MIGRATED_DEBIT_NOTE_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "migratedDebitNoteNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTE_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: MigratedDebitNoteOptions) {
+  migratedDebitNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_debit_note_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as notas de débito migradas de uma entidade que podem ser
+    relacionadas/ligadas a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (cliente) cujas notas de débito migradas relacionáveis
+            se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MIGRATED_DEBIT_NOTE_RELATABLE_QUERY, variables)
+        return unwrap(data, "migratedDebitNoteRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_DEBIT_NOTES_QUERY = """
+query ($companyId: Int!, $options: MigratedDebitNoteOptions) {
+  migratedDebitNotes(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_migrated_debit_notes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as notas de débito migradas de uma empresa (documentos históricos
+    importados), com os campos principais de cada uma: número, data, série, entidade,
+    valor total e estado. Para obter o detalhe completo usa `get_migrated_debit_note`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MIGRATED_DEBIT_NOTES_QUERY, variables)
+        return unwrap(data, "migratedDebitNotes")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
