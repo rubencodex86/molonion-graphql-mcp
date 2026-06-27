@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.310.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.313.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -370,6 +370,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_pro_forma_invoice_next_number` | Próximo número disponível para uma fatura pró-forma numa série. |
 | `get_pro_forma_invoice_relatable` | Faturas pró-forma de uma entidade relacionáveis com outro documento (deprecada). |
 | `list_pro_forma_invoices` | Lista paginada das faturas pró-forma de uma empresa. |
+| `get_property_group` | Grupo de propriedades (variantes) com a árvore propriedades → valores. |
+| `get_property_group_logs` | Histórico de alterações (logs) aos grupos de propriedades. |
+| `list_property_groups` | Lista paginada dos grupos de propriedades (com as suas propriedades). |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

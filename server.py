@@ -14795,6 +14795,165 @@ async def list_pro_forma_invoices(
         return _err(e)
 
 
+# ===========================================================================
+# Grupos de propriedades (variantes)
+# ===========================================================================
+
+PROPERTY_GROUP_QUERY = """
+query ($companyId: Int!, $propertyGroupId: String!) {
+  propertyGroup(companyId: $companyId, propertyGroupId: $propertyGroupId) {
+    errors { field msg }
+    data {
+      propertyGroupId
+      name
+      visible
+      deletable
+      properties {
+        propertyId
+        name
+        visible
+        ordering
+        deletable
+        values {
+          propertyValueId
+          code
+          value
+          visible
+          ordering
+          deletable
+        }
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_property_group(company_id: int, property_group_id: str) -> Any:
+    """Obtém um grupo de propriedades (usado para variantes de produto) pelo seu ID.
+    Devolve o grupo (`name`, `visible`, `deletable`) e a árvore completa das suas
+    propriedades (`properties`, ex. "Cor", "Tamanho"), cada uma com os respetivos
+    valores (`values`, ex. "Vermelho", "Azul" / "S", "M", "L"), incluindo `code`,
+    `ordering` e `visible` de cada valor. É esta estrutura que define as combinações de
+    variantes de um produto.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        property_group_id: ID do grupo de propriedades a obter.
+    """
+    variables = {"companyId": company_id, "propertyGroupId": property_group_id}
+    try:
+        data = await _client.query(PROPERTY_GROUP_QUERY, variables)
+        return unwrap(data, "propertyGroup")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROPERTY_GROUP_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  propertyGroupLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_property_group_logs(
+    company_id: int,
+    related_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos grupos de propriedades de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`), os
+    valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`,
+    `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        related_id: opcional; filtra os logs de um grupo de propriedades específico (ID
+            numérico interno, corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if related_id is not None:
+        options["relatedId"] = related_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PROPERTY_GROUP_LOGS_QUERY, variables)
+        return unwrap(data, "propertyGroupLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROPERTY_GROUPS_QUERY = """
+query ($companyId: Int!, $options: PropertyGroupOptions) {
+  propertyGroups(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      propertyGroupId
+      name
+      visible
+      deletable
+      properties {
+        propertyId
+        name
+        visible
+        ordering
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_property_groups(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os grupos de propriedades (variantes) de uma empresa. Para cada
+    grupo devolve `propertyGroupId`, `name`, `visible` e a lista das suas propriedades
+    (`properties`: `propertyId`, `name`, `ordering`) — sem descer ao nível dos valores.
+    Para a árvore completa (propriedades → valores) de um grupo usa `get_property_group`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PROPERTY_GROUPS_QUERY, variables)
+        return unwrap(data, "propertyGroups")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
