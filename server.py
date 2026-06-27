@@ -5607,6 +5607,146 @@ async def list_document_types(page: int | None = None, qty: int | None = None) -
 
 
 # ---------------------------------------------------------------------------
+# Códigos de atividade económica (CAE)
+# ---------------------------------------------------------------------------
+ECONOMIC_ACTIVITY_CODE_QUERY = """
+query ($companyId: Int!, $economicActivityClassificationCodeId: Int!) {
+  economicActivityClassificationCode(companyId: $companyId, economicActivityClassificationCodeId: $economicActivityClassificationCodeId) {
+    errors { field msg }
+    data {
+      economicActivityClassificationCodeId
+      code
+      title
+      isDefault
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_economic_activity_classification_code(
+    company_id: int, economic_activity_classification_code_id: int
+) -> Any:
+    """Obtém um código de atividade económica (CAE) de uma empresa pelo seu ID: o código
+    (`code`), a descrição (`title`) e se é o CAE por omissão (`isDefault`). O objeto
+    `company` ligado não é incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        economic_activity_classification_code_id: ID do código CAE a obter.
+    """
+    variables = {
+        "companyId": company_id,
+        "economicActivityClassificationCodeId": economic_activity_classification_code_id,
+    }
+    try:
+        data = await _client.query(ECONOMIC_ACTIVITY_CODE_QUERY, variables)
+        return unwrap(data, "economicActivityClassificationCode")
+    except MolonionError as e:
+        return _err(e)
+
+
+ECONOMIC_ACTIVITY_CODE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  economicActivityClassificationCodeLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_economic_activity_classification_code_logs(
+    company_id: int,
+    code_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos códigos de atividade económica (CAE)
+    de uma empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez
+    (`userId`, `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        code_id: opcional; filtra os logs de um código CAE específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if code_id is not None:
+        options["relatedId"] = code_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(ECONOMIC_ACTIVITY_CODE_LOGS_QUERY, variables)
+        return unwrap(data, "economicActivityClassificationCodeLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+ECONOMIC_ACTIVITY_CODES_QUERY = """
+query ($companyId: Int!, $options: EconomicActivityClassificationCodeOptions) {
+  economicActivityClassificationCodes(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      economicActivityClassificationCodeId
+      code
+      title
+      isDefault
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_economic_activity_classification_codes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os códigos de atividade económica (CAE) configurados numa empresa, cada um
+    com o código (`code`), a descrição (`title`) e se é o CAE por omissão (`isDefault`).
+    Para obter um único pelo seu ID usa `get_economic_activity_classification_code`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(ECONOMIC_ACTIVITY_CODES_QUERY, variables)
+        return unwrap(data, "economicActivityClassificationCodes")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.114.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.117.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -183,6 +183,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_documents_logs` | Histórico de alterações (logs) aos documentos de uma empresa (genérico). |
 | `get_document_type` | Detalhes de um tipo de documento pelo seu ID (apiCode, SAF-T, regras). |
 | `list_document_types` | Lista os tipos de documento (tabela de referência: apiCode, SAF-T, título). |
+| `get_economic_activity_classification_code` | Detalhes de um código CAE pelo seu ID (código, descrição, default). |
+| `get_economic_activity_classification_code_logs` | Histórico de alterações (logs) aos códigos CAE de uma empresa. |
+| `list_economic_activity_classification_codes` | Lista os códigos CAE configurados numa empresa. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
 | `list_customer_history_templates` | Modelos de definições do utilizador para o ecrã de conta-corrente de clientes. |
