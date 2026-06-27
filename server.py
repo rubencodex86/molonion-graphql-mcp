@@ -10836,6 +10836,331 @@ async def list_migrated_estimates(
         return _err(e)
 
 
+MIGRATED_INVOICE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  migratedInvoice(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscountValue
+      totalDiscountValue
+      retentionsValue
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      expirationDate
+      maturityDateDays
+      maturityDateName
+      salespersonCommission
+      notes
+      notesRelatedDocs
+      pdfExport
+      file
+      fileOriginal
+      downloads
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma fatura migrada (documento histórico importado de outro
+    sistema) pelo seu ID de documento: dados do documento, totais, dados da entidade,
+    vencimento (`expirationDate`, `maturityDateDays`, `maturityDateName`), comissão do
+    vendedor e o ficheiro arquivado (`file`/`fileOriginal`). As linhas de produtos, os
+    impostos, o cliente e os documentos relacionados não são incluídos neste selection
+    set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (fatura migrada) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(MIGRATED_INVOICE_QUERY, variables)
+        return unwrap(data, "migratedInvoice")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_INVOICE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  migratedInvoiceGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma fatura migrada.
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download do PDF. Nota: ao contrário de outras operações, não recebe `companyId` —
+    apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (fatura migrada) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            MIGRATED_INVOICE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "migratedInvoiceGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_INVOICE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  migratedInvoiceGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias faturas migradas como um
+    arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o
+    URL de download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por
+    uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(MIGRATED_INVOICE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "migratedInvoiceGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_INVOICE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  migratedInvoiceLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às faturas migradas de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma fatura migrada específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(MIGRATED_INVOICE_LOGS_QUERY, variables)
+        return unwrap(data, "migratedInvoiceLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_INVOICE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  migratedInvoiceMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de faturas migradas e o estado de
+    entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para
+    confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs
+    detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_migrated_invoice_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            MIGRATED_INVOICE_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "migratedInvoiceMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_INVOICE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  migratedInvoiceMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de emails enviados de uma fatura migrada: para cada envio, o
+    email, o conteúdo, a data (`createdAt`) e o `deliveryId`. Usa o `deliveryId` de um
+    envio em `get_migrated_invoice_mail_recipients` para ver os destinatários e o estado
+    de entrega desse envio.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (fatura migrada) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            MIGRATED_INVOICE_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "migratedInvoiceMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+MIGRATED_INVOICE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  migratedInvoiceNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_migrated_invoice_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma fatura migrada numa dada série de
+    documentos. Devolve `number` (o próximo número) e `name` (o nome da série).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(MIGRATED_INVOICE_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "migratedInvoiceNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
