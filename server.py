@@ -13610,6 +13610,176 @@ async def list_payment_returns(
 
 
 # ---------------------------------------------------------------------------
+# Classes de preço
+# ---------------------------------------------------------------------------
+PRICE_CLASS_QUERY = """
+query ($companyId: Int!, $priceClassId: Int!) {
+  priceClass(companyId: $companyId, priceClassId: $priceClassId) {
+    errors { field msg }
+    data {
+      priceClassId
+      name
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_price_class(company_id: int, price_class_id: int) -> Any:
+    """Obtém uma classe de preço de uma empresa pelo seu ID: o nome (`name`) e a
+    visibilidade. As classes de preço permitem definir preços diferenciados por
+    cliente/grupo. O objeto `company` ligado não é incluído neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        price_class_id: ID da classe de preço a obter.
+    """
+    variables = {"companyId": company_id, "priceClassId": price_class_id}
+    try:
+        data = await _client.query(PRICE_CLASS_QUERY, variables)
+        return unwrap(data, "priceClass")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRICE_CLASSES_QUERY = """
+query ($companyId: Int!, $options: PriceClassOptions) {
+  priceClasses(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      priceClassId
+      name
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_price_classes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as classes de preço configuradas numa empresa, cada uma com o nome (`name`)
+    e a visibilidade. Permitem definir preços diferenciados por cliente/grupo. Para obter
+    uma única pelo seu ID usa `get_price_class`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRICE_CLASSES_QUERY, variables)
+        return unwrap(data, "priceClasses")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRICE_CLASS_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  priceClassLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_price_class_logs(
+    company_id: int,
+    price_class_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às classes de preço de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`),
+    os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        price_class_id: opcional; filtra os logs de uma classe de preço específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if price_class_id is not None:
+        options["relatedId"] = price_class_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(PRICE_CLASS_LOGS_QUERY, variables)
+        return unwrap(data, "priceClassLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: este envelope usa `count` (Int) em vez de `data` — o `unwrap()` não se aplica.
+PRICE_CLASS_PRODUCTS_APPLIED_QUERY = """
+query ($companyId: Int!, $priceClassId: Int!) {
+  priceClassProductsApplied(companyId: $companyId, priceClassId: $priceClassId) {
+    errors { field msg }
+    count
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_price_class_products_applied(
+    company_id: int, price_class_id: int
+) -> Any:
+    """Obtém o número de produtos a que uma classe de preço está aplicada numa empresa.
+    Devolve a contagem (`count`). Útil para saber o impacto de alterar/remover uma classe
+    de preço.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        price_class_id: ID da classe de preço.
+    """
+    variables = {"companyId": company_id, "priceClassId": price_class_id}
+    try:
+        raw = await _client.query(PRICE_CLASS_PRODUCTS_APPLIED_QUERY, variables)
+        node = (raw or {}).get("priceClassProductsApplied") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'priceClassProductsApplied' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {"count": node.get("count")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
 # ---------------------------------------------------------------------------

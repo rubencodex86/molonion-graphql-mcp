@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.286.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.290.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -346,6 +346,10 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_payment_return_next_number` | Próximo número disponível para uma devolução de pagamento numa série. |
 | `get_payment_return_relatable` | Devoluções de pagamento de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_payment_returns` | Lista (paginada) as devoluções de pagamento de uma empresa. |
+| `get_price_class` | Detalhes de uma classe de preço pelo seu ID (nome, visível). |
+| `list_price_classes` | Lista as classes de preço configuradas numa empresa. |
+| `get_price_class_logs` | Histórico de alterações (logs) às classes de preço de uma empresa. |
+| `get_price_class_products_applied` | Número de produtos a que uma classe de preço está aplicada. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |
