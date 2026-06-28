@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.617.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.639.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -675,6 +675,28 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `generate_purchases_pending_list_suppliers_xlsx` | Gera o XLSX das compras pendentes por fornecedor no servidor. |
 | `generate_purchases_statements_pdf` | Gera o PDF do extrato de compras a fornecedores no servidor. |
 | `generate_purchases_statements_xlsx` | Gera o XLSX do extrato de compras a fornecedores no servidor. |
+| `generate_sales_analysis_by_date_pdf` | Gera o PDF da análise de vendas por data no servidor. |
+| `generate_sales_analysis_by_date_single_pdf` | Gera o PDF detalhado (single) da análise de vendas por data no servidor. |
+| `generate_sales_analysis_by_date_with_docs_pdf` | Gera o PDF da análise de vendas por data com documentos de origem no servidor. |
+| `generate_sales_analysis_by_product_category_pdf` | Gera o PDF da análise de vendas por categoria de produto no servidor. |
+| `generate_sales_analysis_by_product_category_single_pdf` | Gera o PDF detalhado (single) da análise de vendas por categoria de produto no servidor. |
+| `generate_sales_analysis_by_product_category_with_docs_pdf` | Gera o PDF da análise de vendas por categoria com documentos de origem no servidor. |
+| `generate_sales_analysis_by_product_pdf` | Gera o PDF da análise de vendas por produto no servidor. |
+| `generate_sales_analysis_by_product_single_pdf` | Gera o PDF detalhado (single) da análise de vendas por produto no servidor. |
+| `generate_sales_analysis_by_product_with_docs_pdf` | Gera o PDF da análise de vendas por produto com documentos de origem no servidor. |
+| `generate_sales_analysis_xls` | Gera o XLS do relatório de análise de vendas no servidor. |
+| `generate_sales_pending_list_customers_pdf` | Gera o PDF das vendas pendentes por cliente no servidor. |
+| `generate_sales_pending_list_customers_xlsx` | Gera o XLSX das vendas pendentes por cliente no servidor. |
+| `generate_sales_pending_list_date_pdf` | Gera o PDF das vendas pendentes por data de vencimento no servidor. |
+| `generate_sales_pending_list_date_xlsx` | Gera o XLSX das vendas pendentes por data de vencimento no servidor. |
+| `generate_salespersons_payments_history_pdf` | Gera o PDF do histórico de pagamentos de comissões a vendedores no servidor. |
+| `generate_salespersons_payments_history_xls` | Gera o XLS do histórico de pagamentos de comissões a vendedores no servidor. |
+| `generate_salespersons_payments_pending_pdf` | Gera o PDF dos pagamentos de comissões a vendedores pendentes no servidor. |
+| `generate_salespersons_payments_pending_xls` | Gera o XLS dos pagamentos de comissões a vendedores pendentes no servidor. |
+| `generate_salespersons_pdf` | Gera o PDF da lista de vendedores (filtrada) no servidor. |
+| `generate_sales_statements_pdf` | Gera o PDF do extrato de vendas a clientes no servidor. |
+| `generate_sales_statements_xlsx` | Gera o XLSX do extrato de vendas a clientes no servidor. |
+| `generate_customer_sheet_pdf` | Gera o PDF da ficha detalhada de um cliente no servidor. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

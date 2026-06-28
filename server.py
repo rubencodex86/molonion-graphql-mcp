@@ -28495,6 +28495,960 @@ async def generate_purchases_statements_xlsx(
         return _err(e)
 
 
+GET_SALES_ANALYSIS_BY_DATE_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByDatePDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_date_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF do relatório de análise de vendas por data (ver a
+    query `get_sales_analysis_by_date`). Devolve `success` (booleano). Para depois descarregar
+    o ficheiro, usa o token de download adequado.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_DATE_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesAnalysisByDatePDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_DATE_SINGLE_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByDateSinglePDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_date_single_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o PDF detalhado (versão "single", ao nível da linha de
+    documento) do relatório de análise de vendas por data. Devolve `success` (booleano).
+    Para depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_DATE_SINGLE_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesAnalysisByDateSinglePDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_DATE_WITH_DOCS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByDateWithDocsPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_date_with_docs_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o PDF do relatório de análise de vendas por data com o
+    detalhe dos documentos de origem ("with docs"). Devolve `success` (booleano). Para
+    depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_DATE_WITH_DOCS_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesAnalysisByDateWithDocsPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_PRODUCT_CATEGORY_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByProductCategoryPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_product_category_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF do relatório de análise de vendas por categoria de
+    produto. Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token
+    de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_PRODUCT_CATEGORY_PDF_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("getSalesAnalysisByProductCategoryPDF")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_PRODUCT_CATEGORY_SINGLE_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByProductCategorySinglePDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_product_category_single_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o PDF detalhado (versão "single", ao nível da linha de
+    documento) do relatório de análise de vendas por categoria de produto. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_PRODUCT_CATEGORY_SINGLE_PDF_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get(
+                "getSalesAnalysisByProductCategorySinglePDF"
+            )
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_PRODUCT_CATEGORY_WITH_DOCS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByProductCategoryWithDocsPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_product_category_with_docs_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o PDF do relatório de análise de vendas por categoria de
+    produto com o detalhe dos documentos de origem ("with docs"). Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_PRODUCT_CATEGORY_WITH_DOCS_PDF_MUTATION,
+            variables,
+        )
+        return {
+            "success": (raw or {}).get(
+                "getSalesAnalysisByProductCategoryWithDocsPDF"
+            )
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_PRODUCT_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByProductPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_product_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF do relatório de análise de vendas por produto.
+    Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token de
+    download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_PRODUCT_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesAnalysisByProductPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_PRODUCT_SINGLE_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByProductSinglePDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_product_single_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o PDF detalhado (versão "single", ao nível da linha de
+    documento) do relatório de análise de vendas por produto. Devolve `success` (booleano).
+    Para depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_PRODUCT_SINGLE_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesAnalysisByProductSinglePDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_BY_PRODUCT_WITH_DOCS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisByProductWithDocsPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_by_product_with_docs_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o PDF do relatório de análise de vendas por produto com o
+    detalhe dos documentos de origem ("with docs"). Devolve `success` (booleano). Para
+    depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_ANALYSIS_BY_PRODUCT_WITH_DOCS_PDF_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("getSalesAnalysisByProductWithDocsPDF")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_ANALYSIS_XLS_MUTATION = """
+mutation ($companyId: Int!, $options: SalesAnalysisOptions) {
+  getSalesAnalysisXLS(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_analysis_xls(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLS (Excel) do relatório de análise de vendas.
+    Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token de
+    download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_SALES_ANALYSIS_XLS_MUTATION, variables)
+        return {"success": (raw or {}).get("getSalesAnalysisXLS")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_PENDING_LIST_CUSTOMERS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesPendingListOptions) {
+  getSalesPendingListCustomersPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_pending_list_customers_pdf(
+    company_id: int, filters: list[dict[str, Any]] | None = None
+) -> Any:
+    """Gera, do lado do servidor, um PDF da lista de vendas pendentes (por receber) agrupadas
+    por cliente (ver a query `get_sales_pending_list`). Devolve `success` (booleano). Para
+    depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_PENDING_LIST_CUSTOMERS_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesPendingListCustomersPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_PENDING_LIST_CUSTOMERS_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: SalesPendingListOptions) {
+  getSalesPendingListCustomersXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_pending_list_customers_xlsx(
+    company_id: int, filters: list[dict[str, Any]] | None = None
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) da lista de vendas pendentes (por
+    receber) agrupadas por cliente. Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_PENDING_LIST_CUSTOMERS_XLSX_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesPendingListCustomersXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_PENDING_LIST_DATE_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesPendingListOptions) {
+  getSalesPendingListDatePDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_pending_list_date_pdf(
+    company_id: int, filters: list[dict[str, Any]] | None = None
+) -> Any:
+    """Gera, do lado do servidor, um PDF da lista de vendas pendentes (por receber) por data
+    de vencimento (ver a query `get_sales_pending_list_by_date`). Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_PENDING_LIST_DATE_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesPendingListDatePDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_PENDING_LIST_DATE_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: SalesPendingListOptions) {
+  getSalesPendingListDateXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_pending_list_date_xlsx(
+    company_id: int, filters: list[dict[str, Any]] | None = None
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) da lista de vendas pendentes (por
+    receber) por data de vencimento. Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_SALES_PENDING_LIST_DATE_XLSX_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSalesPendingListDateXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALESPERSONS_PAYMENTS_HISTORY_PDF_MUTATION = """
+mutation ($companyId: Int!, $pdfOptions: SalespersonsPaymentsHistoryExportOptions!, $options: SalespersonsPaymentsHistoryOptions) {
+  getSalespersonsPaymentsHistoryPDF(companyId: $companyId, pdfOptions: $pdfOptions, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salespersons_payments_history_pdf(
+    company_id: int,
+    export_type: str,
+    salesperson_id: int | None = None,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF do histórico de pagamentos de comissões a vendedores.
+    Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token de
+    download adequado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        export_type: tipo de exportação (valor do enum
+            `SalespersonsPaymentsHistoryExportTypes`, ex. agregado ou por vendedor).
+        salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
+            variante por vendedor individual (`salespersonsPaymentsHistoryBySalespersonSingle`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
+            datas) — estrutura genérica da Moloni ON (ver `get_sales_analysis_by_date`).
+    """
+    pdf_options: dict[str, Any] = {"type": export_type}
+    if salesperson_id is not None:
+        pdf_options["salespersonId"] = salesperson_id
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "pdfOptions": pdf_options,
+    }
+    if filters:
+        variables["options"] = {"filter": filters}
+    try:
+        raw = await _client.query(
+            GET_SALESPERSONS_PAYMENTS_HISTORY_PDF_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("getSalespersonsPaymentsHistoryPDF")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALESPERSONS_PAYMENTS_HISTORY_XLS_MUTATION = """
+mutation ($companyId: Int!, $xlsOptions: SalespersonsPaymentsHistoryExportOptions!, $options: SalespersonsPaymentsHistoryOptions) {
+  getSalespersonsPaymentsHistoryXLS(companyId: $companyId, xlsOptions: $xlsOptions, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salespersons_payments_history_xls(
+    company_id: int,
+    export_type: str,
+    salesperson_id: int | None = None,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLS (Excel) do histórico de pagamentos de
+    comissões a vendedores. Devolve `success` (booleano). Para depois descarregar o ficheiro,
+    usa o token de download adequado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        export_type: tipo de exportação (valor do enum
+            `SalespersonsPaymentsHistoryExportTypes`, ex. agregado ou por vendedor).
+        salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
+            variante por vendedor individual (`salespersonsPaymentsHistoryBySalespersonSingle`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
+            datas) — estrutura genérica da Moloni ON (ver `get_sales_analysis_by_date`).
+    """
+    xls_options: dict[str, Any] = {"type": export_type}
+    if salesperson_id is not None:
+        xls_options["salespersonId"] = salesperson_id
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "xlsOptions": xls_options,
+    }
+    if filters:
+        variables["options"] = {"filter": filters}
+    try:
+        raw = await _client.query(
+            GET_SALESPERSONS_PAYMENTS_HISTORY_XLS_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("getSalespersonsPaymentsHistoryXLS")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALESPERSONS_PAYMENTS_PENDING_PDF_MUTATION = """
+mutation ($companyId: Int!, $pdfOptions: SalespersonsPaymentsPendingExportOptions!, $options: SalespersonsPaymentsPendingOptions) {
+  getSalespersonsPaymentsPendingPDF(companyId: $companyId, pdfOptions: $pdfOptions, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salespersons_payments_pending_pdf(
+    company_id: int,
+    export_type: str,
+    salesperson_id: int | None = None,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF da lista de pagamentos de comissões a vendedores
+    pendentes (por pagar). Devolve `success` (booleano). Para depois descarregar o ficheiro,
+    usa o token de download adequado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        export_type: tipo de exportação (valor do enum
+            `SalespersonsPaymentsPendingExportTypes`, ex. agregado ou por vendedor).
+        salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
+            variante por vendedor individual (`salespersonsPaymentsPendingBySalespersonSingle`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
+            datas) — estrutura genérica da Moloni ON (ver `get_sales_analysis_by_date`).
+    """
+    pdf_options: dict[str, Any] = {"type": export_type}
+    if salesperson_id is not None:
+        pdf_options["salespersonId"] = salesperson_id
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "pdfOptions": pdf_options,
+    }
+    if filters:
+        variables["options"] = {"filter": filters}
+    try:
+        raw = await _client.query(
+            GET_SALESPERSONS_PAYMENTS_PENDING_PDF_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("getSalespersonsPaymentsPendingPDF")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALESPERSONS_PAYMENTS_PENDING_XLS_MUTATION = """
+mutation ($companyId: Int!, $xlsOptions: SalespersonsPaymentsPendingExportOptions!, $options: SalespersonsPaymentsPendingOptions) {
+  getSalespersonsPaymentsPendingXLS(companyId: $companyId, xlsOptions: $xlsOptions, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salespersons_payments_pending_xls(
+    company_id: int,
+    export_type: str,
+    salesperson_id: int | None = None,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLS (Excel) da lista de pagamentos de comissões
+    a vendedores pendentes (por pagar). Devolve `success` (booleano). Para depois descarregar
+    o ficheiro, usa o token de download adequado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        export_type: tipo de exportação (valor do enum
+            `SalespersonsPaymentsPendingExportTypes`, ex. agregado ou por vendedor).
+        salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
+            variante por vendedor individual (`salespersonsPaymentsPendingBySalespersonSingle`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
+            datas) — estrutura genérica da Moloni ON (ver `get_sales_analysis_by_date`).
+    """
+    xls_options: dict[str, Any] = {"type": export_type}
+    if salesperson_id is not None:
+        xls_options["salespersonId"] = salesperson_id
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "xlsOptions": xls_options,
+    }
+    if filters:
+        variables["options"] = {"filter": filters}
+    try:
+        raw = await _client.query(
+            GET_SALESPERSONS_PAYMENTS_PENDING_XLS_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("getSalespersonsPaymentsPendingXLS")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALESPERSONS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalespersonOptions) {
+  getSalespersonsPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salespersons_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com a lista de vendedores de uma empresa
+    (opcionalmente filtrada). Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_SALESPERSONS_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getSalespersonsPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_STATEMENTS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SalesStatementOptions) {
+  getSalesStatementsPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_statements_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF do extrato de vendas a clientes (ver a query
+    `get_sales_statements`). Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_SALES_STATEMENTS_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getSalesStatementsPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SALES_STATEMENTS_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: SalesStatementOptions) {
+  getSalesStatementsXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sales_statements_xlsx(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) do extrato de vendas a clientes.
+    Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token de
+    download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_SALES_STATEMENTS_XLSX_MUTATION, variables)
+        return {"success": (raw or {}).get("getSalesStatementsXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SINGLE_CUSTOMER_SHEET_PDF_MUTATION = """
+mutation ($companyId: Int!, $customerId: Int!, $options: CustomerOptions) {
+  getSingleCustomerSheetPDF(companyId: $companyId, customerId: $customerId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_sheet_pdf(
+    company_id: int,
+    customer_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com a ficha detalhada de um cliente (dados de
+    contacto, faturação, etc.). Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros opcionais usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON
+    (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente cuja ficha se pretende.
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "customerId": customer_id,
+    }
+    if filters:
+        variables["options"] = {"filter": filters}
+    try:
+        raw = await _client.query(
+            GET_SINGLE_CUSTOMER_SHEET_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getSingleCustomerSheetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
