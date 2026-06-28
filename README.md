@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.563.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.571.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -621,6 +621,14 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_document_mail_message_template` | Cria um modelo de mensagem de email para envio de documentos. |
 | `delete_document_mail_message_templates` | Apaga um ou mais modelos de mensagem de email (em lote). ⚠️ destrutiva/irreversível. |
 | `update_document_mail_message_template` | Atualiza um modelo de mensagem de email (nome, conteúdo). |
+| `retry_document_set_at_communication` | Repete o registo na AT de uma série de documentos. ⚠️ ação fiscal (comunica à AT). |
+| `retry_all_document_set_at_communications` | Repete todos os registos de séries na AT falhados (em lote). ⚠️ ação fiscal em massa. |
+| `create_document_set` | Cria uma série de documentos (numeração). |
+| `delete_document_sets` | Apaga uma ou mais séries de documentos (em lote). ⚠️ destrutiva/irreversível. |
+| `update_document_set` | Atualiza uma série de documentos (nome, por omissão, modelo, CAE). |
+| `create_economic_activity_classification_code` | Cria um código CAE (código, título, por omissão). |
+| `delete_economic_activity_classification_codes` | Apaga um ou mais códigos CAE (em lote). ⚠️ destrutiva/irreversível. |
+| `update_economic_activity_classification_code` | Atualiza um código CAE (código, título, por omissão). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

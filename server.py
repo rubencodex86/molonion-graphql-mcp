@@ -26125,6 +26125,394 @@ async def update_document_mail_message_template(
         return _err(e)
 
 
+# ===========================================================================
+# Séries de documentos — comunicação AT (Mutation documentSetATCommunicationRetry)
+# ===========================================================================
+
+DOCUMENT_SET_AT_COMMUNICATION_RETRY_MUTATION = """
+mutation ($companyId: Int!, $documentSetATStatusId: Int!) {
+  documentSetATCommunicationRetry(companyId: $companyId, documentSetATStatusId: $documentSetATStatusId)
+}
+"""
+
+
+@mcp.tool()
+async def retry_document_set_at_communication(
+    company_id: int, document_set_at_status_id: int
+) -> Any:
+    """Repete (retry) o registo/comunicação à Autoridade Tributária (AT) de uma série de
+    documentos cuja comunicação anterior falhou. Devolve `success` (booleano).
+
+    ⚠️ COMUNICA À AT — é uma ação fiscal real (regista a série de documentos junto da
+    Autoridade Tributária). Confirma que a configuração AT está correta antes de repetir.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_at_status_id: ID do estado de comunicação AT da série (obtém-se via
+            `get_document_set_at_status` / `get_document_set_at_statuses`).
+    """
+    variables = {
+        "companyId": company_id,
+        "documentSetATStatusId": document_set_at_status_id,
+    }
+    try:
+        raw = await _client.query(
+            DOCUMENT_SET_AT_COMMUNICATION_RETRY_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("documentSetATCommunicationRetry")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_AT_COMMUNICATION_RETRY_ALL_MUTATION = """
+mutation ($companyId: Int!) {
+  documentSetATCommunicationRetryAll(companyId: $companyId)
+}
+"""
+
+
+@mcp.tool()
+async def retry_all_document_set_at_communications(company_id: int) -> Any:
+    """Repete (retry) TODOS os registos/comunicações de séries de documentos à Autoridade
+    Tributária (AT) que falharam, para uma empresa, em lote. Devolve `success` (booleano).
+
+    ⚠️ COMUNICA À AT EM MASSA — é uma ação fiscal real que regista junto da Autoridade
+    Tributária todas as séries com comunicação falhada. Confirma que a configuração AT está
+    correta antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        raw = await _client.query(
+            DOCUMENT_SET_AT_COMMUNICATION_RETRY_ALL_MUTATION,
+            {"companyId": company_id},
+        )
+        return {"success": (raw or {}).get("documentSetATCommunicationRetryAll")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Séries de documentos — criar (Mutation documentSetCreate)
+# ===========================================================================
+
+DOCUMENT_SET_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DocumentSetInsert!) {
+  documentSetCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentSetId
+      name
+      isDefault
+      companyId
+      economicActivityClassificationCodeId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_document_set(
+    company_id: int,
+    name: str,
+    is_default: bool | None = None,
+    ident_template_id: int | None = None,
+    economic_activity_classification_code_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria uma série de documentos (numeração) numa empresa. OBRIGATÓRIO: `name`. Opcionais
+    expostos: se é a série por omissão (`is_default`), o modelo de identificação
+    (`ident_template_id`) e o código CAE (`economic_activity_classification_code_id`). Para
+    configurações mais complexas (ex. `documentTypes` — associação a tipos de documento e
+    números iniciais — e bloqueios de série) usa `extra_fields` (dicionário camelCase).
+    Devolve a série criada com o seu `documentSetId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome da série de documentos.
+        is_default: opcional; se `True`, define como série por omissão.
+        ident_template_id: opcional; ID do modelo de identificação.
+        economic_activity_classification_code_id: opcional; ID do código CAE.
+        extra_fields: opcional; outros campos do `DocumentSetInsert` (camelCase), p.ex.
+            `documentTypes`, `documentSetsLocksBySettings`, `documentSetsLocksByDocumentType`.
+    """
+    data: dict[str, Any] = {"name": name}
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if ident_template_id is not None:
+        data["identTemplateId"] = ident_template_id
+    if economic_activity_classification_code_id is not None:
+        data["economicActivityClassificationCodeId"] = (
+            economic_activity_classification_code_id
+        )
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(DOCUMENT_SET_CREATE_MUTATION, variables)
+        return unwrap(result, "documentSetCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentSetId: [Int]!) {
+  documentSetDelete(companyId: $companyId, documentSetId: $documentSetId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_document_sets(company_id: int, document_set_ids: list[int]) -> Any:
+    """Apaga uma ou mais séries de documentos de uma empresa (em lote). Séries já com
+    documentos emitidos normalmente não são elimináveis (o erro vem em `errors`). Devolve,
+    por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as séries indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_ids: lista de IDs das séries de documentos a apagar.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_ids}
+    try:
+        raw = await _client.query(DOCUMENT_SET_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("documentSetDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_SET_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: DocumentSetUpdate!) {
+  documentSetUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentSetId
+      name
+      isDefault
+      companyId
+      economicActivityClassificationCodeId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_document_set(
+    company_id: int,
+    document_set_id: int,
+    name: str | None = None,
+    is_default: bool | None = None,
+    ident_template_id: int | None = None,
+    economic_activity_classification_code_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza uma série de documentos de uma empresa. Identifica-se pelo `document_set_id`;
+    só são alterados os campos que passares — o nome (`name`), se é a série por omissão
+    (`is_default`), o modelo de identificação (`ident_template_id`) e o código CAE. Para
+    configurações mais complexas (ex. `documentTypes`, bloqueios de série) usa
+    `extra_fields` (dicionário camelCase). Devolve a série atualizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos a atualizar.
+        name: opcional; novo nome da série.
+        is_default: opcional; definir (ou não) como série por omissão.
+        ident_template_id: opcional; novo modelo de identificação.
+        economic_activity_classification_code_id: opcional; novo código CAE.
+        extra_fields: opcional; outros campos do `DocumentSetUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"documentSetId": document_set_id}
+    if name is not None:
+        data["name"] = name
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if ident_template_id is not None:
+        data["identTemplateId"] = ident_template_id
+    if economic_activity_classification_code_id is not None:
+        data["economicActivityClassificationCodeId"] = (
+            economic_activity_classification_code_id
+        )
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(DOCUMENT_SET_UPDATE_MUTATION, variables)
+        return unwrap(result, "documentSetUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Códigos CAE — criar (Mutation economicActivityClassificationCodeCreate)
+# ===========================================================================
+
+ECONOMIC_ACTIVITY_CODE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: EconomicActivityClassificationCodeInsert!) {
+  economicActivityClassificationCodeCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      economicActivityClassificationCodeId
+      code
+      title
+      isDefault
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_economic_activity_classification_code(
+    company_id: int, code: str, title: str, is_default: bool | None = None
+) -> Any:
+    """Cria um código CAE (Classificação das Atividades Económicas) numa empresa, com o código
+    (`code`), o título/descrição (`title`) e, opcionalmente, se é o CAE por omissão
+    (`is_default`). Devolve o CAE criado com o seu `economicActivityClassificationCodeId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        code: código CAE.
+        title: título/descrição da atividade.
+        is_default: opcional; se `True`, define como CAE por omissão.
+    """
+    data: dict[str, Any] = {"code": code, "title": title}
+    if is_default is not None:
+        data["isDefault"] = is_default
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(
+            ECONOMIC_ACTIVITY_CODE_CREATE_MUTATION, variables
+        )
+        return unwrap(result, "economicActivityClassificationCodeCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+ECONOMIC_ACTIVITY_CODE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $economicActivityClassificationCodeId: [Int!]!) {
+  economicActivityClassificationCodeDelete(companyId: $companyId, economicActivityClassificationCodeId: $economicActivityClassificationCodeId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_economic_activity_classification_codes(
+    company_id: int, code_ids: list[int]
+) -> Any:
+    """Apaga um ou mais códigos CAE de uma empresa (em lote). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os códigos CAE indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        code_ids: lista de IDs dos códigos CAE a apagar.
+    """
+    variables = {
+        "companyId": company_id,
+        "economicActivityClassificationCodeId": code_ids,
+    }
+    try:
+        raw = await _client.query(ECONOMIC_ACTIVITY_CODE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("economicActivityClassificationCodeDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+ECONOMIC_ACTIVITY_CODE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: EconomicActivityClassificationCodeUpdate!) {
+  economicActivityClassificationCodeUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      economicActivityClassificationCodeId
+      code
+      title
+      isDefault
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_economic_activity_classification_code(
+    company_id: int,
+    economic_activity_classification_code_id: int,
+    code: str | None = None,
+    title: str | None = None,
+    is_default: bool | None = None,
+) -> Any:
+    """Atualiza um código CAE de uma empresa. Identifica-se pelo
+    `economic_activity_classification_code_id`; só são alterados os campos que passares — o
+    código (`code`), o título (`title`) e/ou se é o CAE por omissão (`is_default`). Devolve o
+    CAE atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        economic_activity_classification_code_id: ID do código CAE a atualizar.
+        code: opcional; novo código CAE.
+        title: opcional; novo título/descrição.
+        is_default: opcional; definir (ou não) como CAE por omissão.
+    """
+    data: dict[str, Any] = {
+        "economicActivityClassificationCodeId": economic_activity_classification_code_id
+    }
+    if code is not None:
+        data["code"] = code
+    if title is not None:
+        data["title"] = title
+    if is_default is not None:
+        data["isDefault"] = is_default
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(
+            ECONOMIC_ACTIVITY_CODE_UPDATE_MUTATION, variables
+        )
+        return unwrap(result, "economicActivityClassificationCodeUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
