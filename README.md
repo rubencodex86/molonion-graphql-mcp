@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.423.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.471.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -483,6 +483,54 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_stock_products` | Produtos com informação de stock (stock, mínimos, valor de inventário). |
 | `list_stock_templates` | Modelos de definições do utilizador para o ecrã de stock. |
 | `get_supplement_available_modules` | Módulos/suplementos disponíveis (add-ons) por país e idioma (data JSON). |
+| `get_supplier` | Detalhes de um fornecedor pelo seu ID (contactos, dados bancários, crédito). |
+| `get_supplier_bills_of_lading` | Detalhes de uma guia de transporte de compra pelo seu ID. |
+| `get_supplier_bills_of_lading_pdf_token` | Token temporário para descarregar o PDF de uma guia de transporte de compra. |
+| `get_supplier_bills_of_lading_zip_token` | Token temporário para descarregar várias guias de transporte de compra em ZIP. |
+| `get_supplier_bills_of_lading_logs` | Histórico de alterações (logs) às guias de transporte de compra. |
+| `get_supplier_bills_of_lading_mail_recipients` | Destinatários e estado de entrega de um envio por email de guias de transporte de compra. |
+| `get_supplier_bills_of_lading_mails_history` | Histórico de envios por email de uma guia de transporte de compra. |
+| `get_supplier_bills_of_lading_next_number` | Próximo número disponível para uma guia de transporte de compra numa série. |
+| `get_supplier_bills_of_lading_relatable` | Guias de transporte de compra de um fornecedor relacionáveis com outro documento (deprecada). |
+| `list_supplier_bills_of_ladings` | Lista paginada das guias de transporte de compra de uma empresa. |
+| `get_supplier_credit_note` | Detalhes de uma nota de crédito de compra pelo seu ID (sem vencimento/transporte). |
+| `get_supplier_credit_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de crédito de compra. |
+| `get_supplier_credit_note_zip_token` | Token temporário para descarregar várias notas de crédito de compra em ZIP. |
+| `get_supplier_credit_note_logs` | Histórico de alterações (logs) às notas de crédito de compra. |
+| `get_supplier_credit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de crédito de compra. |
+| `get_supplier_credit_note_mails_history` | Histórico de envios por email de uma nota de crédito de compra. |
+| `get_supplier_credit_note_next_number` | Próximo número disponível para uma nota de crédito de compra numa série. |
+| `get_supplier_credit_note_relatable` | Notas de crédito de compra de um fornecedor relacionáveis com outro documento (deprecada). |
+| `list_supplier_credit_notes` | Lista paginada das notas de crédito de compra de uma empresa. |
+| `get_supplier_invoice` | Detalhes de uma fatura de compra pelo seu ID (documento, fornecedor, vencimento, transporte). |
+| `get_supplier_invoice_pdf_token` | Token temporário para descarregar o PDF de uma fatura de compra. |
+| `get_supplier_invoice_zip_token` | Token temporário para descarregar várias faturas de compra em ZIP. |
+| `get_supplier_invoice_logs` | Histórico de alterações (logs) às faturas de compra. |
+| `get_supplier_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas de compra. |
+| `get_supplier_invoice_mails_history` | Histórico de envios por email de uma fatura de compra. |
+| `get_supplier_invoice_next_number` | Próximo número disponível para uma fatura de compra numa série. |
+| `get_supplier_invoice_relatable` | Faturas de compra de um fornecedor relacionáveis com outro documento (deprecada). |
+| `list_supplier_invoices` | Lista paginada das faturas de compra de uma empresa. |
+| `get_supplier_logs` | Histórico de alterações (logs) aos fornecedores. |
+| `get_supplier_purchase_order` | Detalhes de uma nota de encomenda de compra a fornecedor pelo seu ID. |
+| `get_supplier_purchase_order_pdf_token` | Token temporário para descarregar o PDF de uma nota de encomenda de compra a fornecedor. |
+| `get_supplier_purchase_order_zip_token` | Token temporário para descarregar várias notas de encomenda de compra a fornecedor em ZIP. |
+| `get_supplier_purchase_order_logs` | Histórico de alterações (logs) às notas de encomenda de compra a fornecedor. |
+| `get_supplier_purchase_order_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de encomenda de compra a fornecedor. |
+| `get_supplier_purchase_order_mails_history` | Histórico de envios por email de uma nota de encomenda de compra a fornecedor. |
+| `get_supplier_purchase_order_next_number` | Próximo número disponível para uma nota de encomenda de compra a fornecedor numa série. |
+| `get_supplier_purchase_order_relatable` | Notas de encomenda de compra a fornecedor relacionáveis com outro documento (deprecada). |
+| `list_supplier_purchase_orders` | Lista paginada das notas de encomenda de compra a fornecedor de uma empresa. |
+| `get_supplier_receipt` | Detalhes de um recibo de compra pelo seu ID (liquidação a fornecedor, reconciliação). |
+| `get_supplier_receipt_pdf_token` | Token temporário para descarregar o PDF de um recibo de compra. |
+| `get_supplier_receipt_zip_token` | Token temporário para descarregar vários recibos de compra em ZIP. |
+| `get_supplier_receipt_logs` | Histórico de alterações (logs) aos recibos de compra. |
+| `get_supplier_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de recibos de compra. |
+| `get_supplier_receipt_mails_history` | Histórico de envios por email de um recibo de compra. |
+| `get_supplier_receipt_next_number` | Próximo número disponível para um recibo de compra numa série. |
+| `get_supplier_receipt_relatable` | Recibos de compra de um fornecedor relacionáveis com outro documento (deprecada). |
+| `list_supplier_receipts` | Lista paginada dos recibos de compra de uma empresa. |
+| `list_suppliers` | Lista paginada dos fornecedores de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

@@ -20918,6 +20918,2446 @@ async def get_supplement_available_modules(
         return _err(e)
 
 
+# ===========================================================================
+# Fornecedores (Supplier)
+# ===========================================================================
+
+SUPPLIER_QUERY = """
+query ($companyId: Int!, $supplierId: Int!) {
+  supplier(companyId: $companyId, supplierId: $supplierId) {
+    errors { field msg }
+    data {
+      supplierId
+      number
+      name
+      vat
+      address
+      city
+      zipCode
+      email
+      phone
+      fax
+      website
+      contactName
+      contactEmail
+      contactPhone
+      notes
+      documentNotes
+      notesOnDocs
+      exemptionReason
+      swift
+      iban
+      sepaId
+      discount
+      creditLimit
+      countryId
+      languageId
+      geographicZoneId
+      maturityDateId
+      paymentMethodId
+      deliveryMethodId
+      companyId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier(company_id: int, supplier_id: int) -> Any:
+    """Obtém os detalhes de um fornecedor pelo seu ID: o número (`number`), o nome, o NIF
+    (`vat`), a morada, os contactos (`email`, `phone`, `contactName`/`contactEmail`/
+    `contactPhone`), as notas (`notes`, `documentNotes`), os dados bancários (`swift`,
+    `iban`, `sepaId`), o desconto (`discount`), o limite de crédito (`creditLimit`), a
+    razão de isenção e as chaves estrangeiras (país, idioma, zona, vencimento, método de
+    pagamento/entrega). Os objetos aninhados (país, impostos, etc.) não são incluídos.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        supplier_id: ID do fornecedor a obter.
+    """
+    variables = {"companyId": company_id, "supplierId": supplier_id}
+    try:
+        data = await _client.query(SUPPLIER_QUERY, variables)
+        return unwrap(data, "supplier")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  supplierBillsOfLading(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscount
+      globalDiscountValue
+      commercialDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      expirationDate
+      maturityDateDays
+      maturityDateName
+      yourReference
+      ourReference
+      economicActivityClassificationCodeId
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      file
+      fileOriginal
+      importStatus
+      deliveryMethodName
+      deliveryVehicleLicensePlate
+      deliveryLoadDate
+      deliveryLoadAddress
+      deliveryLoadCity
+      deliveryLoadZipCode
+      deliveryUnloadAddress
+      deliveryUnloadCity
+      deliveryUnloadZipCode
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma guia de transporte de compra (documento de fornecedor) pelo
+    seu ID de documento: dados do documento (número, série, data, estado, totais), dados da
+    entidade/fornecedor (`entityName`, `entityVat`, morada), descontos, câmbio,
+    reconciliação, vencimento, o código CAE, o ficheiro arquivado (`file`/`fileOriginal`),
+    o estado de importação (`importStatus`) e os dados de transporte (método de entrega,
+    matrícula, carga/descarga). As linhas de produtos, os impostos, o fornecedor completo e
+    os documentos relacionados não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (guia de transporte de compra) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SUPPLIER_BILLS_OF_LADING_QUERY, variables)
+        return unwrap(data, "supplierBillsOfLading")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  supplierBillsOfLadingGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma guia de transporte de
+    compra. Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download do PDF. Nota: ao contrário de outras operações, não recebe `companyId` —
+    apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (guia de transporte de compra) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            SUPPLIER_BILLS_OF_LADING_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "supplierBillsOfLadingGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  supplierBillsOfLadingGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_zip_token(
+    company_id: int, full_path: str
+) -> Any:
+    """Gera um token temporário e seguro para descarregar várias guias de transporte de
+    compra como um arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para
+    construir o URL de download. O `full_path` identifica o ZIP a descarregar (caminho
+    devolvido por uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(
+            SUPPLIER_BILLS_OF_LADING_ZIP_TOKEN_QUERY, variables
+        )
+        return unwrap(data, "supplierBillsOfLadingGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  supplierBillsOfLadingLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às guias de transporte de compra de uma
+    empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma guia de transporte de compra específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_BILLS_OF_LADING_LOGS_QUERY, variables)
+        return unwrap(data, "supplierBillsOfLadingLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  supplierBillsOfLadingMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de guias de transporte de compra e o
+    estado de entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`).
+    Útil para confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs
+    detalhados de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_supplier_bills_of_lading_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_BILLS_OF_LADING_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "supplierBillsOfLadingMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  supplierBillsOfLadingMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de uma guia de transporte de compra: cada
+    registo indica o email de destino, o conteúdo, o `deliveryId` (que liga aos
+    destinatários via `get_supplier_bills_of_lading_mail_recipients`) e a data de envio
+    (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (guia de transporte de compra) cujos envios se
+            pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_BILLS_OF_LADING_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "supplierBillsOfLadingMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  supplierBillsOfLadingNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma guia de transporte de compra numa dada
+    série de documentos. Devolve `number` (o próximo número) e `name` (o nome da série).
+    Útil antes de criar uma nova guia de transporte de compra, para saber o número que lhe
+    será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(
+            SUPPLIER_BILLS_OF_LADING_NEXT_NUMBER_QUERY, variables
+        )
+        return unwrap(data, "supplierBillsOfLadingNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADING_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SupplierBillsOfLadingOptions) {
+  supplierBillsOfLadingRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_bills_of_lading_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as guias de transporte de compra de uma entidade (fornecedor) que podem ser
+    relacionadas/ligadas a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (fornecedor) cujas guias relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_BILLS_OF_LADING_RELATABLE_QUERY, variables
+        )
+        return unwrap(data, "supplierBillsOfLadingRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_BILLS_OF_LADINGS_QUERY = """
+query ($companyId: Int!, $options: SupplierBillsOfLadingOptions) {
+  supplierBillsOfLadings(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_supplier_bills_of_ladings(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as guias de transporte de compra de uma empresa, com os campos
+    principais de cada uma: número, data, série, entidade/fornecedor, valor total e estado.
+    Para obter o detalhe completo de uma guia usa `get_supplier_bills_of_lading`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_BILLS_OF_LADINGS_QUERY, variables)
+        return unwrap(data, "supplierBillsOfLadings")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  supplierCreditNote(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscount
+      globalDiscountValue
+      commercialDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      yourReference
+      ourReference
+      economicActivityClassificationCodeId
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      file
+      fileOriginal
+      importStatus
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma nota de crédito de compra (documento de fornecedor que anula
+    ou corrige uma compra) pelo seu ID de documento: dados do documento (número, série,
+    data, estado, totais), dados da entidade/fornecedor (`entityName`, `entityVat`, morada),
+    descontos, câmbio, reconciliação, o código CAE, o ficheiro arquivado
+    (`file`/`fileOriginal`) e o estado de importação (`importStatus`). Ao contrário de outros
+    documentos de compra, NÃO tem dados de vencimento nem de transporte. As linhas de
+    produtos, os impostos, o fornecedor completo e os documentos relacionados não são
+    incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de crédito de compra) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SUPPLIER_CREDIT_NOTE_QUERY, variables)
+        return unwrap(data, "supplierCreditNote")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  supplierCreditNoteGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma nota de crédito de
+    compra. Devolve `token`, `path` e `filename`, que se combinam para construir o URL de
+    download do PDF. Nota: ao contrário de outras operações, não recebe `companyId` —
+    apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (nota de crédito de compra) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            SUPPLIER_CREDIT_NOTE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "supplierCreditNoteGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  supplierCreditNoteGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias notas de crédito de compra
+    como um arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para
+    construir o URL de download. O `full_path` identifica o ZIP a descarregar (caminho
+    devolvido por uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(SUPPLIER_CREDIT_NOTE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "supplierCreditNoteGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  supplierCreditNoteLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às notas de crédito de compra de uma empresa:
+    criações, modificações e remoções. Cada entrada indica a operação (`operation`), os
+    valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`,
+    `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma nota de crédito de compra específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_CREDIT_NOTE_LOGS_QUERY, variables)
+        return unwrap(data, "supplierCreditNoteLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  supplierCreditNoteMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de notas de crédito de compra e o estado
+    de entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para
+    confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs detalhados
+    de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_supplier_credit_note_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_CREDIT_NOTE_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "supplierCreditNoteMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  supplierCreditNoteMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de uma nota de crédito de compra: cada registo
+    indica o email de destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_supplier_credit_note_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de crédito de compra) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_CREDIT_NOTE_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "supplierCreditNoteMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  supplierCreditNoteNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma nota de crédito de compra numa dada série
+    de documentos. Devolve `number` (o próximo número) e `name` (o nome da série). Útil
+    antes de criar uma nova nota de crédito de compra, para saber o número que lhe será
+    atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(
+            SUPPLIER_CREDIT_NOTE_NEXT_NUMBER_QUERY, variables
+        )
+        return unwrap(data, "supplierCreditNoteNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTE_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SupplierCreditNoteOptions) {
+  supplierCreditNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_credit_note_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as notas de crédito de compra de uma entidade (fornecedor) que podem ser
+    relacionadas/ligadas a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (fornecedor) cujas notas de crédito relacionáveis se
+            procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_CREDIT_NOTE_RELATABLE_QUERY, variables
+        )
+        return unwrap(data, "supplierCreditNoteRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_CREDIT_NOTES_QUERY = """
+query ($companyId: Int!, $options: SupplierCreditNoteOptions) {
+  supplierCreditNotes(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_supplier_credit_notes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as notas de crédito de compra de uma empresa, com os campos
+    principais de cada uma: número, data, série, entidade/fornecedor, valor total, valor
+    reconciliado (`reconciledValue`, `reconciliationPercentage`) e estado. Para obter o
+    detalhe completo de uma nota de crédito de compra usa `get_supplier_credit_note`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_CREDIT_NOTES_QUERY, variables)
+        return unwrap(data, "supplierCreditNotes")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  supplierInvoice(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscount
+      globalDiscountValue
+      commercialDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      expirationDate
+      maturityDateDays
+      maturityDateName
+      yourReference
+      ourReference
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      file
+      fileOriginal
+      importStatus
+      deliveryMethodName
+      deliveryVehicleName
+      deliveryVehicleLicensePlate
+      deliveryLoadDate
+      deliveryLoadAddress
+      deliveryLoadCity
+      deliveryLoadZipCode
+      deliveryUnloadAddress
+      deliveryUnloadCity
+      deliveryUnloadZipCode
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma fatura de compra (documento de fornecedor) pelo seu ID de
+    documento: dados do documento (número, série, data, estado, totais), dados da
+    entidade/fornecedor (`entityName`, `entityVat`, morada), descontos, câmbio,
+    reconciliação, vencimento (`expirationDate`, `maturityDateDays`, `maturityDateName`),
+    o ficheiro arquivado (`file`/`fileOriginal`), o estado de importação (`importStatus`) e
+    os dados de transporte. As linhas de produtos, os impostos, o fornecedor completo e os
+    documentos relacionados não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (fatura de compra) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SUPPLIER_INVOICE_QUERY, variables)
+        return unwrap(data, "supplierInvoice")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  supplierInvoiceGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma fatura de compra.
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de download
+    do PDF. Nota: ao contrário de outras operações, não recebe `companyId` — apenas o
+    `documentId`.
+
+    Args:
+        document_id: ID do documento (fatura de compra) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            SUPPLIER_INVOICE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "supplierInvoiceGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  supplierInvoiceGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias faturas de compra como um
+    arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por uma
+    operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(SUPPLIER_INVOICE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "supplierInvoiceGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  supplierInvoiceLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às faturas de compra de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma fatura de compra específica
+            (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_INVOICE_LOGS_QUERY, variables)
+        return unwrap(data, "supplierInvoiceLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  supplierInvoiceMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de faturas de compra e o estado de
+    entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para
+    confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs detalhados
+    de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_supplier_invoice_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_INVOICE_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "supplierInvoiceMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  supplierInvoiceMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de uma fatura de compra: cada registo indica o
+    email de destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_supplier_invoice_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (fatura de compra) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_INVOICE_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "supplierInvoiceMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  supplierInvoiceNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma fatura de compra numa dada série de
+    documentos. Devolve `number` (o próximo número) e `name` (o nome da série). Útil antes
+    de criar uma nova fatura de compra, para saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(SUPPLIER_INVOICE_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "supplierInvoiceNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICE_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SupplierInvoiceOptions) {
+  supplierInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_invoice_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as faturas de compra de uma entidade (fornecedor) que podem ser
+    relacionadas/ligadas a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (fornecedor) cujas faturas relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_INVOICE_RELATABLE_QUERY, variables)
+        return unwrap(data, "supplierInvoiceRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_INVOICES_QUERY = """
+query ($companyId: Int!, $options: SupplierInvoiceOptions) {
+  supplierInvoices(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      expirationDate
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_supplier_invoices(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as faturas de compra de uma empresa, com os campos principais de
+    cada uma: número, data, validade (`expirationDate`), série, entidade/fornecedor, valor
+    total, valor reconciliado (`reconciledValue`, `reconciliationPercentage`) e estado.
+    Para obter o detalhe completo de uma fatura de compra usa `get_supplier_invoice`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_INVOICES_QUERY, variables)
+        return unwrap(data, "supplierInvoices")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  supplierLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_logs(
+    company_id: int,
+    supplier_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos fornecedores de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        supplier_id: opcional; filtra os logs de um fornecedor específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if supplier_id is not None:
+        options["relatedId"] = supplier_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_LOGS_QUERY, variables)
+        return unwrap(data, "supplierLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  supplierPurchaseOrder(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      grossValue
+      taxesValue
+      globalDiscount
+      globalDiscountValue
+      commercialDiscountValue
+      totalDiscountValue
+      retentionsValue
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      expirationDate
+      maturityDateDays
+      maturityDateName
+      yourReference
+      ourReference
+      economicActivityClassificationCodeId
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      importStatus
+      deliveryMethodName
+      deliveryVehicleName
+      deliveryVehicleLicensePlate
+      deliveryLoadDate
+      deliveryLoadAddress
+      deliveryLoadCity
+      deliveryLoadZipCode
+      deliveryUnloadAddress
+      deliveryUnloadCity
+      deliveryUnloadZipCode
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma nota de encomenda de compra a fornecedor (documento de
+    fornecedor) pelo seu ID de documento: dados do documento (número, série, data, estado,
+    totais), dados da entidade/fornecedor (`entityName`, `entityVat`, morada), descontos,
+    câmbio, reconciliação, vencimento (`expirationDate`, `maturityDateDays`,
+    `maturityDateName`), o código CAE (`economicActivityClassificationCodeId`), o estado de
+    importação (`importStatus`) e os dados de transporte. As linhas de produtos, os impostos,
+    o fornecedor completo e os documentos relacionados não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de encomenda de compra a fornecedor) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SUPPLIER_PURCHASE_ORDER_QUERY, variables)
+        return unwrap(data, "supplierPurchaseOrder")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  supplierPurchaseOrderGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma nota de encomenda de
+    compra a fornecedor. Devolve `token`, `path` e `filename`, que se combinam para
+    construir o URL de download do PDF. Nota: ao contrário de outras operações, não recebe
+    `companyId` — apenas o `documentId`.
+
+    Args:
+        document_id: ID do documento (nota de encomenda de compra a fornecedor) cujo PDF se
+            pretende.
+    """
+    try:
+        data = await _client.query(
+            SUPPLIER_PURCHASE_ORDER_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "supplierPurchaseOrderGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  supplierPurchaseOrderGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_zip_token(
+    company_id: int, full_path: str
+) -> Any:
+    """Gera um token temporário e seguro para descarregar várias notas de encomenda de
+    compra a fornecedor como um arquivo ZIP. Devolve `token`, `path` e `filename`, que se
+    combinam para construir o URL de download. O `full_path` identifica o ZIP a descarregar
+    (caminho devolvido por uma operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(
+            SUPPLIER_PURCHASE_ORDER_ZIP_TOKEN_QUERY, variables
+        )
+        return unwrap(data, "supplierPurchaseOrderGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  supplierPurchaseOrderLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às notas de encomenda de compra a fornecedor de
+    uma empresa: criações, modificações e remoções. Cada entrada indica a operação
+    (`operation`), os valores antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`,
+    `username`, `email`) e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma nota de encomenda de compra a fornecedor
+            específica (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_PURCHASE_ORDER_LOGS_QUERY, variables)
+        return unwrap(data, "supplierPurchaseOrderLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  supplierPurchaseOrderMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de notas de encomenda de compra a
+    fornecedor e o estado de entrega de cada um (`status`, `internalStatus`,
+    `mailServiceResponseId`). Útil para confirmar a quem foi enviado o documento e se a
+    entrega teve sucesso. Os logs detalhados de cada destinatário não são incluídos neste
+    selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_supplier_purchase_order_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_PURCHASE_ORDER_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "supplierPurchaseOrderMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  supplierPurchaseOrderMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de uma nota de encomenda de compra a fornecedor:
+    cada registo indica o email de destino, o conteúdo, o `deliveryId` (que liga aos
+    destinatários via `get_supplier_purchase_order_mail_recipients`) e a data de envio
+    (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de encomenda de compra a fornecedor) cujos envios
+            se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_PURCHASE_ORDER_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "supplierPurchaseOrderMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  supplierPurchaseOrderNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma nota de encomenda de compra a fornecedor
+    numa dada série de documentos. Devolve `number` (o próximo número) e `name` (o nome da
+    série). Útil antes de criar uma nova nota de encomenda de compra a fornecedor, para
+    saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(
+            SUPPLIER_PURCHASE_ORDER_NEXT_NUMBER_QUERY, variables
+        )
+        return unwrap(data, "supplierPurchaseOrderNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDER_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SupplierPurchaseOrderOptions) {
+  supplierPurchaseOrderRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_purchase_order_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as notas de encomenda de compra a fornecedor de uma entidade (fornecedor) que
+    podem ser relacionadas/ligadas a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (fornecedor) cujas notas de encomenda relacionáveis se
+            procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_PURCHASE_ORDER_RELATABLE_QUERY, variables
+        )
+        return unwrap(data, "supplierPurchaseOrderRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_PURCHASE_ORDERS_QUERY = """
+query ($companyId: Int!, $options: SupplierPurchaseOrderOptions) {
+  supplierPurchaseOrders(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      expirationDate
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_supplier_purchase_orders(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as notas de encomenda de compra a fornecedor de uma empresa, com os
+    campos principais de cada uma: número, data, validade (`expirationDate`), série,
+    entidade/fornecedor, valor total e estado. Para obter o detalhe completo de uma usa
+    `get_supplier_purchase_order`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_PURCHASE_ORDERS_QUERY, variables)
+        return unwrap(data, "supplierPurchaseOrders")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  supplierReceipt(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      yourReference
+      ourReference
+      economicActivityClassificationCodeId
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      file
+      fileOriginal
+      importStatus
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de um recibo de compra (documento de liquidação que salda compras a
+    um fornecedor) pelo seu ID de documento: dados do documento (número, série, data,
+    estado), o total (`totalValue`), o câmbio (`currencyExchangeTotalValue`,
+    `currencyExchangeExchange`), o estado de reconciliação (`reconciledValue`,
+    `remainingReconciledValue`, `reconciliationPercentage`, `totalRelatedAppliedValue`), os
+    dados da entidade/fornecedor, o código CAE, o ficheiro arquivado (`file`/`fileOriginal`)
+    e o estado de importação (`importStatus`). Os documentos saldados, a entidade completa e
+    os dados AT não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (recibo de compra) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SUPPLIER_RECEIPT_QUERY, variables)
+        return unwrap(data, "supplierReceipt")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  supplierReceiptGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de um recibo de compra.
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de download
+    do PDF. Nota: ao contrário de outras operações, não recebe `companyId` — apenas o
+    `documentId`.
+
+    Args:
+        document_id: ID do documento (recibo de compra) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            SUPPLIER_RECEIPT_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "supplierReceiptGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  supplierReceiptGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar vários recibos de compra como um
+    arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por uma
+    operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(SUPPLIER_RECEIPT_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "supplierReceiptGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  supplierReceiptLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos recibos de compra de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de um recibo de compra específico (corresponde
+            a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_RECEIPT_LOGS_QUERY, variables)
+        return unwrap(data, "supplierReceiptLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  supplierReceiptMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de recibos de compra e o estado de
+    entrega de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para
+    confirmar a quem foi enviado o documento e se a entrega teve sucesso. Os logs detalhados
+    de cada destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_supplier_receipt_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_RECEIPT_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "supplierReceiptMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  supplierReceiptMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de um recibo de compra: cada registo indica o
+    email de destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_supplier_receipt_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (recibo de compra) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SUPPLIER_RECEIPT_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "supplierReceiptMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  supplierReceiptNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para um recibo de compra numa dada série de
+    documentos. Devolve `number` (o próximo número) e `name` (o nome da série). Útil antes
+    de criar um novo recibo de compra, para saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(SUPPLIER_RECEIPT_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "supplierReceiptNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SupplierReceiptOptions) {
+  supplierReceiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplier_receipt_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os recibos de compra de uma entidade (fornecedor) que podem ser
+    relacionados/ligados a outro documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade (fornecedor) cujos recibos relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_RECEIPT_RELATABLE_QUERY, variables)
+        return unwrap(data, "supplierReceiptRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPTS_QUERY = """
+query ($companyId: Int!, $options: SupplierReceiptOptions) {
+  supplierReceipts(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_supplier_receipts(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os recibos de compra de uma empresa, com os campos principais de cada
+    um: número, data, série, entidade/fornecedor, valor total, valor reconciliado
+    (`reconciledValue`, `reconciliationPercentage`) e estado. Para obter o detalhe completo
+    de um recibo de compra usa `get_supplier_receipt`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIER_RECEIPTS_QUERY, variables)
+        return unwrap(data, "supplierReceipts")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIERS_QUERY = """
+query ($companyId: Int!, $options: SupplierOptions) {
+  suppliers(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      supplierId
+      number
+      name
+      vat
+      email
+      phone
+      city
+      countryId
+      creditLimit
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_suppliers(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os fornecedores de uma empresa, cada um com `supplierId`, `number`,
+    `name`, `vat`, contactos (`email`, `phone`, `city`), o país (`countryId`), o limite de
+    crédito (`creditLimit`) e `visible`. Para o detalhe completo de um fornecedor usa
+    `get_supplier`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SUPPLIERS_QUERY, variables)
+        return unwrap(data, "suppliers")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
