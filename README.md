@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.399.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.408.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -459,6 +459,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_salespersons_payments_pending_totals` | Totais agregados das comissões pendentes (valor, média, atraso). |
 | `get_sales_statements` | Extrato de vendas a clientes (documentos e estado de liquidação). |
 | `get_sales_statements_totals` | Totais agregados do extrato de vendas (valores e contagens). |
+| `get_settlement_note` | Detalhes de uma nota de acerto pelo seu ID (liquidação, reconciliação, entidade). |
+| `get_settlement_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de acerto. |
+| `get_settlement_note_zip_token` | Token temporário para descarregar várias notas de acerto em ZIP. |
+| `get_settlement_note_logs` | Histórico de alterações (logs) às notas de acerto. |
+| `get_settlement_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de acerto. |
+| `get_settlement_note_mails_history` | Histórico de envios por email de uma nota de acerto. |
+| `get_settlement_note_next_number` | Próximo número disponível para uma nota de acerto numa série. |
+| `get_settlement_note_relatable` | Notas de acerto de uma entidade relacionáveis com outro documento (deprecada). |
+| `list_settlement_notes` | Lista paginada das notas de acerto de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

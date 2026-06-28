@@ -19713,6 +19713,445 @@ async def get_sales_statements_totals(
         return _err(e)
 
 
+# ===========================================================================
+# Notas de acerto (SettlementNote)
+# ===========================================================================
+
+SETTLEMENT_NOTE_QUERY = """
+query ($companyId: Int!, $documentId: Int!) {
+  settlementNote(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      companyId
+      documentTypeId
+      documentSetName
+      documentSetId
+      number
+      date
+      year
+      fiscalZone
+      status
+      suspended
+      nullified
+      deletable
+      nullifiable
+      totalValue
+      documentTotal
+      financialDiscount
+      reconciledValue
+      remainingReconciledValue
+      reconciliationPercentage
+      totalRelatedAppliedValue
+      currencyExchangeTotalValue
+      currencyExchangeExchange
+      documentCalculationsMode
+      entityVat
+      entityName
+      entityNumber
+      entityAddress
+      entityZipCode
+      entityCity
+      entityCountryName
+      countryId
+      geographicZoneId
+      terminalId
+      yourReference
+      ourReference
+      economicActivityClassificationCodeId
+      notes
+      notesRelatedDocs
+      hash
+      hashControl
+      pdfExport
+      emailsCount
+      downloads
+      importStatus
+      createdAt
+      updatedAt
+      lastModified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note(company_id: int, document_id: int) -> Any:
+    """Obtém os detalhes de uma nota de acerto (documento de liquidação que salda/concilia
+    valores entre documentos) pelo seu ID de documento: dados do documento (número, série,
+    data, estado), o total (`totalValue`), o desconto financeiro (`financialDiscount`), o
+    câmbio (`currencyExchangeTotalValue`, `currencyExchangeExchange`), o estado de
+    reconciliação (`reconciledValue`, `remainingReconciledValue`,
+    `reconciliationPercentage`, `totalRelatedAppliedValue`), os dados da entidade e o
+    código CAE. Os documentos saldados, a entidade completa e os dados AT não são incluídos
+    neste selection set — podem ser adicionados se necessário.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de acerto) a obter.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        data = await _client.query(SETTLEMENT_NOTE_QUERY, variables)
+        return unwrap(data, "settlementNote")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_PDF_TOKEN_QUERY = """
+query ($documentId: Int!) {
+  settlementNoteGetPDFToken(documentId: $documentId) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_pdf_token(document_id: int) -> Any:
+    """Gera um token temporário e seguro para descarregar o PDF de uma nota de acerto.
+    Devolve `token`, `path` e `filename`, que se combinam para construir o URL de download
+    do PDF. Nota: ao contrário de outras operações, não recebe `companyId` — apenas o
+    `documentId`.
+
+    Args:
+        document_id: ID do documento (nota de acerto) cujo PDF se pretende.
+    """
+    try:
+        data = await _client.query(
+            SETTLEMENT_NOTE_PDF_TOKEN_QUERY, {"documentId": document_id}
+        )
+        return unwrap(data, "settlementNoteGetPDFToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_ZIP_TOKEN_QUERY = """
+query ($companyId: Int!, $fullPath: String!) {
+  settlementNoteGetZIPToken(companyId: $companyId, fullPath: $fullPath) {
+    errors { field msg }
+    data {
+      token
+      path
+      filename
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_zip_token(company_id: int, full_path: str) -> Any:
+    """Gera um token temporário e seguro para descarregar várias notas de acerto como um
+    arquivo ZIP. Devolve `token`, `path` e `filename`, que se combinam para construir o URL
+    de download. O `full_path` identifica o ZIP a descarregar (caminho devolvido por uma
+    operação de exportação em lote).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        full_path: caminho completo do arquivo ZIP a descarregar.
+    """
+    variables = {"companyId": company_id, "fullPath": full_path}
+    try:
+        data = await _client.query(SETTLEMENT_NOTE_ZIP_TOKEN_QUERY, variables)
+        return unwrap(data, "settlementNoteGetZIPToken")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  settlementNoteLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_logs(
+    company_id: int,
+    document_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às notas de acerto de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: opcional; filtra os logs de uma nota de acerto específica (corresponde
+            a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if document_id is not None:
+        options["relatedId"] = document_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SETTLEMENT_NOTE_LOGS_QUERY, variables)
+        return unwrap(data, "settlementNoteLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_MAIL_RECIPIENTS_QUERY = """
+query ($companyId: Int!, $deliveryId: String!, $options: RecipientOptions) {
+  settlementNoteMailRecipients(companyId: $companyId, deliveryId: $deliveryId, options: $options) {
+    errors { field msg }
+    data {
+      recipientId
+      email
+      name
+      internalStatus
+      status
+      mailServiceResponseId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_mail_recipients(
+    company_id: int,
+    delivery_id: str,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os destinatários de um envio por email de notas de acerto e o estado de entrega
+    de cada um (`status`, `internalStatus`, `mailServiceResponseId`). Útil para confirmar a
+    quem foi enviado o documento e se a entrega teve sucesso. Os logs detalhados de cada
+    destinatário não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_id: ID do envio de email cujos destinatários se pretendem (obtém-se
+            via `get_settlement_note_mails_history`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "deliveryId": delivery_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SETTLEMENT_NOTE_MAIL_RECIPIENTS_QUERY, variables
+        )
+        return unwrap(data, "settlementNoteMailRecipients")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_MAILS_HISTORY_QUERY = """
+query ($companyId: Int!, $documentId: Int!, $options: DocumentMailOptions) {
+  settlementNoteMailsHistory(companyId: $companyId, documentId: $documentId, options: $options) {
+    errors { field msg }
+    data {
+      documentMailId
+      email
+      content
+      deliveryId
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_mails_history(
+    company_id: int,
+    document_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista o histórico de envios por email de uma nota de acerto: cada registo indica o
+    email de destino, o conteúdo, o `deliveryId` (que liga aos destinatários via
+    `get_settlement_note_mail_recipients`) e a data de envio (`createdAt`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento (nota de acerto) cujos envios se pretendem.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "documentId": document_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(
+            SETTLEMENT_NOTE_MAILS_HISTORY_QUERY, variables
+        )
+        return unwrap(data, "settlementNoteMailsHistory")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_NEXT_NUMBER_QUERY = """
+query ($companyId: Int!, $documentSetId: Int!) {
+  settlementNoteNextNumber(companyId: $companyId, documentSetId: $documentSetId) {
+    errors { field msg }
+    data {
+      number
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_next_number(
+    company_id: int, document_set_id: int
+) -> Any:
+    """Obtém o próximo número disponível para uma nota de acerto numa dada série de
+    documentos. Devolve `number` (o próximo número) e `name` (o nome da série). Útil antes
+    de criar uma nova nota de acerto, para saber o número que lhe será atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_set_id: ID da série de documentos.
+    """
+    variables = {"companyId": company_id, "documentSetId": document_set_id}
+    try:
+        data = await _client.query(SETTLEMENT_NOTE_NEXT_NUMBER_QUERY, variables)
+        return unwrap(data, "settlementNoteNextNumber")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_RELATABLE_QUERY = """
+query ($companyId: Int!, $entityId: Int!, $options: SettlementNoteOptions) {
+  settlementNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      totalValue
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_settlement_note_relatable(
+    company_id: int,
+    entity_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista as notas de acerto de uma entidade que podem ser relacionadas/ligadas a outro
+    documento.
+
+    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
+    adequados. Mantida por cobertura; usa a alternativa em código novo.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_id: ID da entidade cujas notas de acerto relacionáveis se procuram.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SETTLEMENT_NOTE_RELATABLE_QUERY, variables)
+        return unwrap(data, "settlementNoteRelatable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTES_QUERY = """
+query ($companyId: Int!, $options: SettlementNoteOptions) {
+  settlementNotes(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      entityVat
+      totalValue
+      reconciledValue
+      reconciliationPercentage
+      status
+      nullified
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_settlement_notes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as notas de acerto de uma empresa, com os campos principais de cada
+    uma: número, data, série, entidade, valor total, valor reconciliado (`reconciledValue`,
+    `reconciliationPercentage`) e estado. Para obter o detalhe completo de uma nota de
+    acerto usa `get_settlement_note`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SETTLEMENT_NOTES_QUERY, variables)
+        return unwrap(data, "settlementNotes")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
