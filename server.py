@@ -27447,6 +27447,226 @@ async def update_geographic_zone(
         return _err(e)
 
 
+# ===========================================================================
+# RGPD — gerar PDF de consentimento (Mutation getCustomerGdprConsentPDF)
+# ===========================================================================
+
+GET_CUSTOMER_GDPR_CONSENT_PDF_MUTATION = """
+mutation ($companyId: Int!, $customerId: Int!) {
+  getCustomerGdprConsentPDF(companyId: $companyId, customerId: $customerId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_gdpr_consent_pdf(
+    company_id: int, customer_id: int
+) -> Any:
+    """Gera, do lado do servidor, o PDF do formulário de consentimento RGPD de um cliente —
+    usado para obter ou documentar o consentimento do cliente para o tratamento dos seus
+    dados pessoais. Devolve `success` (booleano).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente cujo formulário de consentimento se pretende.
+    """
+    variables = {"companyId": company_id, "customerId": customer_id}
+    try:
+        raw = await _client.query(
+            GET_CUSTOMER_GDPR_CONSENT_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getCustomerGdprConsentPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_CUSTOMER_GDPR_PERSONAL_DATA_PDF_MUTATION = """
+mutation ($companyId: Int!, $customerId: Int!) {
+  getCustomerGdprPersonalDataPDF(companyId: $companyId, customerId: $customerId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_gdpr_personal_data_pdf(
+    company_id: int, customer_id: int
+) -> Any:
+    """Gera, do lado do servidor, o PDF com os dados pessoais de um cliente (relatório RGPD
+    de acesso aos dados — o que a empresa tem registado sobre o cliente). Devolve `success`
+    (booleano).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente cujo relatório de dados pessoais se pretende.
+    """
+    variables = {"companyId": company_id, "customerId": customer_id}
+    try:
+        raw = await _client.query(
+            GET_CUSTOMER_GDPR_PERSONAL_DATA_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getCustomerGdprPersonalDataPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_CUSTOMER_HISTORY_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: CustomerHistoryOptions) {
+  getCustomerHistoryPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_history_pdf(
+    company_id: int, filters: list[dict[str, Any]] | None = None
+) -> Any:
+    """Gera, do lado do servidor, um PDF com o extrato/histórico de conta-corrente de um
+    cliente. Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token
+    de download adequado.
+
+    O cliente e o intervalo de datas indicam-se via `filters`, com a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários (ex.
+    `[{"field": "customerId", "comparison": "EQUALS", "value": "123"},
+      {"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"}]`).
+    Os nomes de `field`/`comparison` válidos são os dos enums `CustomerHistoryFilterField`
+    e `Comparison` da API.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (cliente, datas).
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_CUSTOMER_HISTORY_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getCustomerHistoryPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_CUSTOMER_HISTORY_XLS_MUTATION = """
+mutation ($companyId: Int!, $options: CustomerHistoryOptions) {
+  getCustomerHistoryXLS(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_history_xls(
+    company_id: int, filters: list[dict[str, Any]] | None = None
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLS (Excel) com o extrato/histórico de
+    conta-corrente de um cliente. Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    O cliente e o intervalo de datas indicam-se via `filters`, com a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON (ver `generate_customer_history_pdf`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}` (cliente, datas).
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_CUSTOMER_HISTORY_XLS_MUTATION, variables)
+        return {"success": (raw or {}).get("getCustomerHistoryXLS")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_CUSTOMERS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: CustomerOptions) {
+  getCustomersPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customers_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com a lista de clientes de uma empresa (opcionalmente
+    filtrada). Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token
+    de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `generate_customer_history_pdf`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_CUSTOMERS_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getCustomersPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_CUSTOMERS_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: CustomerOptions) {
+  getCustomersXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customers_xlsx(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) com a lista de clientes de uma
+    empresa (opcionalmente filtrada). Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `generate_customer_history_pdf`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_CUSTOMERS_XLSX_MUTATION, variables)
+        return {"success": (raw or {}).get("getCustomersXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

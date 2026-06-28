@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.592.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.598.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -650,6 +650,12 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_geographic_zone` | Cria uma zona geográfica (nome, abreviatura). |
 | `delete_geographic_zones` | Apaga uma ou mais zonas geográficas (em lote). ⚠️ destrutiva/irreversível. |
 | `update_geographic_zone` | Atualiza uma zona geográfica (nome, abreviatura, notas). |
+| `generate_customer_gdpr_consent_pdf` | Gera o PDF de consentimento RGPD de um cliente no servidor. |
+| `generate_customer_gdpr_personal_data_pdf` | Gera o PDF com os dados pessoais (RGPD) de um cliente no servidor. |
+| `generate_customer_history_pdf` | Gera o PDF do extrato/histórico de conta-corrente de um cliente no servidor. |
+| `generate_customer_history_xls` | Gera o XLS do extrato/histórico de conta-corrente de um cliente no servidor. |
+| `generate_customers_pdf` | Gera o PDF da lista de clientes (filtrada) no servidor. |
+| `generate_customers_xlsx` | Gera o XLSX da lista de clientes (filtrada) no servidor. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
