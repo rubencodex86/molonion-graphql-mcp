@@ -26513,6 +26513,379 @@ async def update_economic_activity_classification_code(
         return _err(e)
 
 
+# ===========================================================================
+# Orçamentos — criar em lote (Mutation estimateBulkCreate)
+# ===========================================================================
+
+ESTIMATE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: EstimateBulkInsert!) {
+  estimateBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_estimates(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria um ou mais orçamentos (documento) numa empresa, em lote.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado (com
+    `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente.
+      - `expirationDate` (str "YYYY-MM-DD"): data de validade do orçamento.
+      - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
+    Chaves OPCIONAIS úteis: `notes`, `yourReference`, `ourReference`, `status`
+      (0=rascunho, 1=fechado), `globalDiscount`, `maturityDateId`, `salespersonId`.
+
+    Devolve, por documento, `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por orçamento a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(ESTIMATE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("estimateBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: EstimateInsert!) {
+  estimateCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_estimate(company_id: int, document: dict[str, Any]) -> Any:
+    """Cria um orçamento (documento) numa empresa. Versão singular do `create_estimates`
+    (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado (com
+    `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_estimates`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
+    `expirationDate` ("YYYY-MM-DD") e `products` (list[dict]). Opcionais úteis: `notes`,
+    `status`, `yourReference`, `globalDiscount`, `salespersonId`, etc.
+
+    Devolve o orçamento criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do orçamento a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(ESTIMATE_CREATE_MUTATION, variables)
+        return unwrap(result, "estimateCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  estimateDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_estimates(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga um ou mais orçamentos de uma empresa (em lote). Só são elegíveis os orçamentos
+    em rascunho — documentos já fechados (com `hash`) NÃO se apagam (anulam-se). Devolve, por
+    ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos orçamentos a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(ESTIMATE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("estimateDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  estimateDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_estimate_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte um orçamento finalizado de volta a rascunho, para permitir voltar a editá-lo.
+    Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do orçamento a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(ESTIMATE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "estimateDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  estimateGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_estimate_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de um orçamento do lado do servidor. Devolve `success` (booleano). Para
+    depois descarregar o ficheiro, usa `get_estimate_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do orçamento cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(ESTIMATE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("estimateGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  estimateGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_estimates_zip(company_id: int, document_ids: list[int]) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de vários orçamentos.
+    Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_estimate_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos orçamentos a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(ESTIMATE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("estimateGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  estimateNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_estimate(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula um orçamento (marca como anulado, `nullified=True`), com um motivo opcional.
+    Devolve o documento com o novo estado.
+
+    ⚠️ ALTERA O ESTADO do documento de forma definitiva (anulação fica registada). Confirma o
+    documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do orçamento a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(ESTIMATE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "estimateNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  estimateSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_estimate_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia um ou mais orçamentos por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_estimate_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos orçamentos a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(ESTIMATE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("estimateSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+ESTIMATE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: EstimateUpdate!) {
+  estimateUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_estimate(company_id: int, document: dict[str, Any]) -> Any:
+    """Atualiza um orçamento (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos fechados (com `hash`) não se editam. Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_estimates` (`date`,
+    `customerId`, `documentSetId`, `expirationDate`, `products`, `notes`, `status`, etc.).
+    Em `products`, passar a lista substitui as linhas atuais.
+
+    Devolve o orçamento atualizado com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(ESTIMATE_UPDATE_MUTATION, variables)
+        return unwrap(result, "estimateUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.571.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.580.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -629,6 +629,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_economic_activity_classification_code` | Cria um código CAE (código, título, por omissão). |
 | `delete_economic_activity_classification_codes` | Apaga um ou mais códigos CAE (em lote). ⚠️ destrutiva/irreversível. |
 | `update_economic_activity_classification_code` | Atualiza um código CAE (código, título, por omissão). |
+| `create_estimates` | Cria um ou mais orçamentos (em lote). ⚠️ cria documentos reais. |
+| `create_estimate` | Cria um orçamento (singular). ⚠️ cria documento real. |
+| `delete_estimates` | Apaga um ou mais orçamentos (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_estimate_to_draft` | Reverte um orçamento finalizado para rascunho. ⚠️ altera estado. |
+| `generate_estimate_pdf` | (Re)gera o PDF de um orçamento no servidor (descarregar via token). |
+| `generate_estimates_zip` | (Re)gera um ZIP com PDFs de vários orçamentos (descarregar via token). |
+| `nullify_estimate` | Anula um orçamento (com motivo). ⚠️ altera estado definitivamente. |
+| `send_estimate_mail` | Envia orçamentos por email. ⚠️ envia email real. |
+| `update_estimate` | Atualiza um orçamento (input de documento por dict). ⚠️ altera documento real. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
