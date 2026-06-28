@@ -24880,6 +24880,389 @@ async def update_customer(
         return _err(e)
 
 
+# ===========================================================================
+# Notas de débito — criar em lote (Mutation debitNoteBulkCreate)
+# ===========================================================================
+
+DEBIT_NOTE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DebitNoteBulkInsert!) {
+  debitNoteBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_debit_notes(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais notas de débito (documento) numa empresa, em lote. Uma nota de débito
+    acrescenta um valor a cobrar relativamente a um documento de origem (ex. uma fatura).
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
+      - `relatedWith` (list[dict]): documento(s) de origem; cada item
+        `{relatedDocumentId (int), value (float)}`.
+    Chaves OPCIONAIS úteis: `notes`, `notesRelatedDocs`, `status` (0=rascunho, 1=fechado),
+      `yourReference`, `ourReference`, `salespersonId`.
+
+    Devolve, por documento, `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por nota de débito a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(DEBIT_NOTE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("debitNoteBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DebitNoteInsert!) {
+  debitNoteCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_debit_note(company_id: int, document: dict[str, Any]) -> Any:
+    """Cria uma nota de débito (documento) numa empresa. Versão singular do
+    `create_debit_notes` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_debit_notes`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
+    `products` (list[dict]) e `relatedWith` (list[dict] `{relatedDocumentId, value}`).
+    Opcionais úteis: `notes`, `status`, `yourReference`, `salespersonId`, etc.
+
+    Devolve a nota de débito criada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da nota de débito a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(DEBIT_NOTE_CREATE_MUTATION, variables)
+        return unwrap(result, "debitNoteCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  debitNoteDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_debit_notes(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais notas de débito de uma empresa (em lote). Só são elegíveis as notas
+    em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam (anulam-se).
+    Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de débito a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(DEBIT_NOTE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("debitNoteDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  debitNoteDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_debit_note_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma nota de débito finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de débito a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(DEBIT_NOTE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "debitNoteDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  debitNoteGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_debit_note_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma nota de débito do lado do servidor. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa `get_debit_note_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de débito cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(DEBIT_NOTE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("debitNoteGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  debitNoteGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_debit_notes_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias notas de débito.
+    Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_debit_note_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de débito a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(DEBIT_NOTE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("debitNoteGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  debitNoteNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_debit_note(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma nota de débito (marca como anulada, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que não
+    pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de débito a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(DEBIT_NOTE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "debitNoteNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  debitNoteSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_debit_note_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais notas de débito por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_debit_note_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de débito a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(DEBIT_NOTE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("debitNoteSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DEBIT_NOTE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: DebitNoteUpdate!) {
+  debitNoteUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_debit_note(company_id: int, document: dict[str, Any]) -> Any:
+    """Atualiza uma nota de débito (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com `nullify_debit_note`).
+    Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_debit_notes` (`date`,
+    `customerId`, `documentSetId`, `products`, `relatedWith`, `notes`, `status`, etc.). Em
+    `products`/`relatedWith`, passar a lista substitui o conjunto atual.
+
+    Devolve a nota de débito atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(DEBIT_NOTE_UPDATE_MUTATION, variables)
+        return unwrap(result, "debitNoteUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

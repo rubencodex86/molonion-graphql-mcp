@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.534.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.543.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -592,6 +592,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `send_customer_return_note_mail` | Envia notas de devolução de cliente por email. ⚠️ envia email real. |
 | `update_customer_return_note` | Atualiza uma nota de devolução de cliente (input de documento por dict). ⚠️ altera documento real. |
 | `update_customer` | Atualiza um cliente (parcial; comuns + extra_fields). |
+| `create_debit_notes` | Cria uma ou mais notas de débito (em lote; refere documentos de origem). ⚠️ cria documentos reais. |
+| `create_debit_note` | Cria uma nota de débito (singular). ⚠️ cria documento real. |
+| `delete_debit_notes` | Apaga uma ou mais notas de débito (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_debit_note_to_draft` | Reverte uma nota de débito finalizada para rascunho. ⚠️ altera estado. |
+| `generate_debit_note_pdf` | (Re)gera o PDF de uma nota de débito no servidor (descarregar via token). |
+| `generate_debit_notes_zip` | (Re)gera um ZIP com PDFs de várias notas de débito (descarregar via token). |
+| `nullify_debit_note` | Anula uma nota de débito (com motivo). ⚠️ operação fiscal irreversível. |
+| `send_debit_note_mail` | Envia notas de débito por email. ⚠️ envia email real. |
+| `update_debit_note` | Atualiza uma nota de débito (input de documento por dict). ⚠️ altera documento real. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
