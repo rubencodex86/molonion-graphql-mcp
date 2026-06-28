@@ -20689,6 +20689,196 @@ async def list_special_tax_schemes(
         return _err(e)
 
 
+# ===========================================================================
+# Movimentos de stock (StockMovements)
+# ===========================================================================
+
+STOCK_MOVEMENTS_QUERY = """
+query ($companyId: Int!, $productId: Int!, $options: StockMovementOptions) {
+  stockMovements(companyId: $companyId, productId: $productId, options: $options) {
+    errors { field msg }
+    data {
+      stockMovementId
+      type
+      direction
+      date
+      qty
+      acc
+      order
+      costPrice
+      unitPrice
+      lineUnitPrice
+      totalValue
+      fifoStock
+      lifoStock
+      fifoProfit
+      lifoProfit
+      notes
+      parentId
+      document {
+        __typename
+        documentId
+        documentTypeId
+        documentSetName
+        number
+        date
+        entityName
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_stock_movements(
+    company_id: int,
+    product_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de movimentos de stock de um produto (entradas, saídas,
+    transferências) em todos os armazéns, por ordem cronológica. Cada linha indica o tipo
+    (`type`), o sentido (`direction`), a data, a quantidade (`qty`), o stock acumulado
+    (`acc`), preços (`costPrice`, `unitPrice`, `lineUnitPrice`, `totalValue`), os valores
+    FIFO/LIFO de stock e lucro (`fifoStock`/`lifoStock`/`fifoProfit`/`lifoProfit`), as notas
+    e o documento de origem aninhado (`document`, interface `DocumentRead`; `__typename` dá
+    o tipo). Os movimentos por armazém (`warehouseMovements`) não são incluídos.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_id: ID do produto cujos movimentos de stock se pretendem.
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id, "productId": product_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(STOCK_MOVEMENTS_QUERY, variables)
+        return unwrap(data, "stockMovements")
+    except MolonionError as e:
+        return _err(e)
+
+
+STOCK_PRODUCTS_QUERY = """
+query ($companyId: Int!, $options: ListStockMovementOptions) {
+  stockProducts(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      productId
+      reference
+      name
+      type
+      stock
+      minStock
+      costPrice
+      price
+      priceWithTaxes
+      totalCostPrice
+      totalSale
+      warehouseId
+      productCategoryId
+      measurementUnitId
+      propertyGroupId
+      parentId
+      variantsCount
+      img
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_stock_products(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os produtos com a respetiva informação de stock de uma empresa: cada linha traz
+    `productId`, `reference`, `name`, `type`, o stock atual (`stock`) e mínimo (`minStock`),
+    os preços (`costPrice`, `price`, `priceWithTaxes`), o valor de inventário
+    (`totalCostPrice`, `totalSale`) e as chaves estrangeiras (armazém, categoria, unidade,
+    grupo de propriedades, produto-pai). Útil para relatórios de inventário/stock.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(STOCK_PRODUCTS_QUERY, variables)
+        return unwrap(data, "stockProducts")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: tal como `customerHistoryUserSettingsTemplates`, esta devolve uma LISTA de
+# envelopes (`[StockUserSettingsTemplates]!`), não um único envelope — por isso o
+# `unwrap()` não se aplica; tratamos a lista à mão.
+STOCK_TEMPLATES_QUERY = """
+query ($companyId: Int!) {
+  stockUserSettingsTemplates(companyId: $companyId) {
+    errors { field msg }
+    data {
+      userSettingsTemplateId
+      formName
+      name
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_stock_templates(company_id: int) -> Any:
+    """Lista os modelos (templates) de definições do utilizador para o ecrã de stock —
+    filtros/colunas guardados pelo utilizador para reutilizar. Cada modelo tem
+    `userSettingsTemplateId`, `formName` (o formulário a que se aplica) e `name`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        raw = await _client.query(STOCK_TEMPLATES_QUERY, {"companyId": company_id})
+        envelopes = (raw or {}).get("stockUserSettingsTemplates") or []
+        errs = [
+            e for env in envelopes if env for e in (env.get("errors") or [])
+        ]
+        if errs:
+            raise MolonionError(
+                "A operação 'stockUserSettingsTemplates' devolveu erros.",
+                errors=errs,
+            )
+        return [t for env in envelopes if env for t in (env.get("data") or [])]
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
