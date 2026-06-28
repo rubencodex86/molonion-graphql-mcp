@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.580.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.583.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -638,6 +638,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_estimate` | Anula um orçamento (com motivo). ⚠️ altera estado definitivamente. |
 | `send_estimate_mail` | Envia orçamentos por email. ⚠️ envia email real. |
 | `update_estimate` | Atualiza um orçamento (input de documento por dict). ⚠️ altera documento real. |
+| `create_event` | Cria um evento/lembrete (nome, data; repetição via extra_fields). |
+| `delete_events` | Apaga um ou mais eventos/lembretes (em lote). ⚠️ destrutiva/irreversível. |
+| `update_event` | Atualiza um evento/lembrete (nome, data, repetição, documento). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

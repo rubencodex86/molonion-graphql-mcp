@@ -26886,6 +26886,198 @@ async def update_estimate(company_id: int, document: dict[str, Any]) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Eventos / lembretes — criar (Mutation eventCreate)
+# ===========================================================================
+
+EVENT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: EventInsert!) {
+  eventCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      eventDate
+      documentId
+      isDraft
+      isHandled
+      repetition
+      repetitionValue
+      monthlyValue
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_event(
+    company_id: int,
+    name: str,
+    event_date: str,
+    document_id: int | None = None,
+    repetition: int | None = None,
+    repetition_value: int | None = None,
+    monthly_value: int | None = None,
+    is_draft: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um evento/lembrete numa empresa. OBRIGATÓRIOS: `name` e `event_date`
+    ("YYYY-MM-DD"). Opcionais expostos: o documento associado (`document_id`), a repetição
+    (`repetition`, `repetition_value`, `monthly_value`) e se é rascunho (`is_draft`). Para a
+    recorrência semanal (`weeklyMonday`/`weeklyTuesday`/…) e as ações do evento
+    (`eventActions`) usa `extra_fields` (dicionário camelCase). Devolve o evento criado com o
+    seu `eventId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome/descrição do evento.
+        event_date: data do evento ("YYYY-MM-DD").
+        document_id: opcional; documento associado ao evento.
+        repetition: opcional; tipo de repetição.
+        repetition_value: opcional; valor da repetição.
+        monthly_value: opcional; valor mensal da repetição.
+        is_draft: opcional; se `True`, cria como rascunho.
+        extra_fields: opcional; outros campos do `EventInsert` (camelCase), p.ex. os dias da
+            semana `weekly*` e `eventActions`.
+    """
+    data: dict[str, Any] = {"name": name, "eventDate": event_date}
+    if document_id is not None:
+        data["documentId"] = document_id
+    if repetition is not None:
+        data["repetition"] = repetition
+    if repetition_value is not None:
+        data["repetitionValue"] = repetition_value
+    if monthly_value is not None:
+        data["monthlyValue"] = monthly_value
+    if is_draft is not None:
+        data["isDraft"] = is_draft
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(EVENT_CREATE_MUTATION, variables)
+        return unwrap(result, "eventCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+EVENT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $eventId: [String]!) {
+  eventDelete(companyId: $companyId, eventId: $eventId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_events(company_id: int, event_ids: list[str]) -> Any:
+    """Apaga um ou mais eventos/lembretes de uma empresa (em lote). Os IDs são strings (ver
+    `list_events`/`get_event`). Devolve `status`, `deletedCount` e `elementsCount`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os eventos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        event_ids: lista de IDs (String) dos eventos a apagar.
+    """
+    variables = {"companyId": company_id, "eventId": event_ids}
+    try:
+        raw = await _client.query(EVENT_DELETE_MUTATION, variables)
+        node = (raw or {}).get("eventDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'eventDelete' devolveu erros.", errors=node["errors"]
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+EVENT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: EventUpdate!) {
+  eventUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      eventId
+      name
+      eventDate
+      documentId
+      isDraft
+      isHandled
+      repetition
+      repetitionValue
+      monthlyValue
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_event(
+    company_id: int,
+    event_id: str,
+    name: str | None = None,
+    event_date: str | None = None,
+    document_id: int | None = None,
+    repetition: int | None = None,
+    repetition_value: int | None = None,
+    monthly_value: int | None = None,
+    is_draft: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um evento/lembrete de uma empresa. Identifica-se pelo `event_id` (String); só
+    são alterados os campos que passares — nome, data, documento associado, repetição e se é
+    rascunho. Para a recorrência semanal (`weekly*`) e as ações (`eventActions`) usa
+    `extra_fields` (dicionário camelCase). Devolve o evento atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        event_id: ID (String) do evento a atualizar.
+        name: opcional; novo nome/descrição.
+        event_date: opcional; nova data ("YYYY-MM-DD").
+        document_id: opcional; documento associado.
+        repetition: opcional; tipo de repetição.
+        repetition_value: opcional; valor da repetição.
+        monthly_value: opcional; valor mensal da repetição.
+        is_draft: opcional; definir (ou não) como rascunho.
+        extra_fields: opcional; outros campos do `EventUpdate` (camelCase), p.ex. `weekly*`.
+    """
+    data: dict[str, Any] = {"eventId": event_id}
+    if name is not None:
+        data["name"] = name
+    if event_date is not None:
+        data["eventDate"] = event_date
+    if document_id is not None:
+        data["documentId"] = document_id
+    if repetition is not None:
+        data["repetition"] = repetition
+    if repetition_value is not None:
+        data["repetitionValue"] = repetition_value
+    if monthly_value is not None:
+        data["monthlyValue"] = monthly_value
+    if is_draft is not None:
+        data["isDraft"] = is_draft
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(EVENT_UPDATE_MUTATION, variables)
+        return unwrap(result, "eventUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
