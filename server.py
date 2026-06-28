@@ -23888,6 +23888,157 @@ async def get_vies_check(country_iso: str, vat: str) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Armazéns (Warehouse)
+# ===========================================================================
+
+WAREHOUSE_QUERY = """
+query ($companyId: Int!, $warehouseId: Int!) {
+  warehouse(companyId: $companyId, warehouseId: $warehouseId) {
+    errors { field msg }
+    data {
+      warehouseId
+      number
+      name
+      address
+      city
+      zipCode
+      phone
+      fax
+      contactName
+      contactEmail
+      isDefault
+      hasStock
+      countryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_warehouse(company_id: int, warehouse_id: int) -> Any:
+    """Obtém os detalhes de um armazém pelo seu ID: o número (`number`), o nome, a morada
+    (`address`, `city`, `zipCode`), os contactos (`phone`, `fax`, `contactName`,
+    `contactEmail`), se é o armazém por omissão (`isDefault`), se controla stock
+    (`hasStock`) e o país (`countryId`). O país e a empresa aninhados não são incluídos.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        warehouse_id: ID do armazém a obter.
+    """
+    variables = {"companyId": company_id, "warehouseId": warehouse_id}
+    try:
+        data = await _client.query(WAREHOUSE_QUERY, variables)
+        return unwrap(data, "warehouse")
+    except MolonionError as e:
+        return _err(e)
+
+
+WAREHOUSE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  warehouseLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_warehouse_logs(
+    company_id: int,
+    warehouse_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) aos armazéns de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        warehouse_id: opcional; filtra os logs de um armazém específico (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if warehouse_id is not None:
+        options["relatedId"] = warehouse_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(WAREHOUSE_LOGS_QUERY, variables)
+        return unwrap(data, "warehouseLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+WAREHOUSES_QUERY = """
+query ($companyId: Int!, $options: WarehouseOptions) {
+  warehouses(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      warehouseId
+      number
+      name
+      city
+      isDefault
+      hasStock
+      countryId
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_warehouses(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) os armazéns de uma empresa, cada um com `warehouseId`, `number`,
+    `name`, `city`, se é o armazém por omissão (`isDefault`), se controla stock (`hasStock`)
+    e o país (`countryId`). Úteis para escolher o armazém num produto ou movimento de stock.
+    Para o detalhe completo de um armazém usa `get_warehouse`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(WAREHOUSES_QUERY, variables)
+        return unwrap(data, "warehouses")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
