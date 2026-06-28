@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.589.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.592.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -647,6 +647,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `generate_mandate_sepa_pdf` | Gera o PDF do mandato de débito direto SEPA de um cliente/fornecedor. |
 | `generate_saft_xml` | Gera o ficheiro SAF-T(PT) XML de um período no servidor (descarregar via token). |
 | `generate_sepa_xml` | Exporta uma remessa bancária como SEPA XML (pain.008/pain.001) no servidor. |
+| `create_geographic_zone` | Cria uma zona geográfica (nome, abreviatura). |
+| `delete_geographic_zones` | Apaga uma ou mais zonas geográficas (em lote). ⚠️ destrutiva/irreversível. |
+| `update_geographic_zone` | Atualiza uma zona geográfica (nome, abreviatura, notas). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

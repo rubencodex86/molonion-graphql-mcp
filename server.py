@@ -27305,6 +27305,148 @@ async def generate_sepa_xml(company_id: int, bank_remittance_id: int) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Zonas geográficas — criar (Mutation geographicZoneCreate)
+# ===========================================================================
+
+GEOGRAPHIC_ZONE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: GeographicZoneInsert!) {
+  geographicZoneCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      geographicZoneId
+      name
+      abbreviation
+      notes
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_geographic_zone(
+    company_id: int, name: str, abbreviation: str, notes: str | None = None
+) -> Any:
+    """Cria uma zona geográfica numa empresa, com o nome (`name`), a abreviatura
+    (`abbreviation`) e, opcionalmente, notas (`notes`). As zonas geográficas usam-se para
+    agrupar clientes/fornecedores por região. Devolve a zona criada com o seu
+    `geographicZoneId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome da zona geográfica.
+        abbreviation: abreviatura da zona.
+        notes: opcional; notas.
+    """
+    data: dict[str, Any] = {"name": name, "abbreviation": abbreviation}
+    if notes is not None:
+        data["notes"] = notes
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(GEOGRAPHIC_ZONE_CREATE_MUTATION, variables)
+        return unwrap(result, "geographicZoneCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+GEOGRAPHIC_ZONE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $geographicZoneId: [Int]!) {
+  geographicZoneDelete(companyId: $companyId, geographicZoneId: $geographicZoneId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_geographic_zones(
+    company_id: int, geographic_zone_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais zonas geográficas de uma empresa (em lote). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as zonas indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        geographic_zone_ids: lista de IDs das zonas geográficas a apagar.
+    """
+    variables = {"companyId": company_id, "geographicZoneId": geographic_zone_ids}
+    try:
+        raw = await _client.query(GEOGRAPHIC_ZONE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("geographicZoneDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+GEOGRAPHIC_ZONE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: GeographicZoneUpdate!) {
+  geographicZoneUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      geographicZoneId
+      name
+      abbreviation
+      notes
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_geographic_zone(
+    company_id: int,
+    geographic_zone_id: int,
+    name: str | None = None,
+    abbreviation: str | None = None,
+    notes: str | None = None,
+) -> Any:
+    """Atualiza uma zona geográfica de uma empresa. Identifica-se pelo `geographic_zone_id`;
+    só são alterados os campos que passares — o nome (`name`), a abreviatura
+    (`abbreviation`) e/ou as notas (`notes`). Devolve a zona atualizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        geographic_zone_id: ID da zona geográfica a atualizar.
+        name: opcional; novo nome.
+        abbreviation: opcional; nova abreviatura.
+        notes: opcional; novas notas.
+    """
+    data: dict[str, Any] = {"geographicZoneId": geographic_zone_id}
+    if name is not None:
+        data["name"] = name
+    if abbreviation is not None:
+        data["abbreviation"] = abbreviation
+    if notes is not None:
+        data["notes"] = notes
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(GEOGRAPHIC_ZONE_UPDATE_MUTATION, variables)
+        return unwrap(result, "geographicZoneUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
