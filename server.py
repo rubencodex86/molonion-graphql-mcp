@@ -23629,6 +23629,89 @@ async def get_tax_logs(
         return _err(e)
 
 
+# ===========================================================================
+# Fusos horários (Timezone)
+# ===========================================================================
+
+TIMEZONE_QUERY = """
+query ($timezoneId: Int!) {
+  timezone(timezoneId: $timezoneId) {
+    errors { field msg }
+    data {
+      timezoneId
+      name
+      tzName
+      offset
+      ordering
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_timezone(timezone_id: int) -> Any:
+    """Obtém um fuso horário (tabela de referência global da Moloni ON) pelo seu ID: o nome
+    (`name`), o identificador IANA (`tzName`, ex. "Europe/Lisbon") e o desvio UTC em minutos
+    (`offset`). Nota: ao contrário da maioria das operações, NÃO recebe `companyId` — é uma
+    tabela global. O país associado não é incluído neste selection set.
+
+    Args:
+        timezone_id: ID do fuso horário a obter.
+    """
+    variables = {"timezoneId": timezone_id}
+    try:
+        data = await _client.query(TIMEZONE_QUERY, variables)
+        return unwrap(data, "timezone")
+    except MolonionError as e:
+        return _err(e)
+
+
+TIMEZONES_QUERY = """
+query ($options: TimezoneOptions) {
+  timezones(options: $options) {
+    errors { field msg }
+    data {
+      timezoneId
+      name
+      tzName
+      offset
+      ordering
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_timezones(
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os fusos horários (tabela de referência global da Moloni ON), cada um com
+    `timezoneId`, o nome (`name`), o identificador IANA (`tzName`) e o desvio UTC em minutos
+    (`offset`). Nota: ao contrário da maioria das operações, NÃO recebe `companyId` — é uma
+    tabela global.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(TIMEZONES_QUERY, variables)
+        return unwrap(data, "timezones")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
