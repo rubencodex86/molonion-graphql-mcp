@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.543.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.546.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -601,6 +601,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_debit_note` | Anula uma nota de débito (com motivo). ⚠️ operação fiscal irreversível. |
 | `send_debit_note_mail` | Envia notas de débito por email. ⚠️ envia email real. |
 | `update_debit_note` | Atualiza uma nota de débito (input de documento por dict). ⚠️ altera documento real. |
+| `create_delivery_method` | Cria um método de entrega (nome, por omissão). |
+| `delete_delivery_methods` | Apaga um ou mais métodos de entrega (em lote). ⚠️ destrutiva/irreversível. |
+| `update_delivery_method` | Atualiza um método de entrega (nome, por omissão). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

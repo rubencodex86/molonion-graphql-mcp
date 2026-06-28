@@ -25263,6 +25263,135 @@ async def update_debit_note(company_id: int, document: dict[str, Any]) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Métodos de entrega — criar (Mutation deliveryMethodCreate)
+# ===========================================================================
+
+DELIVERY_METHOD_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DeliveryMethodInsert!) {
+  deliveryMethodCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      deliveryMethodId
+      name
+      isDefault
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_delivery_method(
+    company_id: int, name: str, is_default: bool
+) -> Any:
+    """Cria um método de entrega numa empresa, com o nome (`name`) e a indicação de se é o
+    método por omissão (`is_default`). Devolve o método criado com o seu `deliveryMethodId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome do método de entrega.
+        is_default: se `True`, define como método de entrega por omissão.
+    """
+    data = {"name": name, "isDefault": is_default}
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(DELIVERY_METHOD_CREATE_MUTATION, variables)
+        return unwrap(result, "deliveryMethodCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_METHOD_DELETE_MUTATION = """
+mutation ($companyId: Int!, $deliveryMethodId: [Int]!) {
+  deliveryMethodDelete(companyId: $companyId, deliveryMethodId: $deliveryMethodId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_delivery_methods(
+    company_id: int, delivery_method_ids: list[int]
+) -> Any:
+    """Apaga um ou mais métodos de entrega de uma empresa (em lote). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os métodos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_method_ids: lista de IDs dos métodos de entrega a apagar.
+    """
+    variables = {"companyId": company_id, "deliveryMethodId": delivery_method_ids}
+    try:
+        raw = await _client.query(DELIVERY_METHOD_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("deliveryMethodDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_METHOD_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: DeliveryMethodUpdate!) {
+  deliveryMethodUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      deliveryMethodId
+      name
+      isDefault
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_delivery_method(
+    company_id: int,
+    delivery_method_id: int,
+    name: str | None = None,
+    is_default: bool | None = None,
+) -> Any:
+    """Atualiza um método de entrega de uma empresa. Identifica-se pelo `delivery_method_id`;
+    só são alterados os campos que passares — o nome (`name`) e/ou se é o método por omissão
+    (`is_default`). Devolve o método atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        delivery_method_id: ID do método de entrega a atualizar.
+        name: opcional; novo nome do método de entrega.
+        is_default: opcional; definir (ou não) como método por omissão.
+    """
+    data: dict[str, Any] = {"deliveryMethodId": delivery_method_id}
+    if name is not None:
+        data["name"] = name
+    if is_default is not None:
+        data["isDefault"] = is_default
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(DELIVERY_METHOD_UPDATE_MUTATION, variables)
+        return unwrap(result, "deliveryMethodUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
