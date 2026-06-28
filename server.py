@@ -29710,6 +29710,439 @@ async def generate_stock_single_product_xlsx(
         return _err(e)
 
 
+GET_SUPPLIERS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: SupplierOptions) {
+  getSuppliersPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_suppliers_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com a lista de fornecedores de uma empresa
+    (opcionalmente filtrada). Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_SUPPLIERS_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getSuppliersPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_SUPPLIERS_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: SupplierOptions) {
+  getSuppliersXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_suppliers_xlsx(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) com a lista de fornecedores de uma
+    empresa (opcionalmente filtrada). Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_SUPPLIERS_XLSX_MUTATION, variables)
+        return {"success": (raw or {}).get("getSuppliersXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Webhooks — criar (Mutation hookCreate)
+# ===========================================================================
+
+HOOK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: HookInsert!) {
+  hookCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      hookId
+      name
+      url
+      model
+      operation
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_hook(
+    company_id: int, model: str, operation: str, url: str
+) -> Any:
+    """Cria um webhook (hook) numa empresa: regista um `url` que a Moloni ON irá notificar
+    sempre que ocorrer uma `operation` (ex. criação/atualização) sobre um `model` (entidade).
+    Devolve o hook criado com o seu `hookId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        model: entidade a observar (valor do enum `HookModelField`, ex. documento, cliente).
+        operation: operação a observar (valor do enum `HookOperationField`, ex. criar/atualizar).
+        url: URL de callback que recebe a notificação (POST) quando o evento ocorre.
+    """
+    data = {"model": model, "operation": operation, "url": url}
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(HOOK_CREATE_MUTATION, variables)
+        return unwrap(result, "hookCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+HOOK_DELETE_MUTATION = """
+mutation ($companyId: Int!, $hookId: [String!]!) {
+  hookDelete(companyId: $companyId, hookId: $hookId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_hooks(company_id: int, hook_ids: list[str]) -> Any:
+    """Apaga um ou mais webhooks (hooks) de uma empresa (em lote). Os IDs são strings (ver
+    `get_hook`/`list_hooks`). Devolve, por ID, `{status, deletedCount, elementsCount,
+    errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — deixa de haver notificações para os hooks
+    apagados. Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        hook_ids: lista de IDs (String) dos webhooks a apagar.
+    """
+    variables = {"companyId": company_id, "hookId": hook_ids}
+    try:
+        raw = await _client.query(HOOK_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("hookDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+HOOK_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: HookUpdate!) {
+  hookUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      hookId
+      name
+      url
+      model
+      operation
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_hook(
+    company_id: int,
+    hook_id: str,
+    url: str,
+    model: list[str] | None = None,
+    operation: list[str] | None = None,
+) -> Any:
+    """Atualiza um webhook (hook) de uma empresa. OBRIGATÓRIOS: o `hook_id` (String) e o `url`
+    de callback. Opcionalmente atualiza as entidades observadas (`model`) e/ou as operações
+    (`operation`) — nesta mutation ambos são LISTAS de valores de enum. Devolve o hook
+    atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        hook_id: ID (String) do webhook a atualizar.
+        url: URL de callback (obrigatório, mesmo que não mude).
+        model: opcional; lista de entidades a observar (valores do enum `HookModelField`).
+        operation: opcional; lista de operações (valores do enum `HookOperationField`).
+    """
+    data: dict[str, Any] = {"hookId": hook_id, "url": url}
+    if model is not None:
+        data["model"] = model
+    if operation is not None:
+        data["operation"] = operation
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(HOOK_UPDATE_MUTATION, variables)
+        return unwrap(result, "hookUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Modelos de identificação — criar (Mutation identificationTemplateCreate)
+# ===========================================================================
+
+IDENTIFICATION_TEMPLATE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: IdentificationTemplateInsert!) {
+  identificationTemplateCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      identTemplateId
+      templateName
+      businessName
+      email
+      address
+      city
+      zipCode
+      phone
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_identification_template(
+    company_id: int,
+    template_name: str,
+    business_name: str,
+    country_id: int,
+    email: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    phone: str | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um modelo de identificação numa empresa — o "cabeçalho" de identificação (nome do
+    modelo, denominação social, morada, contactos) usado nos documentos e séries.
+    OBRIGATÓRIOS: `template_name`, `business_name` e `country_id`. Opcionais expostos:
+    `email`, `address`, `city`, `zip_code`, `phone`. Para os restantes campos (logótipo
+    `img`, rodapé `documentFooter`, `bankingInfo`, remetente de email, etc.) usa
+    `extra_fields` (dicionário camelCase). Devolve o modelo criado com o seu
+    `identTemplateId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        template_name: nome do modelo de identificação.
+        business_name: denominação social / nome do negócio.
+        country_id: ID do país.
+        email: opcional; email de contacto.
+        address: opcional; morada.
+        city: opcional; localidade.
+        zip_code: opcional; código postal.
+        phone: opcional; telefone.
+        extra_fields: opcional; outros campos do `IdentificationTemplateInsert` (camelCase),
+            p.ex. `img`, `documentFooter`, `bankingInfo`, `documentCompanyShowVATPrefix`.
+    """
+    data: dict[str, Any] = {
+        "templateName": template_name,
+        "businessName": business_name,
+        "countryId": country_id,
+    }
+    if email is not None:
+        data["email"] = email
+    if address is not None:
+        data["address"] = address
+    if city is not None:
+        data["city"] = city
+    if zip_code is not None:
+        data["zipCode"] = zip_code
+    if phone is not None:
+        data["phone"] = phone
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(
+            IDENTIFICATION_TEMPLATE_CREATE_MUTATION, variables
+        )
+        return unwrap(result, "identificationTemplateCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+IDENTIFICATION_TEMPLATE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $identTemplateId: [Int]!) {
+  identificationTemplateDelete(companyId: $companyId, identTemplateId: $identTemplateId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_identification_templates(
+    company_id: int, ident_template_ids: list[int]
+) -> Any:
+    """Apaga um ou mais modelos de identificação de uma empresa (em lote). Modelos em uso por
+    séries/documentos podem não ser elimináveis (o erro vem em `errors`). Devolve `status`,
+    `deletedCount` e `elementsCount`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os modelos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        ident_template_ids: lista de IDs dos modelos de identificação a apagar.
+    """
+    variables = {"companyId": company_id, "identTemplateId": ident_template_ids}
+    try:
+        raw = await _client.query(
+            IDENTIFICATION_TEMPLATE_DELETE_MUTATION, variables
+        )
+        node = (raw or {}).get("identificationTemplateDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'identificationTemplateDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+IDENTIFICATION_TEMPLATE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: IdentificationTemplateUpdate!) {
+  identificationTemplateUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      identTemplateId
+      templateName
+      businessName
+      email
+      address
+      city
+      zipCode
+      phone
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_identification_template(
+    company_id: int,
+    ident_template_id: int,
+    template_name: str | None = None,
+    business_name: str | None = None,
+    country_id: int | None = None,
+    email: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    phone: str | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um modelo de identificação de uma empresa. Identifica-se pelo
+    `ident_template_id`; só são alterados os campos que passares — nome do modelo,
+    denominação social, país e dados de contacto. Para os restantes campos (logótipo `img`,
+    rodapé `documentFooter`, `bankingInfo`, etc.) usa `extra_fields` (dicionário camelCase).
+    Devolve o modelo atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        ident_template_id: ID do modelo de identificação a atualizar.
+        template_name: opcional; novo nome do modelo.
+        business_name: opcional; nova denominação social.
+        country_id: opcional; novo ID do país.
+        email: opcional; novo email de contacto.
+        address: opcional; nova morada.
+        city: opcional; nova localidade.
+        zip_code: opcional; novo código postal.
+        phone: opcional; novo telefone.
+        extra_fields: opcional; outros campos do `IdentificationTemplateUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"identTemplateId": ident_template_id}
+    if template_name is not None:
+        data["templateName"] = template_name
+    if business_name is not None:
+        data["businessName"] = business_name
+    if country_id is not None:
+        data["countryId"] = country_id
+    if email is not None:
+        data["email"] = email
+    if address is not None:
+        data["address"] = address
+    if city is not None:
+        data["city"] = city
+    if zip_code is not None:
+        data["zipCode"] = zip_code
+    if phone is not None:
+        data["phone"] = phone
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(
+            IDENTIFICATION_TEMPLATE_UPDATE_MUTATION, variables
+        )
+        return unwrap(result, "identificationTemplateUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

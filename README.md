@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.645.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.653.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -703,6 +703,14 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `generate_stock_products_xlsx` | Gera o XLSX do stock de produtos (com movimento) no servidor. |
 | `generate_stock_single_product_pdf` | Gera o PDF do detalhe de stock/movimentos de um produto no servidor. |
 | `generate_stock_single_product_xlsx` | Gera o XLSX do detalhe de stock/movimentos de um produto no servidor. |
+| `generate_suppliers_pdf` | Gera o PDF da lista de fornecedores (filtrada) no servidor. |
+| `generate_suppliers_xlsx` | Gera o XLSX da lista de fornecedores (filtrada) no servidor. |
+| `create_hook` | Cria um webhook (URL notificado numa operação sobre uma entidade). |
+| `delete_hooks` | Apaga um ou mais webhooks (em lote). ⚠️ destrutiva/irreversível. |
+| `update_hook` | Atualiza um webhook (url, entidades, operações). |
+| `create_identification_template` | Cria um modelo de identificação (cabeçalho de documentos). |
+| `delete_identification_templates` | Apaga um ou mais modelos de identificação (em lote). ⚠️ destrutiva/irreversível. |
+| `update_identification_template` | Atualiza um modelo de identificação (nome, dados, contactos). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
