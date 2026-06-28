@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.546.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.555.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -604,6 +604,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_delivery_method` | Cria um método de entrega (nome, por omissão). |
 | `delete_delivery_methods` | Apaga um ou mais métodos de entrega (em lote). ⚠️ destrutiva/irreversível. |
 | `update_delivery_method` | Atualiza um método de entrega (nome, por omissão). |
+| `create_delivery_notes` | Cria uma ou mais guias de remessa (em lote). ⚠️ cria documentos reais. |
+| `create_delivery_note` | Cria uma guia de remessa (singular). ⚠️ cria documento real. |
+| `delete_delivery_notes` | Apaga uma ou mais guias de remessa (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_delivery_note_to_draft` | Reverte uma guia de remessa finalizada para rascunho. ⚠️ altera estado. |
+| `generate_delivery_note_pdf` | (Re)gera o PDF de uma guia de remessa no servidor (descarregar via token). |
+| `generate_delivery_notes_zip` | (Re)gera um ZIP com PDFs de várias guias de remessa (descarregar via token). |
+| `nullify_delivery_note` | Anula uma guia de remessa (com motivo). ⚠️ operação fiscal irreversível. |
+| `send_delivery_note_mail` | Envia guias de remessa por email. ⚠️ envia email real. |
+| `update_delivery_note` | Atualiza uma guia de remessa (input de documento por dict). ⚠️ altera documento real. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

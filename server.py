@@ -25392,6 +25392,389 @@ async def update_delivery_method(
         return _err(e)
 
 
+# ===========================================================================
+# Guias de remessa — criar em lote (Mutation deliveryNoteBulkCreate)
+# ===========================================================================
+
+DELIVERY_NOTE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DeliveryNoteBulkInsert!) {
+  deliveryNoteBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_delivery_notes(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais guias de remessa (documento de transporte) numa empresa, em lote.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
+      - `deliveryLoadDate` (str "YYYY-MM-DD HH:MM:SS"): data/hora de carga (documento de
+        transporte).
+    Chaves OPCIONAIS úteis: `notes`, `yourReference`, `status` (0=rascunho, 1=fechado),
+      `deliveryMethodId`, `vehicleId`, dados de carga/descarga, etc.
+
+    Devolve, por documento, `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por guia de remessa a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(DELIVERY_NOTE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("deliveryNoteBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DeliveryNoteInsert!) {
+  deliveryNoteCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_delivery_note(company_id: int, document: dict[str, Any]) -> Any:
+    """Cria uma guia de remessa (documento de transporte) numa empresa. Versão singular do
+    `create_delivery_notes` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_delivery_notes`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
+    `customerId` (int), `products` (list[dict]) e `deliveryLoadDate`
+    ("YYYY-MM-DD HH:MM:SS"). Opcionais úteis: `notes`, `status`, `yourReference`, dados de
+    transporte, etc.
+
+    Devolve a guia de remessa criada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da guia de remessa a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(DELIVERY_NOTE_CREATE_MUTATION, variables)
+        return unwrap(result, "deliveryNoteCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  deliveryNoteDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_delivery_notes(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais guias de remessa de uma empresa (em lote). Só são elegíveis as guias
+    em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam (anulam-se).
+    Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das guias de remessa a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(DELIVERY_NOTE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("deliveryNoteDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  deliveryNoteDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_delivery_note_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma guia de remessa finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da guia de remessa a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(DELIVERY_NOTE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "deliveryNoteDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  deliveryNoteGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_delivery_note_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma guia de remessa do lado do servidor. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa `get_delivery_note_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da guia de remessa cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(DELIVERY_NOTE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("deliveryNoteGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  deliveryNoteGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_delivery_notes_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias guias de remessa.
+    Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_delivery_note_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das guias de remessa a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(DELIVERY_NOTE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("deliveryNoteGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  deliveryNoteNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_delivery_note(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma guia de remessa (marca como anulada, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que não
+    pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da guia de remessa a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(DELIVERY_NOTE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "deliveryNoteNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  deliveryNoteSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_delivery_note_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais guias de remessa por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_delivery_note_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das guias de remessa a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(DELIVERY_NOTE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("deliveryNoteSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+DELIVERY_NOTE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: DeliveryNoteUpdate!) {
+  deliveryNoteUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_delivery_note(company_id: int, document: dict[str, Any]) -> Any:
+    """Atualiza uma guia de remessa (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_delivery_note`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_delivery_notes`
+    (`date`, `customerId`, `documentSetId`, `products`, `notes`, `status`, dados de
+    transporte, etc.). Em `products`, passar a lista substitui as linhas atuais.
+
+    Devolve a guia de remessa atualizada com `documentId`, `number`, `status`,
+    `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(DELIVERY_NOTE_UPDATE_MUTATION, variables)
+        return unwrap(result, "deliveryNoteUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
