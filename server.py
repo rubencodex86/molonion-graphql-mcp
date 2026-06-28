@@ -23847,6 +23847,47 @@ async def list_vehicles(
         return _err(e)
 
 
+# ===========================================================================
+# Validação VIES de NIF intracomunitário (ViesCheck)
+# ===========================================================================
+
+VIES_CHECK_QUERY = """
+query ($countryISO: String!, $vat: String!) {
+  viesCheck(countryISO: $countryISO, vat: $vat) {
+    errors { field msg }
+    data {
+      countryCode
+      name
+      address
+      zipCode
+      city
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_vies_check(country_iso: str, vat: str) -> Any:
+    """Valida um NIF intracomunitário no sistema VIES da UE. Devolve os dados do contribuinte
+    registados no VIES — `countryCode`, `name`, `address`, `zipCode`, `city` — quando o NIF
+    é válido. Se o NIF for inválido, o `data` vem vazio (ou com erros). Útil para confirmar
+    clientes/fornecedores estrangeiros antes de emitir documentos isentos de IVA. Nota: ao
+    contrário da maioria das operações, NÃO recebe `companyId` — consulta um serviço externo
+    da UE.
+
+    Args:
+        country_iso: código ISO do país do NIF (ex. "ES", "FR").
+        vat: número de contribuinte a validar (sem o prefixo do país).
+    """
+    variables = {"countryISO": country_iso, "vat": vat}
+    try:
+        data = await _client.query(VIES_CHECK_QUERY, variables)
+        return unwrap(data, "viesCheck")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
