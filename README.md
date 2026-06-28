@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.639.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.645.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -697,6 +697,12 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `generate_sales_statements_pdf` | Gera o PDF do extrato de vendas a clientes no servidor. |
 | `generate_sales_statements_xlsx` | Gera o XLSX do extrato de vendas a clientes no servidor. |
 | `generate_customer_sheet_pdf` | Gera o PDF da ficha detalhada de um cliente no servidor. |
+| `generate_stock_products_all_pdf` | Gera o PDF do inventário/stock de todos os produtos no servidor. |
+| `generate_stock_products_all_xlsx` | Gera o XLSX do inventário/stock de todos os produtos no servidor. |
+| `generate_stock_products_pdf` | Gera o PDF do stock de produtos (com movimento) no servidor. |
+| `generate_stock_products_xlsx` | Gera o XLSX do stock de produtos (com movimento) no servidor. |
+| `generate_stock_single_product_pdf` | Gera o PDF do detalhe de stock/movimentos de um produto no servidor. |
+| `generate_stock_single_product_xlsx` | Gera o XLSX do detalhe de stock/movimentos de um produto no servidor. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

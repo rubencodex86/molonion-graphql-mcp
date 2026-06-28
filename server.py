@@ -29449,6 +29449,267 @@ async def generate_customer_sheet_pdf(
         return _err(e)
 
 
+GET_STOCK_PRODUCTS_ALL_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: ListStockMovementOptions) {
+  getStockProductsAllPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_stock_products_all_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com o inventário/stock de todos os produtos de uma
+    empresa (ver a query `get_stock_products`). Devolve `success` (booleano). Para depois
+    descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_STOCK_PRODUCTS_ALL_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getStockProductsAllPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_STOCK_PRODUCTS_ALL_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: ListStockMovementOptions) {
+  getStockProductsAllXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_stock_products_all_xlsx(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) com o inventário/stock de todos os
+    produtos de uma empresa. Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_STOCK_PRODUCTS_ALL_XLSX_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getStockProductsAllXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_STOCK_PRODUCTS_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: ListStockMovementOptions) {
+  getStockProductsPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_stock_products_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF do stock de produtos de uma empresa (apenas os
+    produtos com movimento/stock, ao contrário de `generate_stock_products_all_pdf` que
+    inclui todos). Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o
+    token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_STOCK_PRODUCTS_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("getStockProductsPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_STOCK_PRODUCTS_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: ListStockMovementOptions) {
+  getStockProductsXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_stock_products_xlsx(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) do stock de produtos de uma empresa
+    (apenas os produtos com movimento/stock). Devolve `success` (booleano). Para depois
+    descarregar o ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: opcional; lista de filtros `{field, comparison, value}`.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(GET_STOCK_PRODUCTS_XLSX_MUTATION, variables)
+        return {"success": (raw or {}).get("getStockProductsXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_STOCK_SINGLE_PRODUCT_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: ListStockMovementOptions) {
+  getStockSingleProductPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_stock_single_product_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com o detalhe de stock/movimentos de UM produto. O
+    produto (e o intervalo de datas) seleciona-se via `filters` — p.ex. um filtro com
+    `field: "productId"`. Devolve `success` (booleano). Para depois descarregar o ficheiro,
+    usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: lista de filtros `{field, comparison, value}` — inclui o produto a detalhar.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_STOCK_SINGLE_PRODUCT_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getStockSingleProductPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+GET_STOCK_SINGLE_PRODUCT_XLSX_MUTATION = """
+mutation ($companyId: Int!, $options: ListStockMovementOptions) {
+  getStockSingleProductXlsx(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_stock_single_product_xlsx(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro XLSX (Excel) com o detalhe de stock/movimentos
+    de UM produto. O produto (e o intervalo de datas) seleciona-se via `filters` — p.ex. um
+    filtro com `field: "productId"`. Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Os filtros usam a estrutura genérica `field`/`comparison`/`value` da Moloni ON — passa
+    uma lista de dicionários (ver `get_sales_analysis_by_date`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: lista de filtros `{field, comparison, value}` — inclui o produto a detalhar.
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(
+            GET_STOCK_SINGLE_PRODUCT_XLSX_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("getStockSingleProductXlsx")}
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
