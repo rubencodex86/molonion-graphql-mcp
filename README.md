@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.478.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.481.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -538,6 +538,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_tax_logs` | Histórico de alterações (logs) às taxas de imposto. |
 | `get_timezone` | Detalhes de um fuso horário (tabela global) pelo seu ID. |
 | `list_timezones` | Lista dos fusos horários (tabela global). |
+| `get_vehicle` | Detalhes de uma viatura pelo seu ID (nome, matrícula). |
+| `get_vehicle_logs` | Histórico de alterações (logs) às viaturas. |
+| `list_vehicles` | Lista paginada das viaturas de uma empresa. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

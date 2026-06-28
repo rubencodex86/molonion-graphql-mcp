@@ -23712,6 +23712,141 @@ async def list_timezones(
         return _err(e)
 
 
+# ===========================================================================
+# Viaturas (Vehicle)
+# ===========================================================================
+
+VEHICLE_QUERY = """
+query ($companyId: Int!, $vehicleId: Int!) {
+  vehicle(companyId: $companyId, vehicleId: $vehicleId) {
+    errors { field msg }
+    data {
+      vehicleId
+      name
+      licensePlate
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_vehicle(company_id: int, vehicle_id: int) -> Any:
+    """Obtém os detalhes de uma viatura pelo seu ID: o nome (`name`), a matrícula
+    (`licensePlate`), se está visível (`visible`) e se é removível (`deletable`). As
+    viaturas usam-se nos documentos de transporte (guias).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        vehicle_id: ID da viatura a obter.
+    """
+    variables = {"companyId": company_id, "vehicleId": vehicle_id}
+    try:
+        data = await _client.query(VEHICLE_QUERY, variables)
+        return unwrap(data, "vehicle")
+    except MolonionError as e:
+        return _err(e)
+
+
+VEHICLE_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  vehicleLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_vehicle_logs(
+    company_id: int,
+    vehicle_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às viaturas de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        vehicle_id: opcional; filtra os logs de uma viatura específica (corresponde a
+            `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if vehicle_id is not None:
+        options["relatedId"] = vehicle_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(VEHICLE_LOGS_QUERY, variables)
+        return unwrap(data, "vehicleLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
+VEHICLES_QUERY = """
+query ($companyId: Int!, $options: VehicleOptions) {
+  vehicles(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      vehicleId
+      name
+      licensePlate
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_vehicles(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as viaturas de uma empresa, cada uma com `vehicleId`, `name`, a
+    matrícula (`licensePlate`) e `visible`. Úteis para escolher a viatura num documento de
+    transporte. Para o detalhe completo de uma viatura usa `get_vehicle`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(VEHICLES_QUERY, variables)
+        return unwrap(data, "vehicles")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
