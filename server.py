@@ -24174,6 +24174,712 @@ async def update_credit_note(company_id: int, document: dict[str, Any]) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Clientes — criar (Mutation customerCreate)
+# ===========================================================================
+
+CUSTOMER_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CustomerInsert!) {
+  customerCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      customerId
+      number
+      name
+      vat
+      email
+      phone
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_customer(
+    company_id: int,
+    number: str,
+    country_id: int,
+    language_id: int,
+    name: str | None = None,
+    vat: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    maturity_date_id: int | None = None,
+    payment_method_id: int | None = None,
+    salesperson_id: int | None = None,
+    price_class_id: int | None = None,
+    discount: float | None = None,
+    credit_limit: float | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um cliente numa empresa. OBRIGATÓRIOS: `number` (número/código único do cliente),
+    `country_id` e `language_id`. Os restantes campos comuns estão expostos como parâmetros
+    opcionais (`name`, `vat`, contactos, morada, condições comerciais). Para campos menos
+    comuns (o input tem ~40 campos), usa `extra_fields` (dicionário camelCase). Devolve o
+    cliente criado com o seu `customerId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        number: número/código único do cliente.
+        country_id: ID do país (ver `list_countries`).
+        language_id: ID do idioma (ver `list_languages`).
+        name: opcional; nome do cliente.
+        vat: opcional; NIF/número de contribuinte.
+        email: opcional; email.
+        phone: opcional; telefone.
+        address: opcional; morada.
+        city: opcional; cidade.
+        zip_code: opcional; código postal.
+        maturity_date_id: opcional; condição de vencimento (ver `list_maturity_dates`).
+        payment_method_id: opcional; método de pagamento (ver `list_payment_methods`).
+        salesperson_id: opcional; vendedor associado (ver `list_salespersons`).
+        price_class_id: opcional; classe de preço (ver `list_price_classes`).
+        discount: opcional; desconto por omissão (%).
+        credit_limit: opcional; limite de crédito.
+        extra_fields: opcional; dicionário com outros campos do `CustomerInsert` (camelCase).
+    """
+    data: dict[str, Any] = {
+        "number": number,
+        "countryId": country_id,
+        "languageId": language_id,
+    }
+    optional = {
+        "name": name,
+        "vat": vat,
+        "email": email,
+        "phone": phone,
+        "address": address,
+        "city": city,
+        "zipCode": zip_code,
+        "maturityDateId": maturity_date_id,
+        "paymentMethodId": payment_method_id,
+        "salespersonId": salesperson_id,
+        "priceClassId": price_class_id,
+        "discount": discount,
+        "creditLimit": credit_limit,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(CUSTOMER_CREATE_MUTATION, variables)
+        return unwrap(result, "customerCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_DELETE_MUTATION = """
+mutation ($companyId: Int!, $customerId: [Int]!) {
+  customerDelete(companyId: $companyId, customerId: $customerId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_customers(company_id: int, customer_ids: list[int]) -> Any:
+    """Apaga um ou mais clientes de uma empresa (em lote). Clientes referenciados por
+    documentos existentes podem não ser elimináveis (o erro vem em `errors`). Devolve, por
+    ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os clientes indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_ids: lista de IDs dos clientes a apagar.
+    """
+    variables = {"companyId": company_id, "customerId": customer_ids}
+    try:
+        raw = await _client.query(CUSTOMER_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("customerDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_GDPR_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $customerId: Int!, $mailData: CustomerGdprEmailData!) {
+  customerGdprSendMail(companyId: $companyId, customerId: $customerId, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_customer_gdpr_mail(
+    company_id: int,
+    customer_id: int,
+    to: list[str],
+    gdpr_types: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+) -> Any:
+    """Envia um email relacionado com RGPD a um cliente (ex. relatório de dados pessoais,
+    pedido de consentimento, confirmação de apagamento). Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL com dados pessoais a destinatários externos — confirma os endereços
+    e o tipo antes de enviar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente a quem o email diz respeito.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        gdpr_types: lista de tipos de email RGPD (valores do enum `CustomerGdprEmailType`
+            da Moloni ON).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+    """
+    mail_data: dict[str, Any] = {
+        "to": [{"email": e} for e in to],
+        "type": gdpr_types,
+    }
+    if cc:
+        mail_data["cc"] = [{"email": e} for e in cc]
+    if bcc:
+        mail_data["bcc"] = [{"email": e} for e in bcc]
+    variables = {
+        "companyId": company_id,
+        "customerId": customer_id,
+        "mailData": mail_data,
+    }
+    try:
+        raw = await _client.query(CUSTOMER_GDPR_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("customerGdprSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Notas de devolução de cliente — criar em lote
+# (Mutation customerReturnNoteBulkCreate)
+# ===========================================================================
+
+CUSTOMER_RETURN_NOTE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CustomerReturnNoteBulkInsert!) {
+  customerReturnNoteBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_customer_return_notes(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais notas de devolução de cliente (documento de transporte) numa empresa,
+    em lote.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas; cada linha com `productId` (int), `ordering`
+        (int) e `qty` (float) OBRIGATÓRIOS, e opcionais `price`, `discount`, `taxes`, etc.
+        (ver `create_bills_of_lading`).
+      - `deliveryLoadDate` (str "YYYY-MM-DD HH:MM:SS"): data/hora de carga (documento de
+        transporte).
+    Chaves OPCIONAIS úteis: `notes`, `yourReference`, `status` (0=rascunho, 1=fechado),
+      `deliveryMethodId`, `vehicleId`, dados de carga/descarga, etc.
+
+    Devolve, por documento, `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por nota de devolução a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(
+            CUSTOMER_RETURN_NOTE_BULK_CREATE_MUTATION, variables
+        )
+        envelopes = (raw or {}).get("customerReturnNoteBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CustomerReturnNoteInsert!) {
+  customerReturnNoteCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_customer_return_note(
+    company_id: int, document: dict[str, Any]
+) -> Any:
+    """Cria uma nota de devolução de cliente (documento de transporte) numa empresa. Versão
+    singular do `create_customer_return_notes` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_customer_return_notes`: OBRIGATÓRIAS `documentSetId` (int), `date`
+    ("YYYY-MM-DD"), `customerId` (int), `products` (list[dict]) e `deliveryLoadDate`
+    ("YYYY-MM-DD HH:MM:SS"). Opcionais úteis: `notes`, `status`, `yourReference`, dados de
+    transporte, etc.
+
+    Devolve a nota de devolução criada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da nota de devolução a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(CUSTOMER_RETURN_NOTE_CREATE_MUTATION, variables)
+        return unwrap(result, "customerReturnNoteCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  customerReturnNoteDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_customer_return_notes(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais notas de devolução de cliente de uma empresa (em lote). Só são
+    elegíveis as notas em rascunho — documentos já fechados/certificados (com `hash`) NÃO se
+    apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de devolução a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(CUSTOMER_RETURN_NOTE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("customerReturnNoteDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  customerReturnNoteDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_customer_return_note_to_draft(
+    company_id: int, document_id: int
+) -> Any:
+    """Reverte uma nota de devolução de cliente finalizada de volta a rascunho, para permitir
+    voltar a editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de devolução a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(
+            CUSTOMER_RETURN_NOTE_DRAFTABLE_MUTATION, variables
+        )
+        return unwrap(result, "customerReturnNoteDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  customerReturnNoteGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_return_note_pdf(
+    company_id: int, document_id: int
+) -> Any:
+    """(Re)gera o PDF de uma nota de devolução de cliente do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_customer_return_note_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de devolução cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(
+            CUSTOMER_RETURN_NOTE_GET_PDF_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("customerReturnNoteGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  customerReturnNoteGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_customer_return_notes_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias notas de devolução
+    de cliente. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_customer_return_note_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de devolução a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(
+            CUSTOMER_RETURN_NOTE_GET_ZIP_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("customerReturnNoteGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  customerReturnNoteNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_customer_return_note(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma nota de devolução de cliente (marca como anulada, `nullified=True`), com um
+    motivo opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que
+    não pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de devolução a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(
+            CUSTOMER_RETURN_NOTE_NULLIFY_MUTATION, variables
+        )
+        return unwrap(result, "customerReturnNoteNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  customerReturnNoteSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_customer_return_note_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais notas de devolução de cliente por email. Devolve `success`
+    (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_customer_return_note_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de devolução a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(
+            CUSTOMER_RETURN_NOTE_SEND_MAIL_MUTATION, variables
+        )
+        return {"success": (raw or {}).get("customerReturnNoteSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+CUSTOMER_RETURN_NOTE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: CustomerReturnNoteUpdate!) {
+  customerReturnNoteUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_customer_return_note(
+    company_id: int, document: dict[str, Any]
+) -> Any:
+    """Atualiza uma nota de devolução de cliente (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_customer_return_note`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de
+    `create_customer_return_notes` (`date`, `customerId`, `documentSetId`, `products`,
+    `notes`, `status`, dados de transporte, etc.). Em `products`, passar a lista substitui
+    as linhas atuais.
+
+    Devolve a nota de devolução atualizada com `documentId`, `number`, `status`,
+    `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(CUSTOMER_RETURN_NOTE_UPDATE_MUTATION, variables)
+        return unwrap(result, "customerReturnNoteUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Clientes — atualizar (Mutation customerUpdate)
+# ===========================================================================
+
+CUSTOMER_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: CustomerUpdate!) {
+  customerUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      customerId
+      number
+      name
+      vat
+      email
+      phone
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_customer(
+    company_id: int,
+    customer_id: int,
+    number: str | None = None,
+    name: str | None = None,
+    vat: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    country_id: int | None = None,
+    language_id: int | None = None,
+    maturity_date_id: int | None = None,
+    payment_method_id: int | None = None,
+    salesperson_id: int | None = None,
+    price_class_id: int | None = None,
+    discount: float | None = None,
+    credit_limit: float | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um cliente de uma empresa. Identifica-se pelo `customer_id` (obrigatório);
+    só são alterados os campos que passares. Os campos comuns estão expostos como parâmetros
+    opcionais; para campos menos comuns (o input tem ~40 campos), usa `extra_fields`
+    (dicionário camelCase). Devolve o cliente atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        customer_id: ID do cliente a atualizar.
+        number: opcional; número/código do cliente.
+        name: opcional; nome do cliente.
+        vat: opcional; NIF/número de contribuinte.
+        email: opcional; email.
+        phone: opcional; telefone.
+        address: opcional; morada.
+        city: opcional; cidade.
+        zip_code: opcional; código postal.
+        country_id: opcional; país (ver `list_countries`).
+        language_id: opcional; idioma (ver `list_languages`).
+        maturity_date_id: opcional; condição de vencimento.
+        payment_method_id: opcional; método de pagamento.
+        salesperson_id: opcional; vendedor associado.
+        price_class_id: opcional; classe de preço.
+        discount: opcional; desconto por omissão (%).
+        credit_limit: opcional; limite de crédito.
+        extra_fields: opcional; dicionário com outros campos do `CustomerUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"customerId": customer_id}
+    optional = {
+        "number": number,
+        "name": name,
+        "vat": vat,
+        "email": email,
+        "phone": phone,
+        "address": address,
+        "city": city,
+        "zipCode": zip_code,
+        "countryId": country_id,
+        "languageId": language_id,
+        "maturityDateId": maturity_date_id,
+        "paymentMethodId": payment_method_id,
+        "salespersonId": salesperson_id,
+        "priceClassId": price_class_id,
+        "discount": discount,
+        "creditLimit": credit_limit,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(CUSTOMER_UPDATE_MUTATION, variables)
+        return unwrap(result, "customerUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

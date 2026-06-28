@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.521.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.534.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -579,6 +579,19 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_credit_note` | Anula uma nota de crédito (com motivo). ⚠️ operação fiscal irreversível. |
 | `send_credit_note_mail` | Envia notas de crédito por email (to/cc/bcc, mensagem, anexo). ⚠️ envia email real. |
 | `update_credit_note` | Atualiza uma nota de crédito (input de documento por dict). ⚠️ altera documento real. |
+| `create_customer` | Cria um cliente (number/país/idioma obrigatórios; comuns + extra_fields). |
+| `delete_customers` | Apaga um ou mais clientes (em lote). ⚠️ destrutiva/irreversível. |
+| `send_customer_gdpr_mail` | Envia email RGPD a um cliente (relatório de dados, consentimento, apagamento). ⚠️ envia email real. |
+| `create_customer_return_notes` | Cria uma ou mais notas de devolução de cliente (em lote). ⚠️ cria documentos reais. |
+| `create_customer_return_note` | Cria uma nota de devolução de cliente (singular). ⚠️ cria documento real. |
+| `delete_customer_return_notes` | Apaga uma ou mais notas de devolução de cliente (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_customer_return_note_to_draft` | Reverte uma nota de devolução de cliente finalizada para rascunho. ⚠️ altera estado. |
+| `generate_customer_return_note_pdf` | (Re)gera o PDF de uma nota de devolução de cliente no servidor (descarregar via token). |
+| `generate_customer_return_notes_zip` | (Re)gera um ZIP com PDFs de várias notas de devolução de cliente (descarregar via token). |
+| `nullify_customer_return_note` | Anula uma nota de devolução de cliente (com motivo). ⚠️ operação fiscal irreversível. |
+| `send_customer_return_note_mail` | Envia notas de devolução de cliente por email. ⚠️ envia email real. |
+| `update_customer_return_note` | Atualiza uma nota de devolução de cliente (input de documento por dict). ⚠️ altera documento real. |
+| `update_customer` | Atualiza um cliente (parcial; comuns + extra_fields). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
