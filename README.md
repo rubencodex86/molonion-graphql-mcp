@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.671.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.683.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -729,6 +729,18 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `update_invoice_receipt` | Atualiza uma fatura-recibo (input de documento por dict). ⚠️ altera documento real. |
 | `send_invoice_mail` | Envia faturas por email. ⚠️ envia email real. |
 | `update_invoice` | Atualiza uma fatura (input de documento por dict). ⚠️ altera documento real. |
+| `generate_labels_pdf` | Gera o PDF de etiquetas de produtos no servidor (descarregar via token). |
+| `create_label_template` | Cria um modelo de etiqueta (tamanho, campos). |
+| `create_default_label_templates` | Cria o conjunto de modelos de etiqueta predefinidos (por idioma). |
+| `delete_label_templates` | Apaga um ou mais modelos de etiqueta (em lote). ⚠️ destrutiva/irreversível. |
+| `update_label_template` | Atualiza um modelo de etiqueta (nome, tamanho, campos). |
+| `create_maturity_date` | Cria uma data de vencimento / condição de pagamento (dias, desconto). |
+| `delete_maturity_dates` | Apaga uma ou mais datas de vencimento (em lote). ⚠️ destrutiva/irreversível. |
+| `update_maturity_date` | Atualiza uma data de vencimento (dias, desconto, por omissão). |
+| `create_measurement_unit` | Cria uma unidade de medida (nome, abreviatura, código UN/ECE). |
+| `delete_measurement_units` | Apaga uma ou mais unidades de medida (em lote). ⚠️ destrutiva/irreversível. |
+| `import_measurement_unit` | Importa uma unidade de medida da lista padrão (UN/ECE). |
+| `update_measurement_unit` | Atualiza uma unidade de medida (nome, abreviatura, código UN/ECE). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

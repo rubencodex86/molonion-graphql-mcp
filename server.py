@@ -30905,6 +30905,633 @@ async def update_invoice(company_id: int, document: dict[str, Any]) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Etiquetas — exportar PDF (Mutation labelExportPDF)
+# ===========================================================================
+
+LABEL_EXPORT_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: LabelExportPDFOptions!) {
+  labelExportPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_labels_pdf(
+    company_id: int,
+    entity: str,
+    fiscal_zone: str,
+    size: int,
+    collate: bool,
+    num_labels: int,
+    fields: list[str],
+    products: list[dict[str, Any]],
+    document_name: str | None = None,
+) -> Any:
+    """Gera, do lado do servidor, um PDF com etiquetas de produtos, renderizadas segundo o
+    modelo e os dados indicados. Devolve `success` (booleano). Para depois descarregar o
+    ficheiro, usa o token de download adequado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity: tipo de entidade das etiquetas (valor do enum `EntityEnum`).
+        fiscal_zone: zona fiscal aplicável (ex. "pt", "pt_madeira", "pt_azores").
+        size: tamanho/modelo de etiqueta (Int — formato da folha de etiquetas).
+        collate: se `True`, intercala (collate) as etiquetas na impressão.
+        num_labels: número total de etiquetas a gerar.
+        fields: lista de campos a incluir na etiqueta (valores do enum `LabelExportField`,
+            ex. nome, preço, código de barras).
+        products: lista de produtos a etiquetar — cada item um dicionário `LabelExportProduct`
+            (camelCase), tipicamente `{"productId": int, "quantity": int}`.
+        document_name: opcional; nome a dar ao documento/ficheiro gerado.
+    """
+    options: dict[str, Any] = {
+        "entity": entity,
+        "fiscalZone": fiscal_zone,
+        "size": size,
+        "collate": collate,
+        "numLabels": num_labels,
+        "fields": fields,
+        "products": products,
+    }
+    if document_name is not None:
+        options["documentName"] = document_name
+    variables = {"companyId": company_id, "options": options}
+    try:
+        raw = await _client.query(LABEL_EXPORT_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("labelExportPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Modelos de etiqueta — criar (Mutation labelTemplateCreate)
+# ===========================================================================
+
+LABEL_TEMPLATE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: LabelTemplateInsert!) {
+  labelTemplateCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      labelTemplateId
+      name
+      isDefault
+      collate
+      size
+      obs
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_label_template(
+    company_id: int,
+    name: str,
+    collate: bool,
+    size: int,
+    fields: list[list[dict[str, Any]]],
+    is_default: bool | None = None,
+    obs: str | None = None,
+) -> Any:
+    """Cria um modelo de etiqueta numa empresa — define o tamanho/formato e que campos
+    aparecem em cada etiqueta. OBRIGATÓRIOS: `name`, `collate`, `size` e `fields`. Opcionais:
+    `is_default` e `obs`. Devolve o modelo criado com o seu `labelTemplateId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome do modelo de etiqueta.
+        collate: se `True`, intercala (collate) as etiquetas na impressão.
+        size: tamanho/formato da folha de etiquetas (Int).
+        fields: disposição dos campos na etiqueta — lista de linhas, cada uma uma lista de
+            dicionários `LabelTemplateFieldInput` (camelCase) que descrevem cada campo
+            (ex. tipo de campo, posição). Estrutura aninhada `[[...]]`.
+        is_default: opcional; se `True`, define como modelo por omissão.
+        obs: opcional; observações.
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "collate": collate,
+        "size": size,
+        "fields": fields,
+    }
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if obs is not None:
+        data["obs"] = obs
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(LABEL_TEMPLATE_CREATE_MUTATION, variables)
+        return unwrap(result, "labelTemplateCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+LABEL_TEMPLATE_CREATE_DEFAULTS_MUTATION = """
+mutation ($companyId: Int!, $languageId: Int!) {
+  labelTemplateCreateDefaults(companyId: $companyId, languageId: $languageId) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_default_label_templates(
+    company_id: int, language_id: int
+) -> Any:
+    """Cria, de uma só vez, o conjunto de modelos de etiqueta predefinidos (de fábrica) para
+    uma empresa, no idioma indicado. Devolve um booleano a indicar se foram criados com
+    sucesso.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        language_id: ID do idioma em que criar os modelos predefinidos.
+    """
+    variables = {"companyId": company_id, "languageId": language_id}
+    try:
+        result = await _client.query(
+            LABEL_TEMPLATE_CREATE_DEFAULTS_MUTATION, variables
+        )
+        return unwrap(result, "labelTemplateCreateDefaults")
+    except MolonionError as e:
+        return _err(e)
+
+
+LABEL_TEMPLATE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $labelTemplateIds: [String!]!) {
+  labelTemplateDelete(companyId: $companyId, labelTemplateIds: $labelTemplateIds) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_label_templates(
+    company_id: int, label_template_ids: list[str]
+) -> Any:
+    """Apaga um ou mais modelos de etiqueta de uma empresa (em lote). Os IDs são strings (ver
+    `get_label_template`/`list_label_templates`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os modelos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        label_template_ids: lista de IDs (String) dos modelos de etiqueta a apagar.
+    """
+    variables = {"companyId": company_id, "labelTemplateIds": label_template_ids}
+    try:
+        raw = await _client.query(LABEL_TEMPLATE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("labelTemplateDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+LABEL_TEMPLATE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $labelTemplateId: String!, $data: LabelTemplateUpdate!) {
+  labelTemplateUpdate(companyId: $companyId, labelTemplateId: $labelTemplateId, data: $data) {
+    errors { field msg }
+    data {
+      labelTemplateId
+      name
+      isDefault
+      collate
+      size
+      obs
+      companyId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_label_template(
+    company_id: int,
+    label_template_id: str,
+    name: str | None = None,
+    collate: bool | None = None,
+    size: int | None = None,
+    fields: list[list[dict[str, Any]]] | None = None,
+    is_default: bool | None = None,
+    obs: str | None = None,
+) -> Any:
+    """Atualiza um modelo de etiqueta de uma empresa. Identifica-se pelo `label_template_id`
+    (String, argumento próprio); só são alterados os campos que passares — nome, intercalação
+    (`collate`), tamanho (`size`), disposição dos campos (`fields`), modelo por omissão
+    (`is_default`) e observações (`obs`). Devolve o modelo atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        label_template_id: ID (String) do modelo de etiqueta a atualizar.
+        name: opcional; novo nome.
+        collate: opcional; nova definição de intercalação.
+        size: opcional; novo tamanho/formato.
+        fields: opcional; nova disposição dos campos (estrutura aninhada `[[...]]` de
+            `LabelTemplateFieldInput`, ver `create_label_template`).
+        is_default: opcional; definir (ou não) como modelo por omissão.
+        obs: opcional; novas observações.
+    """
+    data: dict[str, Any] = {}
+    if name is not None:
+        data["name"] = name
+    if collate is not None:
+        data["collate"] = collate
+    if size is not None:
+        data["size"] = size
+    if fields is not None:
+        data["fields"] = fields
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if obs is not None:
+        data["obs"] = obs
+    variables = {
+        "companyId": company_id,
+        "labelTemplateId": label_template_id,
+        "data": data,
+    }
+    try:
+        result = await _client.query(LABEL_TEMPLATE_UPDATE_MUTATION, variables)
+        return unwrap(result, "labelTemplateUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Datas de vencimento — criar (Mutation maturityDateCreate)
+# ===========================================================================
+
+MATURITY_DATE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: MaturityDateInsert!) {
+  maturityDateCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      maturityDateId
+      name
+      days
+      discount
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_maturity_date(
+    company_id: int,
+    name: str,
+    days: int,
+    discount: float,
+    is_default: bool,
+    visible: int | None = None,
+) -> Any:
+    """Cria uma data de vencimento (condição de pagamento) numa empresa — define em quantos
+    dias o documento vence e o eventual desconto de pronto pagamento. OBRIGATÓRIOS: `name`,
+    `days`, `discount` e `is_default`. Devolve a data de vencimento criada com o seu
+    `maturityDateId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome da condição (ex. "30 dias", "Pronto pagamento").
+        days: número de dias até ao vencimento.
+        discount: desconto de pronto pagamento (%) associado (0 se nenhum).
+        is_default: se `True`, define como condição por omissão.
+        visible: opcional; visibilidade (Int).
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "days": days,
+        "discount": discount,
+        "isDefault": is_default,
+    }
+    if visible is not None:
+        data["visible"] = visible
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(MATURITY_DATE_CREATE_MUTATION, variables)
+        return unwrap(result, "maturityDateCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+MATURITY_DATE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $maturityDateId: [Int]!) {
+  maturityDateDelete(companyId: $companyId, maturityDateId: $maturityDateId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_maturity_dates(
+    company_id: int, maturity_date_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais datas de vencimento (condições de pagamento) de uma empresa (em
+    lote). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as condições indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        maturity_date_ids: lista de IDs das datas de vencimento a apagar.
+    """
+    variables = {"companyId": company_id, "maturityDateId": maturity_date_ids}
+    try:
+        raw = await _client.query(MATURITY_DATE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("maturityDateDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+MATURITY_DATE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: MaturityDateUpdate!) {
+  maturityDateUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      maturityDateId
+      name
+      days
+      discount
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_maturity_date(
+    company_id: int,
+    maturity_date_id: int,
+    name: str | None = None,
+    days: int | None = None,
+    discount: float | None = None,
+    is_default: bool | None = None,
+    visible: int | None = None,
+) -> Any:
+    """Atualiza uma data de vencimento (condição de pagamento) de uma empresa. Identifica-se
+    pelo `maturity_date_id`; só são alterados os campos que passares — nome, dias até ao
+    vencimento, desconto, se é por omissão e visibilidade. Devolve a condição atualizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        maturity_date_id: ID da data de vencimento a atualizar.
+        name: opcional; novo nome.
+        days: opcional; novo número de dias até ao vencimento.
+        discount: opcional; novo desconto de pronto pagamento (%).
+        is_default: opcional; definir (ou não) como condição por omissão.
+        visible: opcional; nova visibilidade (Int).
+    """
+    data: dict[str, Any] = {"maturityDateId": maturity_date_id}
+    if name is not None:
+        data["name"] = name
+    if days is not None:
+        data["days"] = days
+    if discount is not None:
+        data["discount"] = discount
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if visible is not None:
+        data["visible"] = visible
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(MATURITY_DATE_UPDATE_MUTATION, variables)
+        return unwrap(result, "maturityDateUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Unidades de medida — criar (Mutation measurementUnitCreate)
+# ===========================================================================
+
+MEASUREMENT_UNIT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: MeasurementUnitInsert!) {
+  measurementUnitCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      measurementUnitId
+      name
+      abbreviation
+      measurementUnitUNECERId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_measurement_unit(
+    company_id: int,
+    name: str,
+    abbreviation: str,
+    measurement_unit_unece_id: str | None = None,
+) -> Any:
+    """Cria uma unidade de medida numa empresa (ex. "Unidade"/"un", "Quilograma"/"kg"), com o
+    nome (`name`), a abreviatura (`abbreviation`) e, opcionalmente, o código UN/ECE
+    Rec. 20 (`measurement_unit_unece_id`). Devolve a unidade criada com o seu
+    `measurementUnitId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome da unidade de medida.
+        abbreviation: abreviatura da unidade.
+        measurement_unit_unece_id: opcional; código UN/ECE Rec. 20 da unidade.
+    """
+    data: dict[str, Any] = {"name": name, "abbreviation": abbreviation}
+    if measurement_unit_unece_id is not None:
+        data["measurementUnitUNECERId"] = measurement_unit_unece_id
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(MEASUREMENT_UNIT_CREATE_MUTATION, variables)
+        return unwrap(result, "measurementUnitCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+MEASUREMENT_UNIT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $measurementUnitId: [Int]!) {
+  measurementUnitDelete(companyId: $companyId, measurementUnitId: $measurementUnitId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_measurement_units(
+    company_id: int, measurement_unit_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais unidades de medida de uma empresa (em lote). Unidades em uso por
+    produtos podem não ser elimináveis (o erro vem em `errors`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as unidades indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        measurement_unit_ids: lista de IDs das unidades de medida a apagar.
+    """
+    variables = {"companyId": company_id, "measurementUnitId": measurement_unit_ids}
+    try:
+        raw = await _client.query(MEASUREMENT_UNIT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("measurementUnitDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+MEASUREMENT_UNIT_IMPORT_MUTATION = """
+mutation ($companyId: Int!, $data: MeasurementUnitImport!) {
+  measurementUnitImport(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      measurementUnitId
+      name
+      abbreviation
+      measurementUnitUNECERId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def import_measurement_unit(
+    company_id: int,
+    name: str,
+    abbreviation: str,
+    measurement_unit_unece_id: str | None = None,
+) -> Any:
+    """Importa uma unidade de medida para uma empresa a partir da lista de unidades padrão
+    (UN/ECE). Funciona como `create_measurement_unit`, mas a unidade é trazida de um catálogo
+    predefinido. OBRIGATÓRIOS: `name` e `abbreviation`. Devolve a unidade importada com o seu
+    `measurementUnitId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome da unidade de medida.
+        abbreviation: abreviatura da unidade.
+        measurement_unit_unece_id: opcional; código UN/ECE Rec. 20 da unidade.
+    """
+    data: dict[str, Any] = {"name": name, "abbreviation": abbreviation}
+    if measurement_unit_unece_id is not None:
+        data["measurementUnitUNECERId"] = measurement_unit_unece_id
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(MEASUREMENT_UNIT_IMPORT_MUTATION, variables)
+        return unwrap(result, "measurementUnitImport")
+    except MolonionError as e:
+        return _err(e)
+
+
+MEASUREMENT_UNIT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: MeasurementUnitUpdate!) {
+  measurementUnitUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      measurementUnitId
+      name
+      abbreviation
+      measurementUnitUNECERId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_measurement_unit(
+    company_id: int,
+    measurement_unit_id: int,
+    name: str | None = None,
+    abbreviation: str | None = None,
+    measurement_unit_unece_id: str | None = None,
+) -> Any:
+    """Atualiza uma unidade de medida de uma empresa. Identifica-se pelo
+    `measurement_unit_id`; só são alterados os campos que passares — nome, abreviatura e/ou
+    código UN/ECE. Devolve a unidade atualizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        measurement_unit_id: ID da unidade de medida a atualizar.
+        name: opcional; novo nome.
+        abbreviation: opcional; nova abreviatura.
+        measurement_unit_unece_id: opcional; novo código UN/ECE Rec. 20.
+    """
+    data: dict[str, Any] = {"measurementUnitId": measurement_unit_id}
+    if name is not None:
+        data["name"] = name
+    if abbreviation is not None:
+        data["abbreviation"] = abbreviation
+    if measurement_unit_unece_id is not None:
+        data["measurementUnitUNECERId"] = measurement_unit_unece_id
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(MEASUREMENT_UNIT_UPDATE_MUTATION, variables)
+        return unwrap(result, "measurementUnitUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
