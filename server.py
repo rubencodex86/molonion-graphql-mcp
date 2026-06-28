@@ -916,55 +916,6 @@ async def get_bills_of_lading_next_number(company_id: int, document_set_id: int)
         return _err(e)
 
 
-BILLS_OF_LADING_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: [BillsOfLadingOptions]) {
-  billsOfLadingRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_bills_of_lading_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as guias de transporte de uma entidade que podem ser relacionadas/ligadas
-    a outro documento (ex. faturar mercadoria transportada).
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente/fornecedor) cujas guias relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    opt: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        opt["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if opt:
-        variables["options"] = [opt]
-    try:
-        data = await _client.query(BILLS_OF_LADING_RELATABLE_QUERY, variables)
-        return unwrap(data, "billsOfLadingRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 BILLS_OF_LADINGS_QUERY = """
 query ($companyId: Int!, $options: BillsOfLadingOptions) {
   billsOfLadings(companyId: $companyId, options: $options) {
@@ -2053,56 +2004,6 @@ async def get_credit_note_next_number(company_id: int, document_set_id: int) -> 
         return _err(e)
 
 
-CREDIT_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: CreditNoteOptions) {
-  creditNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_credit_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de crédito de uma entidade que podem ser relacionadas/ligadas a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas notas de crédito relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(CREDIT_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "creditNoteRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 CREDIT_NOTES_QUERY = """
 query ($companyId: Int!, $options: CreditNoteOptions) {
   creditNotes(companyId: $companyId, options: $options) {
@@ -3031,56 +2932,6 @@ async def get_customer_return_note_next_number(
         return _err(e)
 
 
-CUSTOMER_RETURN_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: CustomerReturnNoteOptions) {
-  customerReturnNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_customer_return_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de devolução de cliente de uma entidade que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas notas de devolução relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(CUSTOMER_RETURN_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "customerReturnNoteRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 CUSTOMER_RETURN_NOTES_QUERY = """
 query ($companyId: Int!, $options: CustomerReturnNoteOptions) {
   customerReturnNotes(companyId: $companyId, options: $options) {
@@ -3662,56 +3513,6 @@ async def get_debit_note_next_number(company_id: int, document_set_id: int) -> A
         return _err(e)
 
 
-DEBIT_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: DebitNoteOptions) {
-  debitNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_debit_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de débito de uma entidade que podem ser relacionadas/ligadas a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas notas de débito relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(DEBIT_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "debitNoteRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 DEBIT_NOTES_QUERY = """
 query ($companyId: Int!, $options: DebitNoteOptions) {
   debitNotes(companyId: $companyId, options: $options) {
@@ -4237,56 +4038,6 @@ async def get_delivery_note_next_number(company_id: int, document_set_id: int) -
     try:
         data = await _client.query(DELIVERY_NOTE_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "deliveryNoteNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-DELIVERY_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: DeliveryNoteOptions) {
-  deliveryNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_delivery_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as guias de remessa de uma entidade que podem ser relacionadas/ligadas a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas guias de remessa relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(DELIVERY_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "deliveryNoteRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -6083,56 +5834,6 @@ async def get_estimate_next_number(company_id: int, document_set_id: int) -> Any
     try:
         data = await _client.query(ESTIMATE_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "estimateNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-ESTIMATE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: EstimateOptions) {
-  estimateRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_estimate_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os orçamentos de uma entidade que podem ser relacionados/ligados a outro
-    documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujos orçamentos relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(ESTIMATE_RELATABLE_QUERY, variables)
-        return unwrap(data, "estimateRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -8514,56 +8215,6 @@ async def get_invoice_receipt_next_number(
         return _err(e)
 
 
-INVOICE_RECEIPT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: InvoiceReceiptOptions) {
-  invoiceReceiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_invoice_receipt_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas-recibo de uma entidade que podem ser relacionadas/ligadas a outro
-    documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas faturas-recibo relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(INVOICE_RECEIPT_RELATABLE_QUERY, variables)
-        return unwrap(data, "invoiceReceiptRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 INVOICE_RECEIPTS_QUERY = """
 query ($companyId: Int!, $options: InvoiceReceiptOptions) {
   invoiceReceipts(companyId: $companyId, options: $options) {
@@ -8608,56 +8259,6 @@ async def list_invoice_receipts(
     try:
         data = await _client.query(INVOICE_RECEIPTS_QUERY, variables)
         return unwrap(data, "invoiceReceipts")
-    except MolonionError as e:
-        return _err(e)
-
-
-INVOICE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: InvoiceOptions) {
-  invoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_invoice_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas de uma entidade que podem ser relacionadas/ligadas a outro
-    documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas faturas relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(INVOICE_RELATABLE_QUERY, variables)
-        return unwrap(data, "invoiceRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -8982,64 +8583,6 @@ async def list_languages(page: int | None = None, qty: int | None = None) -> Any
 # ---------------------------------------------------------------------------
 # Movimentos de stock
 # ---------------------------------------------------------------------------
-LIST_PRODUCTS_STOCK_MOVEMENTS_QUERY = """
-query ($companyId: Int!, $options: ListStockMovementOptions) {
-  listProductsStockMovements(companyId: $companyId, options: $options) {
-    errors { field msg }
-    data {
-      productId
-      reference
-      name
-      type
-      stock
-      hasStock
-      minStock
-      hasStockMovements
-      price
-      priceWithTaxes
-      costPrice
-      measurementUnitId
-      warehouseId
-      productCategoryId
-      visible
-      deletable
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def list_products_stock_movements(
-    company_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os produtos com os respetivos dados de stock e indicação de movimentos
-    (`hasStockMovements`), com os campos principais de cada produto: referência, nome,
-    tipo, stock atual e mínimo, preços e preço de custo.
-
-    DEPRECATED na API Moloni ON — preferir `stockProducts`. Mantida por cobertura; usa a
-    alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(LIST_PRODUCTS_STOCK_MOVEMENTS_QUERY, variables)
-        return unwrap(data, "listProductsStockMovements")
-    except MolonionError as e:
-        return _err(e)
-
-
 LIST_PRODUCTS_STOCK_TOTALS_QUERY = """
 query ($companyId: Int!, $options: ListStockTotalsOptions) {
   listProductsStockTotals(companyId: $companyId, options: $options) {
@@ -9887,57 +9430,6 @@ async def get_migrated_credit_note_next_number(
         return _err(e)
 
 
-MIGRATED_CREDIT_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedCreditNoteOptions) {
-  migratedCreditNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_credit_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de crédito migradas de uma entidade que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas notas de crédito migradas relacionáveis
-            se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(MIGRATED_CREDIT_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "migratedCreditNoteRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 MIGRATED_CREDIT_NOTES_QUERY = """
 query ($companyId: Int!, $options: MigratedCreditNoteOptions) {
   migratedCreditNotes(companyId: $companyId, options: $options) {
@@ -10313,57 +9805,6 @@ async def get_migrated_debit_note_next_number(
         return _err(e)
 
 
-MIGRATED_DEBIT_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedDebitNoteOptions) {
-  migratedDebitNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_debit_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de débito migradas de uma entidade que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas notas de débito migradas relacionáveis
-            se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(MIGRATED_DEBIT_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "migratedDebitNoteRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 MIGRATED_DEBIT_NOTES_QUERY = """
 query ($companyId: Int!, $options: MigratedDebitNoteOptions) {
   migratedDebitNotes(companyId: $companyId, options: $options) {
@@ -10734,56 +10175,6 @@ async def get_migrated_estimate_next_number(
     try:
         data = await _client.query(MIGRATED_ESTIMATE_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "migratedEstimateNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-MIGRATED_ESTIMATE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedEstimateOptions) {
-  migratedEstimateRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_estimate_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os orçamentos migrados de uma entidade que podem ser relacionados/ligados a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujos orçamentos migrados relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(MIGRATED_ESTIMATE_RELATABLE_QUERY, variables)
-        return unwrap(data, "migratedEstimateRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -11490,58 +10881,6 @@ async def get_migrated_invoice_receipt_next_number(
         return _err(e)
 
 
-MIGRATED_INVOICE_RECEIPT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedInvoiceReceiptOptions) {
-  migratedInvoiceReceiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_invoice_receipt_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas-recibo migradas de uma entidade que podem ser relacionadas/ligadas
-    a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas faturas-recibo migradas relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            MIGRATED_INVOICE_RECEIPT_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "migratedInvoiceReceiptRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 MIGRATED_INVOICE_RECEIPTS_QUERY = """
 query ($companyId: Int!, $options: MigratedInvoiceReceiptOptions) {
   migratedInvoiceReceipts(companyId: $companyId, options: $options) {
@@ -11586,56 +10925,6 @@ async def list_migrated_invoice_receipts(
     try:
         data = await _client.query(MIGRATED_INVOICE_RECEIPTS_QUERY, variables)
         return unwrap(data, "migratedInvoiceReceipts")
-    except MolonionError as e:
-        return _err(e)
-
-
-MIGRATED_INVOICE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedInvoiceOptions) {
-  migratedInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_invoice_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas migradas de uma entidade que podem ser relacionadas/ligadas a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas faturas migradas relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(MIGRATED_INVOICE_RELATABLE_QUERY, variables)
-        return unwrap(data, "migratedInvoiceRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -12027,59 +11316,6 @@ async def get_migrated_purchase_order_next_number(
         return _err(e)
 
 
-MIGRATED_PURCHASE_ORDER_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedPurchaseOrderOptions) {
-  migratedPurchaseOrderRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_purchase_order_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as encomendas de compra migradas de uma entidade que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujas encomendas de compra migradas
-            relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            MIGRATED_PURCHASE_ORDER_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "migratedPurchaseOrderRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 MIGRATED_PURCHASE_ORDERS_QUERY = """
 query ($companyId: Int!, $options: MigratedPurchaseOrderOptions) {
   migratedPurchaseOrders(companyId: $companyId, options: $options) {
@@ -12446,56 +11682,6 @@ async def get_migrated_receipt_next_number(
     try:
         data = await _client.query(MIGRATED_RECEIPT_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "migratedReceiptNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-MIGRATED_RECEIPT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedReceiptOptions) {
-  migratedReceiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_receipt_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os recibos migrados de uma entidade que podem ser relacionados/ligados a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujos recibos migrados relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(MIGRATED_RECEIPT_RELATABLE_QUERY, variables)
-        return unwrap(data, "migratedReceiptRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -12880,59 +12066,6 @@ async def get_migrated_simplified_invoice_next_number(
             MIGRATED_SIMPLIFIED_INVOICE_NEXT_NUMBER_QUERY, variables
         )
         return unwrap(data, "migratedSimplifiedInvoiceNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-MIGRATED_SIMPLIFIED_INVOICE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: MigratedSimplifiedInvoiceOptions) {
-  migratedSimplifiedInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_migrated_simplified_invoice_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas simplificadas migradas de uma entidade que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas faturas simplificadas migradas
-            relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            MIGRATED_SIMPLIFIED_INVOICE_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "migratedSimplifiedInvoiceRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -13504,56 +12637,6 @@ async def get_payment_return_next_number(
     try:
         data = await _client.query(PAYMENT_RETURN_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "paymentReturnNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-PAYMENT_RETURN_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: PaymentReturnOptions) {
-  paymentReturnRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_payment_return_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as devoluções de pagamento de uma entidade que podem ser relacionadas/ligadas
-    a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas devoluções de pagamento relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(PAYMENT_RETURN_RELATABLE_QUERY, variables)
-        return unwrap(data, "paymentReturnRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -14696,56 +13779,6 @@ async def get_pro_forma_invoice_next_number(
         return _err(e)
 
 
-PRO_FORMA_INVOICE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: ProFormaInvoiceOptions) {
-  proFormaInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_pro_forma_invoice_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas pró-forma de uma entidade que podem ser relacionadas/ligadas a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas pró-formas relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(PRO_FORMA_INVOICE_RELATABLE_QUERY, variables)
-        return unwrap(data, "proFormaInvoiceRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 PRO_FORMA_INVOICES_QUERY = """
 query ($companyId: Int!, $options: ProFormaInvoiceOptions) {
   proFormaInvoices(companyId: $companyId, options: $options) {
@@ -15310,56 +14343,6 @@ async def get_purchase_order_next_number(
         return _err(e)
 
 
-PURCHASE_ORDER_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: PurchaseOrderOptions) {
-  purchaseOrderRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_purchase_order_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as encomendas de compra de uma entidade (fornecedor) que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujas encomendas relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(PURCHASE_ORDER_RELATABLE_QUERY, variables)
-        return unwrap(data, "purchaseOrderRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 PURCHASE_ORDERS_QUERY = """
 query ($companyId: Int!, $options: PurchaseOrderOptions) {
   purchaseOrders(companyId: $companyId, options: $options) {
@@ -15765,58 +14748,6 @@ async def get_purchase_recurring_agreement_next_number(
             PURCHASE_RECURRING_AGREEMENT_NEXT_NUMBER_QUERY, variables
         )
         return unwrap(data, "purchaseRecurringAgreementNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-PURCHASE_RECURRING_AGREEMENT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: PurchaseRecurringAgreementOptions) {
-  purchaseRecurringAgreementRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_purchase_recurring_agreement_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os acordos recorrentes de compra de uma entidade (fornecedor) que podem ser
-    relacionados/ligados a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujos acordos relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            PURCHASE_RECURRING_AGREEMENT_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "purchaseRecurringAgreementRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -17090,56 +16021,6 @@ async def get_receipt_next_number(company_id: int, document_set_id: int) -> Any:
         return _err(e)
 
 
-RECEIPT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: ReceiptOptions) {
-  receiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_receipt_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os recibos de uma entidade que podem ser relacionados/ligados a outro
-    documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujos recibos relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(RECEIPT_RELATABLE_QUERY, variables)
-        return unwrap(data, "receiptRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 RECEIPTS_QUERY = """
 query ($companyId: Int!, $options: ReceiptOptions) {
   receipts(companyId: $companyId, options: $options) {
@@ -17546,56 +16427,6 @@ async def get_recurring_agreement_next_number(
     try:
         data = await _client.query(RECURRING_AGREEMENT_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "recurringAgreementNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-RECURRING_AGREEMENT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: RecurringAgreementOptions) {
-  recurringAgreementRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_recurring_agreement_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os acordos recorrentes de venda de uma entidade (cliente) que podem ser
-    relacionados/ligados a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujos acordos relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(RECURRING_AGREEMENT_RELATABLE_QUERY, variables)
-        return unwrap(data, "recurringAgreementRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -19092,56 +17923,6 @@ async def get_salesperson_payment_next_number(
         return _err(e)
 
 
-SALESPERSON_PAYMENT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SalespersonPaymentOptions) {
-  salespersonPaymentRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_salesperson_payment_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os pagamentos a vendedor de uma entidade (vendedor) que podem ser
-    relacionados/ligados a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (vendedor) cujos pagamentos relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(SALESPERSON_PAYMENT_RELATABLE_QUERY, variables)
-        return unwrap(data, "salespersonPaymentRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 SALESPERSON_PAYMENTS_QUERY = """
 query ($companyId: Int!, $options: SalespersonPaymentOptions) {
   salespersonPayments(companyId: $companyId, options: $options) {
@@ -20051,56 +18832,6 @@ async def get_settlement_note_next_number(
         return _err(e)
 
 
-SETTLEMENT_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SettlementNoteOptions) {
-  settlementNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_settlement_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de acerto de uma entidade que podem ser relacionadas/ligadas a outro
-    documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade cujas notas de acerto relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(SETTLEMENT_NOTE_RELATABLE_QUERY, variables)
-        return unwrap(data, "settlementNoteRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 SETTLEMENT_NOTES_QUERY = """
 query ($companyId: Int!, $options: SettlementNoteOptions) {
   settlementNotes(companyId: $companyId, options: $options) {
@@ -20499,57 +19230,6 @@ async def get_simplified_invoice_next_number(
             SIMPLIFIED_INVOICE_NEXT_NUMBER_QUERY, variables
         )
         return unwrap(data, "simplifiedInvoiceNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-SIMPLIFIED_INVOICE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SimplifiedInvoiceOptions) {
-  simplifiedInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_simplified_invoice_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas simplificadas de uma entidade que podem ser relacionadas/ligadas a
-    outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (cliente) cujas faturas simplificadas relacionáveis se
-            procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(SIMPLIFIED_INVOICE_RELATABLE_QUERY, variables)
-        return unwrap(data, "simplifiedInvoiceRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -21348,58 +20028,6 @@ async def get_supplier_bills_of_lading_next_number(
         return _err(e)
 
 
-SUPPLIER_BILLS_OF_LADING_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SupplierBillsOfLadingOptions) {
-  supplierBillsOfLadingRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_supplier_bills_of_lading_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as guias de transporte de compra de uma entidade (fornecedor) que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujas guias relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            SUPPLIER_BILLS_OF_LADING_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "supplierBillsOfLadingRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 SUPPLIER_BILLS_OF_LADINGS_QUERY = """
 query ($companyId: Int!, $options: SupplierBillsOfLadingOptions) {
   supplierBillsOfLadings(companyId: $companyId, options: $options) {
@@ -21789,59 +20417,6 @@ async def get_supplier_credit_note_next_number(
             SUPPLIER_CREDIT_NOTE_NEXT_NUMBER_QUERY, variables
         )
         return unwrap(data, "supplierCreditNoteNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-SUPPLIER_CREDIT_NOTE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SupplierCreditNoteOptions) {
-  supplierCreditNoteRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_supplier_credit_note_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de crédito de compra de uma entidade (fornecedor) que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujas notas de crédito relacionáveis se
-            procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            SUPPLIER_CREDIT_NOTE_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "supplierCreditNoteRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -22246,56 +20821,6 @@ async def get_supplier_invoice_next_number(
     try:
         data = await _client.query(SUPPLIER_INVOICE_NEXT_NUMBER_QUERY, variables)
         return unwrap(data, "supplierInvoiceNextNumber")
-    except MolonionError as e:
-        return _err(e)
-
-
-SUPPLIER_INVOICE_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SupplierInvoiceOptions) {
-  supplierInvoiceRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_supplier_invoice_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as faturas de compra de uma entidade (fornecedor) que podem ser
-    relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujas faturas relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(SUPPLIER_INVOICE_RELATABLE_QUERY, variables)
-        return unwrap(data, "supplierInvoiceRelatable")
     except MolonionError as e:
         return _err(e)
 
@@ -22769,59 +21294,6 @@ async def get_supplier_purchase_order_next_number(
         return _err(e)
 
 
-SUPPLIER_PURCHASE_ORDER_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SupplierPurchaseOrderOptions) {
-  supplierPurchaseOrderRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_supplier_purchase_order_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista as notas de encomenda de compra a fornecedor de uma entidade (fornecedor) que
-    podem ser relacionadas/ligadas a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujas notas de encomenda relacionáveis se
-            procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(
-            SUPPLIER_PURCHASE_ORDER_RELATABLE_QUERY, variables
-        )
-        return unwrap(data, "supplierPurchaseOrderRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 SUPPLIER_PURCHASE_ORDERS_QUERY = """
 query ($companyId: Int!, $options: SupplierPurchaseOrderOptions) {
   supplierPurchaseOrders(companyId: $companyId, options: $options) {
@@ -23207,56 +21679,6 @@ async def get_supplier_receipt_next_number(
         return _err(e)
 
 
-SUPPLIER_RECEIPT_RELATABLE_QUERY = """
-query ($companyId: Int!, $entityId: Int!, $options: SupplierReceiptOptions) {
-  supplierReceiptRelatable(companyId: $companyId, entityId: $entityId, options: $options) {
-    errors { field msg }
-    data {
-      documentId
-      number
-      date
-      documentSetName
-      totalValue
-      status
-      nullified
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_supplier_receipt_relatable(
-    company_id: int,
-    entity_id: int,
-    page: int | None = None,
-    qty: int | None = None,
-) -> Any:
-    """Lista os recibos de compra de uma entidade (fornecedor) que podem ser
-    relacionados/ligados a outro documento.
-
-    DEPRECATED na API Moloni ON — preferir `documentRelatable` com os fragments
-    adequados. Mantida por cobertura; usa a alternativa em código novo.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        entity_id: ID da entidade (fornecedor) cujos recibos relacionáveis se procuram.
-        page: opcional; página da paginação (começa em 1). Requer também `qty`.
-        qty: opcional; número de registos por página. Requer também `page`.
-    """
-    options: dict[str, Any] = {}
-    if page is not None and qty is not None:
-        options["pagination"] = {"page": page, "qty": qty}
-    variables: dict[str, Any] = {"companyId": company_id, "entityId": entity_id}
-    if options:
-        variables["options"] = options
-    try:
-        data = await _client.query(SUPPLIER_RECEIPT_RELATABLE_QUERY, variables)
-        return unwrap(data, "supplierReceiptRelatable")
-    except MolonionError as e:
-        return _err(e)
-
-
 SUPPLIER_RECEIPTS_QUERY = """
 query ($companyId: Int!, $options: SupplierReceiptOptions) {
   supplierReceipts(companyId: $companyId, options: $options) {
@@ -23451,64 +21873,6 @@ async def list_taxes(
     try:
         data = await _client.query(TAXES_QUERY, variables)
         return unwrap(data, "taxes")
-    except MolonionError as e:
-        return _err(e)
-
-
-TAXES_MAP_QUERY = """
-query ($companyId: Int!, $options: TaxesMapOptions!) {
-  taxesMap(companyId: $companyId, options: $options) {
-    errors { field msg }
-    data {
-      group
-      taxes {
-        taxId
-        name
-        fiscalZone
-        value
-        type
-        incidence
-        total
-        incidencePositive
-        totalPositive
-        incidenceNegative
-        totalNegative
-      }
-    }
-  }
-}
-"""
-
-
-@mcp.tool()
-async def get_taxes_map(
-    company_id: int,
-    filters: list[dict[str, Any]] | None = None,
-) -> Any:
-    """Obtém o mapa de impostos (IVA) de uma empresa: os valores de incidência (base
-    tributável) e de imposto, agrupados. Cada grupo (`group`) traz a lista de `taxes`, e
-    cada taxa tem `taxId`, `name`, `fiscalZone`, `value` (%), a incidência e o total
-    (`incidence`/`total`) e a separação por movimentos positivos/negativos
-    (`incidencePositive`/`totalPositive`/`incidenceNegative`/`totalNegative`). Útil para o
-    apuramento de IVA.
-
-    DEPRECATED na API Moloni ON — preferir `taxesMap2`. Mantida por cobertura.
-
-    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
-    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
-    (ver `get_sales_analysis_by_date`). O `options` é obrigatório nesta operação.
-
-    Args:
-        company_id: ID da empresa (obtém-se via `me`).
-        filters: lista de filtros `{field, comparison, value}` (ex. intervalo de datas).
-    """
-    options: dict[str, Any] = {}
-    if filters:
-        options["filter"] = filters
-    variables = {"companyId": company_id, "options": options}
-    try:
-        data = await _client.query(TAXES_MAP_QUERY, variables)
-        return unwrap(data, "taxesMap")
     except MolonionError as e:
         return _err(e)
 

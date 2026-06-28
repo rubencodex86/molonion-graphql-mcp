@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.485.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.486.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -106,7 +106,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_bills_of_lading_mail_recipients` | Destinatários e estado de entrega de um envio por email de guias de transporte. |
 | `get_bills_of_lading_mails_history` | Histórico de emails enviados de uma guia de transporte. |
 | `get_bills_of_lading_next_number` | Próximo número disponível para uma guia de transporte numa série. |
-| `get_bills_of_lading_relatable` | Guias de transporte de uma entidade que podem ser relacionadas a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_bills_of_lading` | Lista (paginada) as guias de transporte de uma empresa. |
 | `get_bulk_customer` | Vista consolidada de vários clientes em simultâneo (campos comuns). |
 | `get_bulk_product` | Vista consolidada de vários produtos em simultâneo (campos comuns). |
@@ -124,7 +123,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_credit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de crédito. |
 | `get_credit_note_mails_history` | Histórico de emails enviados de uma nota de crédito. |
 | `get_credit_note_next_number` | Próximo número disponível para uma nota de crédito numa série. |
-| `get_credit_note_relatable` | Notas de crédito de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_credit_notes` | Lista (paginada) as notas de crédito de uma empresa. |
 | `get_currency` | Detalhes de uma moeda pelo seu ID (ISO 4217, símbolo, casas decimais). |
 | `list_currencies` | Lista as moedas (tabela de referência: `currencyId`, ISO 4217, símbolo, decimais). |
@@ -143,7 +141,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_debit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de débito. |
 | `get_debit_note_mails_history` | Histórico de emails enviados de uma nota de débito. |
 | `get_debit_note_next_number` | Próximo número disponível para uma nota de débito numa série. |
-| `get_debit_note_relatable` | Notas de débito de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_debit_notes` | Lista (paginada) as notas de débito de uma empresa. |
 | `get_delivery_method` | Detalhes de um método de entrega pelo seu ID (nome, default, visível). |
 | `get_delivery_method_logs` | Histórico de alterações (logs) aos métodos de entrega de uma empresa. |
@@ -155,7 +152,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_delivery_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de guias de remessa. |
 | `get_delivery_note_mails_history` | Histórico de emails enviados de uma guia de remessa. |
 | `get_delivery_note_next_number` | Próximo número disponível para uma guia de remessa numa série. |
-| `get_delivery_note_relatable` | Guias de remessa de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_delivery_notes` | Lista (paginada) as guias de remessa de uma empresa. |
 | `get_document` | Documento genérico pelo seu ID (campos comuns a qualquer tipo + `__typename`). |
 | `list_document_at_communication_statuses` | Estado da comunicação de documentos com a AT (diagnóstico de envios). |
@@ -193,7 +189,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_estimate_mail_recipients` | Destinatários e estado de entrega de um envio por email de orçamentos. |
 | `get_estimate_mails_history` | Histórico de emails enviados de um orçamento. |
 | `get_estimate_next_number` | Próximo número disponível para um orçamento numa série. |
-| `get_estimate_relatable` | Orçamentos de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_estimates` | Lista (paginada) os orçamentos de uma empresa. |
 | `get_event` | Detalhes de um evento pelo seu ID (nome, data, documento, recorrência). |
 | `get_event_logs` | Histórico de alterações (logs) aos eventos de uma empresa. |
@@ -239,7 +234,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas. |
 | `get_invoice_mails_history` | Histórico de emails enviados de uma fatura. |
 | `get_invoice_next_number` | Próximo número disponível para uma fatura numa série. |
-| `get_invoice_relatable` | Faturas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_invoices` | Lista (paginada) as faturas de uma empresa. |
 | `check_is_allowed` | Verifica se uma ação sobre um recurso é permitida (controlo de acesso + quotas). |
 | `get_label_template` | Detalhes de um template de etiquetas pelo seu ID (nome, tamanho, default). |
@@ -247,7 +241,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `list_label_templates` | Lista os templates de etiquetas configurados numa empresa. |
 | `get_language` | Detalhes de um idioma pelo seu ID (nome, ISO 3166, bandeira). |
 | `list_languages` | Lista os idiomas (tabela de referência: `languageId`, nome, ISO 3166). |
-| `list_products_stock_movements` | Produtos com dados de stock e indicação de movimentos. ⚠️ deprecated (usar `stockProducts`). |
 | `list_products_stock_totals` | Totais de stock dos produtos (custo total, valor de venda). |
 | `get_maturity_date` | Detalhes de uma data de vencimento pelo seu ID (nome, dias, desconto). |
 | `get_maturity_date_logs` | Histórico de alterações (logs) às datas de vencimento de uma empresa. |
@@ -268,7 +261,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_credit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de crédito migradas. |
 | `get_migrated_credit_note_mails_history` | Histórico de emails enviados de uma nota de crédito migrada. |
 | `get_migrated_credit_note_next_number` | Próximo número disponível para uma nota de crédito migrada numa série. |
-| `get_migrated_credit_note_relatable` | Notas de crédito migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_credit_notes` | Lista (paginada) as notas de crédito migradas de uma empresa. |
 | `get_migrated_debit_note` | Detalhes de uma nota de débito migrada pelo seu ID (documento histórico). |
 | `get_migrated_debit_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de débito migrada. |
@@ -277,7 +269,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_debit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de débito migradas. |
 | `get_migrated_debit_note_mails_history` | Histórico de emails enviados de uma nota de débito migrada. |
 | `get_migrated_debit_note_next_number` | Próximo número disponível para uma nota de débito migrada numa série. |
-| `get_migrated_debit_note_relatable` | Notas de débito migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_debit_notes` | Lista (paginada) as notas de débito migradas de uma empresa. |
 | `get_migrated_estimate` | Detalhes de um orçamento migrado pelo seu ID (documento histórico). |
 | `get_migrated_estimate_pdf_token` | Token temporário para descarregar o PDF de um orçamento migrado. |
@@ -286,7 +277,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_estimate_mail_recipients` | Destinatários e estado de entrega de um envio por email de orçamentos migrados. |
 | `get_migrated_estimate_mails_history` | Histórico de emails enviados de um orçamento migrado. |
 | `get_migrated_estimate_next_number` | Próximo número disponível para um orçamento migrado numa série. |
-| `get_migrated_estimate_relatable` | Orçamentos migrados de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_estimates` | Lista (paginada) os orçamentos migrados de uma empresa. |
 | `get_migrated_invoice` | Detalhes de uma fatura migrada pelo seu ID (documento histórico). |
 | `get_migrated_invoice_pdf_token` | Token temporário para descarregar o PDF de uma fatura migrada. |
@@ -302,9 +292,7 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_invoice_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas-recibo migradas. |
 | `get_migrated_invoice_receipt_mails_history` | Histórico de emails enviados de uma fatura-recibo migrada. |
 | `get_migrated_invoice_receipt_next_number` | Próximo número disponível para uma fatura-recibo migrada numa série. |
-| `get_migrated_invoice_receipt_relatable` | Faturas-recibo migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_invoice_receipts` | Lista (paginada) as faturas-recibo migradas de uma empresa. |
-| `get_migrated_invoice_relatable` | Faturas migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_invoices` | Lista (paginada) as faturas migradas de uma empresa. |
 | `get_migrated_purchase_order` | Detalhes de uma encomenda de compra migrada pelo seu ID (documento histórico). |
 | `get_migrated_purchase_order_pdf_token` | Token temporário para descarregar o PDF de uma encomenda de compra migrada. |
@@ -313,7 +301,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_purchase_order_mail_recipients` | Destinatários e estado de entrega de um envio por email de encomendas de compra migradas. |
 | `get_migrated_purchase_order_mails_history` | Histórico de emails enviados de uma encomenda de compra migrada. |
 | `get_migrated_purchase_order_next_number` | Próximo número disponível para uma encomenda de compra migrada numa série. |
-| `get_migrated_purchase_order_relatable` | Encomendas de compra migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_purchase_orders` | Lista (paginada) as encomendas de compra migradas de uma empresa. |
 | `get_migrated_receipt` | Detalhes de um recibo migrado pelo seu ID (documento histórico). |
 | `get_migrated_receipt_pdf_token` | Token temporário para descarregar o PDF de um recibo migrado. |
@@ -322,7 +309,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de recibos migrados. |
 | `get_migrated_receipt_mails_history` | Histórico de emails enviados de um recibo migrado. |
 | `get_migrated_receipt_next_number` | Próximo número disponível para um recibo migrado numa série. |
-| `get_migrated_receipt_relatable` | Recibos migrados de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_receipts` | Lista (paginada) os recibos migrados de uma empresa. |
 | `get_migrated_simplified_invoice` | Detalhes de uma fatura simplificada migrada pelo seu ID (documento histórico). |
 | `get_migrated_simplified_invoice_pdf_token` | Token temporário para descarregar o PDF de uma fatura simplificada migrada. |
@@ -331,7 +317,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_migrated_simplified_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas simplificadas migradas. |
 | `get_migrated_simplified_invoice_mails_history` | Histórico de emails enviados de uma fatura simplificada migrada. |
 | `get_migrated_simplified_invoice_next_number` | Próximo número disponível para uma fatura simplificada migrada numa série. |
-| `get_migrated_simplified_invoice_relatable` | Faturas simplificadas migradas de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_migrated_simplified_invoices` | Lista (paginada) as faturas simplificadas migradas de uma empresa. |
 | `list_notifications` | Lista as notificações do utilizador autenticado (lida, tipo, título, link). |
 | `get_payment_method` | Detalhes de um método de pagamento pelo seu ID (nome, tipo, comissão, default). |
@@ -344,7 +329,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_payment_return_mail_recipients` | Destinatários e estado de entrega de um envio por email de devoluções de pagamento. |
 | `get_payment_return_mails_history` | Histórico de emails enviados de uma devolução de pagamento. |
 | `get_payment_return_next_number` | Próximo número disponível para uma devolução de pagamento numa série. |
-| `get_payment_return_relatable` | Devoluções de pagamento de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_payment_returns` | Lista (paginada) as devoluções de pagamento de uma empresa. |
 | `get_price_class` | Detalhes de uma classe de preço pelo seu ID (nome, visível). |
 | `list_price_classes` | Lista as classes de preço configuradas numa empresa. |
@@ -368,7 +352,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_pro_forma_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas pró-forma. |
 | `get_pro_forma_invoice_mails_history` | Histórico de envios por email de uma fatura pró-forma. |
 | `get_pro_forma_invoice_next_number` | Próximo número disponível para uma fatura pró-forma numa série. |
-| `get_pro_forma_invoice_relatable` | Faturas pró-forma de uma entidade relacionáveis com outro documento (deprecada). |
 | `list_pro_forma_invoices` | Lista paginada das faturas pró-forma de uma empresa. |
 | `get_property_group` | Grupo de propriedades (variantes) com a árvore propriedades → valores. |
 | `get_property_group_logs` | Histórico de alterações (logs) aos grupos de propriedades. |
@@ -380,7 +363,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_purchase_order_mail_recipients` | Destinatários e estado de entrega de um envio por email de encomendas de compra. |
 | `get_purchase_order_mails_history` | Histórico de envios por email de uma encomenda de compra. |
 | `get_purchase_order_next_number` | Próximo número disponível para uma encomenda de compra numa série. |
-| `get_purchase_order_relatable` | Encomendas de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_purchase_orders` | Lista paginada das encomendas de compra de uma empresa. |
 | `get_purchase_recurring_agreement` | Detalhes de um acordo recorrente de compra pelo seu ID (documento-modelo, fornecedor, totais). |
 | `get_purchase_recurring_agreement_pdf_token` | Token temporário para descarregar o PDF de um acordo recorrente de compra. |
@@ -389,7 +371,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_purchase_recurring_agreement_mail_recipients` | Destinatários e estado de entrega de um envio por email de acordos recorrentes de compra. |
 | `get_purchase_recurring_agreement_mails_history` | Histórico de envios por email de um acordo recorrente de compra. |
 | `get_purchase_recurring_agreement_next_number` | Próximo número disponível para um acordo recorrente de compra numa série. |
-| `get_purchase_recurring_agreement_relatable` | Acordos recorrentes de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_purchase_recurring_agreements` | Lista paginada dos acordos recorrentes de compra de uma empresa. |
 | `get_purchases_analysis_by_date` | Análise de compras por data, ao nível do produto (qty e valores por período). |
 | `get_purchases_analysis_by_date_docs` | Análise de compras por data ao nível da linha de documento (com o documento de origem). |
@@ -412,7 +393,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de recibos. |
 | `get_receipt_mails_history` | Histórico de envios por email de um recibo. |
 | `get_receipt_next_number` | Próximo número disponível para um recibo numa série. |
-| `get_receipt_relatable` | Recibos de uma entidade relacionáveis com outro documento (deprecada). |
 | `list_receipts` | Lista paginada dos recibos de uma empresa. |
 | `get_recurring_agreement` | Detalhes de um acordo recorrente de venda pelo seu ID (documento-modelo, cliente, totais). |
 | `get_recurring_agreement_pdf_token` | Token temporário para descarregar o PDF de um acordo recorrente de venda. |
@@ -421,7 +401,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_recurring_agreement_mail_recipients` | Destinatários e estado de entrega de um envio por email de acordos recorrentes de venda. |
 | `get_recurring_agreement_mails_history` | Histórico de envios por email de um acordo recorrente de venda. |
 | `get_recurring_agreement_next_number` | Próximo número disponível para um acordo recorrente de venda numa série. |
-| `get_recurring_agreement_relatable` | Acordos recorrentes de venda de um cliente relacionáveis com outro documento (deprecada). |
 | `list_recurring_agreements` | Lista paginada dos acordos recorrentes de venda de uma empresa. |
 | `get_retention` | Detalhes de uma retenção na fonte pelo seu ID (nome, taxa). |
 | `get_retention_logs` | Histórico de alterações (logs) às retenções. |
@@ -448,7 +427,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_salesperson_payment_mail_recipients` | Destinatários e estado de entrega de um envio por email de pagamentos a vendedor. |
 | `get_salesperson_payment_mails_history` | Histórico de envios por email de um pagamento a vendedor. |
 | `get_salesperson_payment_next_number` | Próximo número disponível para um pagamento a vendedor numa série. |
-| `get_salesperson_payment_relatable` | Pagamentos a vendedor de uma entidade relacionáveis com outro documento (deprecada). |
 | `list_salesperson_payments` | Lista paginada dos pagamentos a vendedor de uma empresa. |
 | `list_salespersons` | Lista paginada dos vendedores de uma empresa. |
 | `get_salespersons_payments_history_by_salesperson` | Histórico de pagamentos a vendedores agregado por vendedor. |
@@ -466,7 +444,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_settlement_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de acerto. |
 | `get_settlement_note_mails_history` | Histórico de envios por email de uma nota de acerto. |
 | `get_settlement_note_next_number` | Próximo número disponível para uma nota de acerto numa série. |
-| `get_settlement_note_relatable` | Notas de acerto de uma entidade relacionáveis com outro documento (deprecada). |
 | `list_settlement_notes` | Lista paginada das notas de acerto de uma empresa. |
 | `get_simplified_invoice` | Detalhes de uma fatura simplificada pelo seu ID (documento, cliente, totais, reconciliação). |
 | `get_simplified_invoice_pdf_token` | Token temporário para descarregar o PDF de uma fatura simplificada. |
@@ -475,7 +452,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_simplified_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas simplificadas. |
 | `get_simplified_invoice_mails_history` | Histórico de envios por email de uma fatura simplificada. |
 | `get_simplified_invoice_next_number` | Próximo número disponível para uma fatura simplificada numa série. |
-| `get_simplified_invoice_relatable` | Faturas simplificadas de uma entidade relacionáveis com outro documento (deprecada). |
 | `list_simplified_invoices` | Lista paginada das faturas simplificadas de uma empresa. |
 | `get_special_tax_scheme` | Detalhes de um regime especial de imposto (tabela global) pelo seu ID. |
 | `list_special_tax_schemes` | Lista dos regimes especiais de imposto (tabela global). |
@@ -491,7 +467,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_supplier_bills_of_lading_mail_recipients` | Destinatários e estado de entrega de um envio por email de guias de transporte de compra. |
 | `get_supplier_bills_of_lading_mails_history` | Histórico de envios por email de uma guia de transporte de compra. |
 | `get_supplier_bills_of_lading_next_number` | Próximo número disponível para uma guia de transporte de compra numa série. |
-| `get_supplier_bills_of_lading_relatable` | Guias de transporte de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_supplier_bills_of_ladings` | Lista paginada das guias de transporte de compra de uma empresa. |
 | `get_supplier_credit_note` | Detalhes de uma nota de crédito de compra pelo seu ID (sem vencimento/transporte). |
 | `get_supplier_credit_note_pdf_token` | Token temporário para descarregar o PDF de uma nota de crédito de compra. |
@@ -500,7 +475,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_supplier_credit_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de crédito de compra. |
 | `get_supplier_credit_note_mails_history` | Histórico de envios por email de uma nota de crédito de compra. |
 | `get_supplier_credit_note_next_number` | Próximo número disponível para uma nota de crédito de compra numa série. |
-| `get_supplier_credit_note_relatable` | Notas de crédito de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_supplier_credit_notes` | Lista paginada das notas de crédito de compra de uma empresa. |
 | `get_supplier_invoice` | Detalhes de uma fatura de compra pelo seu ID (documento, fornecedor, vencimento, transporte). |
 | `get_supplier_invoice_pdf_token` | Token temporário para descarregar o PDF de uma fatura de compra. |
@@ -509,7 +483,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_supplier_invoice_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas de compra. |
 | `get_supplier_invoice_mails_history` | Histórico de envios por email de uma fatura de compra. |
 | `get_supplier_invoice_next_number` | Próximo número disponível para uma fatura de compra numa série. |
-| `get_supplier_invoice_relatable` | Faturas de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_supplier_invoices` | Lista paginada das faturas de compra de uma empresa. |
 | `get_supplier_logs` | Histórico de alterações (logs) aos fornecedores. |
 | `get_supplier_purchase_order` | Detalhes de uma nota de encomenda de compra a fornecedor pelo seu ID. |
@@ -519,7 +492,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_supplier_purchase_order_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de encomenda de compra a fornecedor. |
 | `get_supplier_purchase_order_mails_history` | Histórico de envios por email de uma nota de encomenda de compra a fornecedor. |
 | `get_supplier_purchase_order_next_number` | Próximo número disponível para uma nota de encomenda de compra a fornecedor numa série. |
-| `get_supplier_purchase_order_relatable` | Notas de encomenda de compra a fornecedor relacionáveis com outro documento (deprecada). |
 | `list_supplier_purchase_orders` | Lista paginada das notas de encomenda de compra a fornecedor de uma empresa. |
 | `get_supplier_receipt` | Detalhes de um recibo de compra pelo seu ID (liquidação a fornecedor, reconciliação). |
 | `get_supplier_receipt_pdf_token` | Token temporário para descarregar o PDF de um recibo de compra. |
@@ -528,12 +500,10 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_supplier_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de recibos de compra. |
 | `get_supplier_receipt_mails_history` | Histórico de envios por email de um recibo de compra. |
 | `get_supplier_receipt_next_number` | Próximo número disponível para um recibo de compra numa série. |
-| `get_supplier_receipt_relatable` | Recibos de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_supplier_receipts` | Lista paginada dos recibos de compra de uma empresa. |
 | `list_suppliers` | Lista paginada dos fornecedores de uma empresa. |
 | `get_tax` | Detalhes de uma taxa de imposto (IVA) pelo seu ID (valor, zona fiscal, isenção). |
 | `list_taxes` | Lista paginada das taxas de imposto (IVA) de uma empresa. |
-| `get_taxes_map` | Mapa de impostos/apuramento de IVA — incidência e total por taxa (deprecada; usar `get_taxes_map2`). |
 | `get_taxes_map2` | Mapa de impostos/apuramento de IVA (versão atual) — totais e taxas por grupo. |
 | `get_tax_logs` | Histórico de alterações (logs) às taxas de imposto. |
 | `get_timezone` | Detalhes de um fuso horário (tabela global) pelo seu ID. |
@@ -552,7 +522,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_invoice_receipt_mail_recipients` | Destinatários e estado de entrega de um envio por email de faturas-recibo. |
 | `get_invoice_receipt_mails_history` | Histórico de emails enviados de uma fatura-recibo. |
 | `get_invoice_receipt_next_number` | Próximo número disponível para uma fatura-recibo numa série. |
-| `get_invoice_receipt_relatable` | Faturas-recibo de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_invoice_receipts` | Lista (paginada) as faturas-recibo de uma empresa. |
 | `list_customer_history` | Resumo de conta-corrente por cliente (documentos, débito/crédito, saldos). |
 | `get_customer_history_customer` | Extrato (conta-corrente) de um cliente: documentos que movimentam a conta + saldo. |
@@ -566,7 +535,6 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_customer_return_note_mail_recipients` | Destinatários e estado de entrega de um envio por email de notas de devolução de cliente. |
 | `get_customer_return_note_mails_history` | Histórico de emails enviados de uma nota de devolução de cliente. |
 | `get_customer_return_note_next_number` | Próximo número disponível para uma nota de devolução de cliente numa série. |
-| `get_customer_return_note_relatable` | Notas de devolução de cliente de uma entidade relacionáveis a outro documento. ⚠️ deprecated (usar `documentRelatable`). |
 | `list_customer_return_notes` | Lista (paginada) as notas de devolução de cliente de uma empresa. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
