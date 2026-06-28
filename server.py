@@ -30143,6 +30143,768 @@ async def update_identification_template(
         return _err(e)
 
 
+# ===========================================================================
+# Faturas — criar em lote (Mutation invoiceBulkCreate)
+# ===========================================================================
+
+INVOICE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: InvoiceBulkInsert!) {
+  invoiceBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_invoices(company_id: int, documents: list[dict[str, Any]]) -> Any:
+    """Cria uma ou mais faturas (documento) numa empresa, em lote.
+
+    ⚠️ CRIA DOCUMENTOS FISCAIS REAIS. Conforme o `status`, a fatura pode ficar fechada (com
+    `hash`, comunicada à AT) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data de emissão.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
+    Chaves OPCIONAIS úteis: `maturityDateId` ou `expirationDate` (vencimento), `notes`,
+      `yourReference`, `ourReference`, `status` (0=rascunho, 1=fechado), `globalDiscount`,
+      `salespersonId`, `paymentMethodId`.
+
+    Devolve, por documento, `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por fatura a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(INVOICE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("invoiceBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: InvoiceInsert!) {
+  invoiceCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_invoice(company_id: int, document: dict[str, Any]) -> Any:
+    """Cria uma fatura (documento) numa empresa. Versão singular do `create_invoices` (que
+    cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO FISCAL REAL. Conforme o `status`, a fatura pode ficar fechada (com
+    `hash`, comunicada à AT) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_invoices`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int) e
+    `products` (list[dict]). Opcionais úteis: `maturityDateId`/`expirationDate`, `notes`,
+    `status`, `yourReference`, `globalDiscount`, `salespersonId`, `paymentMethodId`.
+
+    Devolve a fatura criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da fatura a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(INVOICE_CREATE_MUTATION, variables)
+        return unwrap(result, "invoiceCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  invoiceDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_invoices(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais faturas de uma empresa (em lote). Só são elegíveis as faturas em
+    rascunho — faturas já fechadas (com `hash`, comunicadas à AT) NÃO se apagam (anulam-se,
+    ver `nullify_invoice`). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(INVOICE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("invoiceDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  invoiceDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_invoice_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma fatura finalizada de volta a rascunho, para permitir voltar a editá-la.
+    Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em faturas que ainda admitam edição
+    (rascunho recente) — documentos já fechados/comunicados à AT não revertem.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(INVOICE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "invoiceDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  invoiceGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_invoice_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma fatura do lado do servidor. Devolve `success` (booleano). Para
+    depois descarregar o ficheiro, usa `get_invoice_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(INVOICE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("invoiceGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  invoiceGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_invoices_zip(company_id: int, document_ids: list[int]) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias faturas. Devolve
+    `success` (booleano). Para depois descarregar o ZIP, usa `get_invoice_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(INVOICE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("invoiceGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  invoiceNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_invoice(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma fatura (marca como anulada, `nullified=True`), com um motivo opcional.
+    Devolve o documento com o novo estado.
+
+    ⚠️ AÇÃO FISCAL IRREVERSÍVEL — a anulação de uma fatura é comunicada à Autoridade
+    Tributária e fica registada de forma definitiva. Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(INVOICE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "invoiceNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Faturas-recibo — criar em lote (Mutation invoiceReceiptBulkCreate)
+# ===========================================================================
+
+INVOICE_RECEIPT_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: InvoiceReceiptBulkInsert!) {
+  invoiceReceiptBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_invoice_receipts(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais faturas-recibo (documento) numa empresa, em lote. A fatura-recibo é
+    uma fatura paga no ato — por isso, além das linhas, exige os pagamentos.
+
+    ⚠️ CRIA DOCUMENTOS FISCAIS REAIS. Conforme o `status`, o documento pode ficar fechado
+    (com `hash`, comunicado à AT) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data de emissão.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
+      - `payments` (list[dict]): métodos de pagamento que liquidam o documento, cada um
+        `{"paymentMethodId": int, "value": float}` (opcionalmente `date`, `notes`).
+    Chaves OPCIONAIS úteis: `notes`, `yourReference`, `status` (0=rascunho, 1=fechado),
+      `globalDiscount`, `salespersonId`.
+
+    Devolve, por documento, `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por fatura-recibo a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(INVOICE_RECEIPT_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("invoiceReceiptBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: InvoiceReceiptInsert!) {
+  invoiceReceiptCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_invoice_receipt(company_id: int, document: dict[str, Any]) -> Any:
+    """Cria uma fatura-recibo (documento) numa empresa. Versão singular do
+    `create_invoice_receipts` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO FISCAL REAL. Conforme o `status`, o documento pode ficar fechado
+    (com `hash`, comunicado à AT) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_invoice_receipts`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
+    `products` (list[dict]) e `payments` (list[dict], cada um
+    `{"paymentMethodId": int, "value": float}`). Opcionais úteis: `notes`, `status`,
+    `yourReference`, `globalDiscount`, `salespersonId`.
+
+    Devolve a fatura-recibo criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da fatura-recibo a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(INVOICE_RECEIPT_CREATE_MUTATION, variables)
+        return unwrap(result, "invoiceReceiptCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  invoiceReceiptDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_invoice_receipts(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais faturas-recibo de uma empresa (em lote). Só são elegíveis as que
+    estão em rascunho — documentos já fechados (com `hash`, comunicados à AT) NÃO se apagam
+    (anulam-se, ver `nullify_invoice_receipt`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas-recibo a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(INVOICE_RECEIPT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("invoiceReceiptDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  invoiceReceiptDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_invoice_receipt_to_draft(
+    company_id: int, document_id: int
+) -> Any:
+    """Reverte uma fatura-recibo finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já fechados/comunicados à AT não revertem.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura-recibo a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(
+            INVOICE_RECEIPT_DRAFTABLE_MUTATION, variables
+        )
+        return unwrap(result, "invoiceReceiptDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  invoiceReceiptGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_invoice_receipt_pdf(
+    company_id: int, document_id: int
+) -> Any:
+    """(Re)gera o PDF de uma fatura-recibo do lado do servidor. Devolve `success` (booleano).
+    Para depois descarregar o ficheiro, usa `get_invoice_receipt_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura-recibo cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(INVOICE_RECEIPT_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("invoiceReceiptGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  invoiceReceiptGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_invoice_receipts_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias faturas-recibo.
+    Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_invoice_receipt_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas-recibo a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(INVOICE_RECEIPT_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("invoiceReceiptGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  invoiceReceiptNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_invoice_receipt(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma fatura-recibo (marca como anulada, `nullified=True`), com um motivo opcional.
+    Devolve o documento com o novo estado.
+
+    ⚠️ AÇÃO FISCAL IRREVERSÍVEL — a anulação é comunicada à Autoridade Tributária e fica
+    registada de forma definitiva. Confirma o documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura-recibo a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(INVOICE_RECEIPT_NULLIFY_MUTATION, variables)
+        return unwrap(result, "invoiceReceiptNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  invoiceReceiptSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_invoice_receipt_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais faturas-recibo por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas-recibo a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(INVOICE_RECEIPT_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("invoiceReceiptSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_RECEIPT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: InvoiceReceiptUpdate!) {
+  invoiceReceiptUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_invoice_receipt(
+    company_id: int, document: dict[str, Any]
+) -> Any:
+    """Atualiza uma fatura-recibo (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO FISCAL REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos fechados (com `hash`, comunicados à AT) não se editam. Confirma os dados antes
+    de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId` (int).
+    Inclui apenas as chaves a alterar — as mesmas de `create_invoice_receipts` (`date`,
+    `customerId`, `documentSetId`, `products`, `payments`, `notes`, `status`, etc.). Em
+    `products`/`payments`, passar a lista substitui as linhas/pagamentos atuais.
+
+    Devolve a fatura-recibo atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(INVOICE_RECEIPT_UPDATE_MUTATION, variables)
+        return unwrap(result, "invoiceReceiptUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  invoiceSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_invoice_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais faturas por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_invoice_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(INVOICE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("invoiceSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+INVOICE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: InvoiceUpdate!) {
+  invoiceUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_invoice(company_id: int, document: dict[str, Any]) -> Any:
+    """Atualiza uma fatura (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO FISCAL REAL. Só é possível em documentos editáveis (rascunho) —
+    faturas fechadas (com `hash`, comunicadas à AT) não se editam. Confirma os dados antes de
+    atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId` (int).
+    Inclui apenas as chaves a alterar — as mesmas de `create_invoices` (`date`, `customerId`,
+    `documentSetId`, `products`, `maturityDateId`/`expirationDate`, `notes`, `status`, etc.).
+    Em `products`, passar a lista substitui as linhas atuais.
+
+    Devolve a fatura atualizada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(INVOICE_UPDATE_MUTATION, variables)
+        return unwrap(result, "invoiceUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

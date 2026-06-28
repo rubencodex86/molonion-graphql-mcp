@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.653.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.671.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -711,6 +711,24 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_identification_template` | Cria um modelo de identificação (cabeçalho de documentos). |
 | `delete_identification_templates` | Apaga um ou mais modelos de identificação (em lote). ⚠️ destrutiva/irreversível. |
 | `update_identification_template` | Atualiza um modelo de identificação (nome, dados, contactos). |
+| `create_invoices` | Cria uma ou mais faturas (em lote). ⚠️ cria documentos fiscais reais. |
+| `create_invoice` | Cria uma fatura (singular). ⚠️ cria documento fiscal real. |
+| `delete_invoices` | Apaga uma ou mais faturas (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_invoice_to_draft` | Reverte uma fatura finalizada para rascunho. ⚠️ altera estado. |
+| `generate_invoice_pdf` | (Re)gera o PDF de uma fatura no servidor (descarregar via token). |
+| `generate_invoices_zip` | (Re)gera um ZIP com PDFs de várias faturas (descarregar via token). |
+| `nullify_invoice` | Anula uma fatura (com motivo). ⚠️ ação fiscal irreversível (comunicada à AT). |
+| `create_invoice_receipts` | Cria uma ou mais faturas-recibo (em lote, com pagamentos). ⚠️ cria documentos fiscais reais. |
+| `create_invoice_receipt` | Cria uma fatura-recibo (singular). ⚠️ cria documento fiscal real. |
+| `delete_invoice_receipts` | Apaga uma ou mais faturas-recibo (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_invoice_receipt_to_draft` | Reverte uma fatura-recibo finalizada para rascunho. ⚠️ altera estado. |
+| `generate_invoice_receipt_pdf` | (Re)gera o PDF de uma fatura-recibo no servidor (descarregar via token). |
+| `generate_invoice_receipts_zip` | (Re)gera um ZIP com PDFs de várias faturas-recibo (descarregar via token). |
+| `nullify_invoice_receipt` | Anula uma fatura-recibo (com motivo). ⚠️ ação fiscal irreversível (comunicada à AT). |
+| `send_invoice_receipt_mail` | Envia faturas-recibo por email. ⚠️ envia email real. |
+| `update_invoice_receipt` | Atualiza uma fatura-recibo (input de documento por dict). ⚠️ altera documento real. |
+| `send_invoice_mail` | Envia faturas por email. ⚠️ envia email real. |
+| `update_invoice` | Atualiza uma fatura (input de documento por dict). ⚠️ altera documento real. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
