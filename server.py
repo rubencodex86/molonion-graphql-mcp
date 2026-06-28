@@ -20879,6 +20879,45 @@ async def list_stock_templates(company_id: int) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Suplementos / módulos disponíveis (SupplementAvailableModules)
+# ===========================================================================
+
+# NOTA: o campo `data` é o scalar `SupplementAvailableModules` (um JSON), não um
+# objeto — por isso o selection set pede `data` sem subcampos (padrão "data escalar",
+# como em `meLoggedIn`/`customerNextNumber`).
+SUPPLEMENT_AVAILABLE_MODULES_QUERY = """
+query ($countryISO: String!, $languageISO: String!) {
+  supplementAvailableModules(countryISO: $countryISO, languageISO: $languageISO) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_supplement_available_modules(
+    country_iso: str, language_iso: str
+) -> Any:
+    """Obtém os módulos/suplementos disponíveis (add-ons da subscrição Moloni ON) para um
+    país e idioma. Devolve `data` como um objeto JSON livre (scalar
+    `SupplementAvailableModules`) com a estrutura dos módulos disponíveis (nomes, códigos,
+    preços, etc., conforme devolvido pela API). Nota: ao contrário da maioria das
+    operações, NÃO recebe `companyId` — é parametrizada por país/idioma.
+
+    Args:
+        country_iso: código ISO do país (ex. "PT").
+        language_iso: código ISO do idioma (ex. "pt").
+    """
+    variables = {"countryISO": country_iso, "languageISO": language_iso}
+    try:
+        data = await _client.query(SUPPLEMENT_AVAILABLE_MODULES_QUERY, variables)
+        return unwrap(data, "supplementAvailableModules")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
