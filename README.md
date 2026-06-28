@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.602.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.617.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -660,6 +660,21 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `generate_product_categories_xlsx` | Gera o XLSX da lista de categorias de produto (filtrada) no servidor. |
 | `generate_products_pdf` | Gera o PDF da lista de produtos (filtrada) no servidor. |
 | `generate_products_xlsx` | Gera o XLSX da lista de produtos (filtrada) no servidor. |
+| `generate_purchases_analysis_by_date_pdf` | Gera o PDF da análise de compras por data no servidor. |
+| `generate_purchases_analysis_by_date_single_pdf` | Gera o PDF detalhado (single) da análise de compras por data no servidor. |
+| `generate_purchases_analysis_by_date_with_docs_pdf` | Gera o PDF da análise de compras por data com documentos de origem no servidor. |
+| `generate_purchases_analysis_by_product_category_pdf` | Gera o PDF da análise de compras por categoria de produto no servidor. |
+| `generate_purchases_analysis_by_product_category_single_pdf` | Gera o PDF detalhado (single) da análise de compras por categoria de produto no servidor. |
+| `generate_purchases_analysis_by_product_category_with_docs_pdf` | Gera o PDF da análise de compras por categoria com documentos de origem no servidor. |
+| `generate_purchases_analysis_by_product_pdf` | Gera o PDF da análise de compras por produto no servidor. |
+| `generate_purchases_analysis_by_product_single_pdf` | Gera o PDF detalhado (single) da análise de compras por produto no servidor. |
+| `generate_purchases_analysis_by_product_with_docs_pdf` | Gera o PDF da análise de compras por produto com documentos de origem no servidor. |
+| `generate_purchases_pending_list_date_pdf` | Gera o PDF das compras pendentes por data de vencimento no servidor. |
+| `generate_purchases_pending_list_date_xlsx` | Gera o XLSX das compras pendentes por data de vencimento no servidor. |
+| `generate_purchases_pending_list_suppliers_pdf` | Gera o PDF das compras pendentes por fornecedor no servidor. |
+| `generate_purchases_pending_list_suppliers_xlsx` | Gera o XLSX das compras pendentes por fornecedor no servidor. |
+| `generate_purchases_statements_pdf` | Gera o PDF do extrato de compras a fornecedores no servidor. |
+| `generate_purchases_statements_xlsx` | Gera o XLSX do extrato de compras a fornecedores no servidor. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
