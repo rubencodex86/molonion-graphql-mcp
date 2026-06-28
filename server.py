@@ -25984,6 +25984,147 @@ async def delete_documents(company_id: int, document_ids: list[int]) -> Any:
         return _err(e)
 
 
+# ===========================================================================
+# Modelos de mensagem de email de documentos — criar
+# (Mutation documentMailMessageTemplateCreate)
+# ===========================================================================
+
+DOCUMENT_MAIL_MESSAGE_TEMPLATE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: DocumentMailMessageTemplateInsert!) {
+  documentMailMessageTemplateCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentMailMessageTemplateId
+      name
+      content
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_document_mail_message_template(
+    company_id: int, name: str, content: str
+) -> Any:
+    """Cria um modelo de mensagem de email para envio de documentos numa empresa, com o nome
+    (`name`) e o conteúdo/corpo (`content`) da mensagem. Estes modelos reutilizam-se no
+    envio de documentos por email. Devolve o modelo criado com o seu
+    `documentMailMessageTemplateId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome do modelo.
+        content: conteúdo/corpo da mensagem.
+    """
+    data = {"name": name, "content": content}
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(
+            DOCUMENT_MAIL_MESSAGE_TEMPLATE_CREATE_MUTATION, variables
+        )
+        return unwrap(result, "documentMailMessageTemplateCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_MAIL_MESSAGE_TEMPLATE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentMailMessageTemplateId: [Int]!) {
+  documentMailMessageTemplateDelete(companyId: $companyId, documentMailMessageTemplateId: $documentMailMessageTemplateId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_document_mail_message_templates(
+    company_id: int, template_ids: list[int]
+) -> Any:
+    """Apaga um ou mais modelos de mensagem de email de documentos de uma empresa (em lote).
+    Devolve `status`, `deletedCount` e `elementsCount`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os modelos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        template_ids: lista de IDs dos modelos de mensagem a apagar.
+    """
+    variables = {
+        "companyId": company_id,
+        "documentMailMessageTemplateId": template_ids,
+    }
+    try:
+        raw = await _client.query(
+            DOCUMENT_MAIL_MESSAGE_TEMPLATE_DELETE_MUTATION, variables
+        )
+        node = (raw or {}).get("documentMailMessageTemplateDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'documentMailMessageTemplateDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_MAIL_MESSAGE_TEMPLATE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: DocumentMailMessageTemplateUpdate!) {
+  documentMailMessageTemplateUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentMailMessageTemplateId
+      name
+      content
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_document_mail_message_template(
+    company_id: int,
+    document_mail_message_template_id: int,
+    name: str | None = None,
+    content: str | None = None,
+) -> Any:
+    """Atualiza um modelo de mensagem de email de documentos de uma empresa. Identifica-se
+    pelo `document_mail_message_template_id`; só são alterados os campos que passares — o
+    nome (`name`) e/ou o conteúdo (`content`). Devolve o modelo atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_mail_message_template_id: ID do modelo de mensagem a atualizar.
+        name: opcional; novo nome do modelo.
+        content: opcional; novo conteúdo/corpo da mensagem.
+    """
+    data: dict[str, Any] = {
+        "documentMailMessageTemplateId": document_mail_message_template_id
+    }
+    if name is not None:
+        data["name"] = name
+    if content is not None:
+        data["content"] = content
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(
+            DOCUMENT_MAIL_MESSAGE_TEMPLATE_UPDATE_MUTATION, variables
+        )
+        return unwrap(result, "documentMailMessageTemplateUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

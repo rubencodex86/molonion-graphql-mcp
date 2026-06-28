@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.560.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.563.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -618,6 +618,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `retry_all_document_at_communications` | Repete todas as comunicações à AT falhadas (em lote). ⚠️ ação fiscal em massa. |
 | `update_document_at` | Atualiza os dados AT de um documento (código AT de transporte). ⚠️ altera dados fiscais. |
 | `delete_documents` | Apaga um ou mais documentos de qualquer tipo (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `create_document_mail_message_template` | Cria um modelo de mensagem de email para envio de documentos. |
+| `delete_document_mail_message_templates` | Apaga um ou mais modelos de mensagem de email (em lote). ⚠️ destrutiva/irreversível. |
+| `update_document_mail_message_template` | Atualiza um modelo de mensagem de email (nome, conteúdo). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
