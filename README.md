@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.511.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.521.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -569,6 +569,16 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `delete_company_users` | Remove um ou mais utilizadores de uma empresa (em lote). ⚠️ destrutiva. |
 | `send_company_user_recovery` | Envia email de recuperação de password a um utilizador. ⚠️ envia email real. |
 | `update_company_user` | Atualiza um utilizador de empresa (nome, telefone, perfil, idioma). |
+| `create_at_user` | Cria/regista um utilizador AT (Portal das Finanças). ⚠️ credenciais AT sensíveis. |
+| `create_credit_notes` | Cria uma ou mais notas de crédito (em lote; corrige documentos de origem). ⚠️ cria documentos reais. |
+| `create_credit_note` | Cria uma nota de crédito (singular). ⚠️ cria documento real. |
+| `delete_credit_notes` | Apaga uma ou mais notas de crédito (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
+| `revert_credit_note_to_draft` | Reverte uma nota de crédito finalizada para rascunho. ⚠️ altera estado. |
+| `generate_credit_note_pdf` | (Re)gera o PDF de uma nota de crédito no servidor (descarregar via token). |
+| `generate_credit_notes_zip` | (Re)gera um ZIP com PDFs de várias notas de crédito (descarregar via token). |
+| `nullify_credit_note` | Anula uma nota de crédito (com motivo). ⚠️ operação fiscal irreversível. |
+| `send_credit_note_mail` | Envia notas de crédito por email (to/cc/bcc, mensagem, anexo). ⚠️ envia email real. |
+| `update_credit_note` | Atualiza uma nota de crédito (input de documento por dict). ⚠️ altera documento real. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

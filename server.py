@@ -23740,6 +23740,440 @@ async def update_company_user(
         return _err(e)
 
 
+# ===========================================================================
+# Utilizador AT (Portal das Finanças) — criar (Mutation createATUser)
+# ===========================================================================
+
+CREATE_AT_USER_MUTATION = """
+mutation ($username: String!, $password: String!) {
+  createATUser(username: $username, password: $password) {
+    errors { field msg }
+    data {
+      success
+      exists
+      userPattern
+      loginError
+      loginAttemptsLeft
+      generatedPassword
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_at_user(username: str, password: str) -> Any:
+    """Cria/regista um utilizador da Autoridade Tributária (AT — subutilizador do Portal das
+    Finanças) com as credenciais indicadas, para a comunicação de documentos. Devolve, por
+    resultado, `success`, se já `exists`, o padrão do utilizador (`userPattern`), eventuais
+    erros de login (`loginError`, `loginAttemptsLeft`) e a password gerada
+    (`generatedPassword`), quando aplicável. Nota: ao contrário da maioria das operações,
+    NÃO recebe `companyId`.
+
+    ⚠️ RECEBE CREDENCIAIS AT SENSÍVEIS (utilizador e password do Portal das Finanças) e
+    autentica-se contra a AT — usa APENAS com credenciais autorizadas pelo titular. Tentativas
+    falhadas consomem `loginAttemptsLeft` (risco de bloqueio da conta AT).
+
+    Args:
+        username: utilizador AT (normalmente o NIF/subutilizador do Portal das Finanças).
+        password: password do utilizador AT (credencial sensível).
+    """
+    variables = {"username": username, "password": password}
+    try:
+        result = await _client.query(CREATE_AT_USER_MUTATION, variables)
+        return unwrap(result, "createATUser")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Notas de crédito — criar em lote (Mutation creditNoteBulkCreate)
+# ===========================================================================
+
+CREDIT_NOTE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CreditNoteBulkInsert!) {
+  creditNoteBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_credit_notes(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais notas de crédito (documento) numa empresa, em lote. Uma nota de
+    crédito anula/corrige (total ou parcialmente) um documento de origem (ex. uma fatura).
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas; cada linha com `productId` (int), `ordering`
+        (int) e `qty` (float) OBRIGATÓRIOS, e opcionais `price`, `discount`, `name`,
+        `taxes` (list[dict] `{taxId, value}`), etc. (ver `create_bills_of_lading`).
+      - `relatedWith` (list[dict]): documento(s) de origem que a nota de crédito corrige;
+        cada item `{relatedDocumentId (int), value (float)}` (valor creditado desse
+        documento).
+    Chaves OPCIONAIS úteis: `notes`, `notesRelatedDocs`, `status` (0=rascunho, 1=fechado),
+      `yourReference`, `ourReference`, `salespersonId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por nota de crédito a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(CREDIT_NOTE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("creditNoteBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CreditNoteInsert!) {
+  creditNoteCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_credit_note(company_id: int, document: dict[str, Any]) -> Any:
+    """Cria uma nota de crédito (documento) numa empresa. Versão singular do
+    `create_credit_notes` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_credit_notes`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
+    `products` (list[dict]) e `relatedWith` (list[dict] `{relatedDocumentId, value}` — o(s)
+    documento(s) de origem corrigido(s)). Opcionais úteis: `notes`, `status`,
+    `yourReference`, `salespersonId`, etc.
+
+    Devolve a nota de crédito criada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da nota de crédito a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(CREDIT_NOTE_CREATE_MUTATION, variables)
+        return unwrap(result, "creditNoteCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  creditNoteDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_credit_notes(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais notas de crédito de uma empresa (em lote). Só são elegíveis as
+    notas em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam
+    (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de crédito a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(CREDIT_NOTE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("creditNoteDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  creditNoteDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_credit_note_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma nota de crédito finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de crédito a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(CREDIT_NOTE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "creditNoteDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  creditNoteGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_credit_note_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma nota de crédito do lado do servidor. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa `get_credit_note_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de crédito cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(CREDIT_NOTE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("creditNoteGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  creditNoteGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_credit_notes_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias notas de crédito.
+    Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_credit_note_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de crédito a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(CREDIT_NOTE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("creditNoteGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  creditNoteNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_credit_note(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma nota de crédito (marca como anulada, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que não
+    pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de crédito a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(CREDIT_NOTE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "creditNoteNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  creditNoteSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_credit_note_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais notas de crédito por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_credit_note_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de crédito a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(CREDIT_NOTE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("creditNoteSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+CREDIT_NOTE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: CreditNoteUpdate!) {
+  creditNoteUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_credit_note(company_id: int, document: dict[str, Any]) -> Any:
+    """Atualiza uma nota de crédito (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_credit_note`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_credit_notes`
+    (`date`, `customerId`, `documentSetId`, `products`, `relatedWith`, `notes`, `status`,
+    etc.). Em `products`/`relatedWith`, passar a lista substitui o conjunto atual.
+
+    Devolve a nota de crédito atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(CREDIT_NOTE_UPDATE_MUTATION, variables)
+        return unwrap(result, "creditNoteUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
