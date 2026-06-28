@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.486.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.511.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -536,6 +536,39 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_customer_return_note_mails_history` | Histórico de emails enviados de uma nota de devolução de cliente. |
 | `get_customer_return_note_next_number` | Próximo número disponível para uma nota de devolução de cliente numa série. |
 | `list_customer_return_notes` | Lista (paginada) as notas de devolução de cliente de uma empresa. |
+
+### Mutations (escrita)
+
+> ⚠️ As mutations **alteram dados reais** na Moloni ON. As que têm efeitos
+> destrutivos/irreversíveis (apagar, anular, comunicar à AT) estão assinaladas.
+
+| Tool | Descrição |
+|------|-----------|
+| `apply_price_class` | Aplica uma classe de preço a produtos (ajuste de preço em %, assíncrono). ⚠️ altera preços em massa. |
+| `update_at_settings` | Atualiza as definições de comunicação à AT (automáticos, credenciais AT). ⚠️ credenciais sensíveis. |
+| `create_banking_info` | Cria um dado bancário (IBAN/SWIFT/conta) numa empresa. |
+| `delete_banking_info` | Apaga um ou mais dados bancários (em lote). ⚠️ destrutiva/irreversível. |
+| `update_banking_info` | Atualiza um dado bancário (rótulo, valor, associação à empresa). |
+| `create_bank_remittance` | Cria uma remessa bancária (SEPA) agrupando documentos. |
+| `delete_bank_remittance` | Apaga uma ou mais remessas bancárias (em lote, só não processadas). ⚠️ destrutiva/irreversível. |
+| `update_bank_remittance` | Atualiza uma remessa bancária (tipo, nome, data, documentos, estado). |
+| `create_bills_of_lading` | Cria uma ou mais guias de transporte (em lote; input de documento por dict). ⚠️ cria documentos reais. |
+| `create_bill_of_lading` | Cria uma guia de transporte (singular; input de documento por dict). ⚠️ cria documento real. |
+| `delete_bills_of_lading` | Apaga uma ou mais guias de transporte (em lote). ⚠️ destrutiva/irreversível. |
+| `revert_bill_of_lading_to_draft` | Reverte uma guia de transporte finalizada para rascunho (reeditar). ⚠️ altera estado. |
+| `generate_bill_of_lading_pdf` | (Re)gera o PDF de uma guia de transporte no servidor (descarregar via token). |
+| `generate_bills_of_lading_zip` | (Re)gera um ZIP com PDFs de várias guias de transporte (descarregar via token). |
+| `nullify_bill_of_lading` | Anula uma guia de transporte (com motivo). ⚠️ operação fiscal irreversível. |
+| `send_bill_of_lading_mail` | Envia guias de transporte por email (to/cc/bcc, mensagem, anexo). ⚠️ envia email real. |
+| `update_bill_of_lading` | Atualiza uma guia de transporte (input de documento por dict). ⚠️ altera documento real. |
+| `create_company_role` | Cria um perfil de permissões (role) com permissões recurso-ação. |
+| `delete_company_roles` | Apaga um ou mais perfis de permissões (em lote). ⚠️ destrutiva/irreversível. |
+| `update_company_role` | Atualiza um perfil de permissões (código, nome, descrição, pai, permissões). |
+| `update_company` | Atualiza os dados de uma empresa (parcial; ~80 campos por dict). ⚠️ altera dados fiscais/faturação. |
+| `create_company_user` | Adiciona um utilizador a uma empresa (convite por email, perfil). ⚠️ dá acesso à empresa. |
+| `delete_company_users` | Remove um ou mais utilizadores de uma empresa (em lote). ⚠️ destrutiva. |
+| `send_company_user_recovery` | Envia email de recuperação de password a um utilizador. ⚠️ envia email real. |
+| `update_company_user` | Atualiza um utilizador de empresa (nome, telefone, perfil, idioma). |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

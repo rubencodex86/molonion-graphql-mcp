@@ -22403,6 +22403,1343 @@ async def list_warehouses(
         return _err(e)
 
 
+# ###########################################################################
+# MUTATIONS (escrita) — criar / atualizar / apagar / ações
+#
+# As mutations alteram dados reais na Moloni ON. Mesmo padrão das queries
+# (envelope `{errors, data}`, `unwrap`, `_err`), mas o `input`/`data` é maior:
+# expõem-se como parâmetros os campos obrigatórios + os úteis. Tools com efeitos
+# destrutivos/irreversíveis (apagar, anular, comunicar à AT) avisam no docstring.
+# ###########################################################################
+
+# ===========================================================================
+# Classes de preço — aplicar (Mutation applyPriceClass)
+# ===========================================================================
+
+APPLY_PRICE_CLASS_MUTATION = """
+mutation ($companyId: Int!, $priceClassId: Int!, $percentage: Float!, $data: PriceClassApply!) {
+  applyPriceClass(companyId: $companyId, priceClassId: $priceClassId, percentage: $percentage, data: $data) {
+    errors { field msg }
+    data {
+      progressiveTaskId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def apply_price_class(
+    company_id: int,
+    price_class_id: int,
+    percentage: float,
+    all_products: bool | None = None,
+    product_ids: list[int] | None = None,
+    product_category_ids: list[int] | None = None,
+    customer_ids: list[int] | None = None,
+) -> Any:
+    """Aplica uma classe de preço a produtos, ajustando os preços de venda por uma
+    percentagem (`percentage`). Escolhe o alvo com UM dos critérios: todos os produtos
+    (`all_products=True`), produtos específicos (`product_ids`), categorias de produto
+    (`product_category_ids`) ou os produtos associados a clientes (`customer_ids`).
+
+    ⚠️ ALTERA EM MASSA os preços de venda dos produtos abrangidos. A operação corre em
+    segundo plano (assíncrona) e devolve `progressiveTaskId` para acompanhar o progresso —
+    o resultado não é imediato. Confirma o alvo antes de aplicar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        price_class_id: ID da classe de preço a aplicar (ver `list_price_classes`).
+        percentage: percentagem a aplicar ao preço (ex. 10.0 para +10%).
+        all_products: opcional; se `True`, aplica a todos os produtos.
+        product_ids: opcional; lista de IDs de produtos a abranger.
+        product_category_ids: opcional; lista de IDs de categorias de produto a abranger.
+        customer_ids: opcional; lista de IDs de clientes cujos produtos abranger.
+    """
+    data: dict[str, Any] = {}
+    if all_products is not None:
+        data["allProducts"] = all_products
+    if product_ids is not None:
+        data["productIds"] = product_ids
+    if product_category_ids is not None:
+        data["productCategoryIds"] = product_category_ids
+    if customer_ids is not None:
+        data["customerIds"] = customer_ids
+    variables = {
+        "companyId": company_id,
+        "priceClassId": price_class_id,
+        "percentage": percentage,
+        "data": data,
+    }
+    try:
+        result = await _client.query(APPLY_PRICE_CLASS_MUTATION, variables)
+        return unwrap(result, "applyPriceClass")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Definições AT — atualizar (Mutation ATSettingsUpdate)
+# ===========================================================================
+
+AT_SETTINGS_UPDATE_MUTATION = """
+mutation ($data: ATSettingsUpdateInput!) {
+  ATSettingsUpdate(data: $data) {
+    errors { field msg }
+    data {
+      companyATId
+      companyId
+      automaticInvoice
+      automaticTransport
+      automaticDocSets
+      automaticInvoiceChangedAt
+      automaticTransportChangedAt
+      automaticDocSetsChangedAt
+      automaticInvoiceDelay
+      userId
+      passwordSet
+      createdAt
+      updatedAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_at_settings(
+    company_id: int,
+    automatic_invoice: bool | None = None,
+    automatic_invoice_include_current_month: bool | None = None,
+    automatic_invoice_include_previous_month: bool | None = None,
+    automatic_transport: bool | None = None,
+    automatic_doc_sets: bool | None = None,
+    automatic_invoice_delay: int | None = None,
+    user_id: int | None = None,
+    password: str | None = None,
+) -> Any:
+    """Atualiza as definições de comunicação com a Autoridade Tributária (AT) de uma empresa:
+    a comunicação automática de faturas (`automatic_invoice`, com inclusão do mês atual/
+    anterior e atraso em dias), de documentos de transporte (`automatic_transport`) e das
+    séries (`automatic_doc_sets`), e as credenciais do utilizador AT do Portal das Finanças
+    (`user_id`, `password`). Só são alterados os campos que passares.
+
+    ⚠️ Configura a comunicação à AT e recebe a PASSWORD do utilizador AT (credencial
+    sensível) — usa apenas com credenciais autorizadas. Ativar a comunicação automática faz
+    com que os documentos passem a ser comunicados à AT automaticamente.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        automatic_invoice: opcional; ativar/desativar comunicação automática de faturas.
+        automatic_invoice_include_current_month: opcional; incluir o mês atual.
+        automatic_invoice_include_previous_month: opcional; incluir o mês anterior.
+        automatic_transport: opcional; comunicação automática de documentos de transporte.
+        automatic_doc_sets: opcional; comunicação automática das séries de documentos.
+        automatic_invoice_delay: opcional; atraso (em dias) da comunicação automática.
+        user_id: opcional; utilizador AT (subutilizador do Portal das Finanças).
+        password: opcional; password do utilizador AT (credencial sensível).
+    """
+    data: dict[str, Any] = {"companyId": company_id}
+    if automatic_invoice is not None:
+        data["automaticInvoice"] = automatic_invoice
+    if automatic_invoice_include_current_month is not None:
+        data["automaticInvoiceIncludeCurrentMonth"] = (
+            automatic_invoice_include_current_month
+        )
+    if automatic_invoice_include_previous_month is not None:
+        data["automaticInvoiceIncludePreviousMonth"] = (
+            automatic_invoice_include_previous_month
+        )
+    if automatic_transport is not None:
+        data["automaticTransport"] = automatic_transport
+    if automatic_doc_sets is not None:
+        data["automaticDocSets"] = automatic_doc_sets
+    if automatic_invoice_delay is not None:
+        data["automaticInvoiceDelay"] = automatic_invoice_delay
+    if user_id is not None:
+        data["userId"] = user_id
+    if password is not None:
+        data["password"] = password
+    try:
+        result = await _client.query(AT_SETTINGS_UPDATE_MUTATION, {"data": data})
+        return unwrap(result, "ATSettingsUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Dados bancários — criar (Mutation bankingInfoCreate)
+# ===========================================================================
+
+BANKING_INFO_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: BankingInfoInsert!) {
+  bankingInfoCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      bankingInfoId
+      name
+      value
+      associateWithCompany
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_banking_info(
+    company_id: int,
+    name: str,
+    value: str,
+    associate_with_company: bool | None = None,
+) -> Any:
+    """Cria um dado bancário (IBAN/SWIFT/conta) numa empresa. O `name` é o rótulo do dado
+    (ex. "IBAN", "SWIFT") e o `value` é o respetivo valor. Opcionalmente associa o dado à
+    empresa (`associate_with_company`) para aparecer nos documentos. Devolve o dado criado
+    com o seu `bankingInfoId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: rótulo do dado bancário (ex. "IBAN").
+        value: valor do dado bancário (ex. o número IBAN).
+        associate_with_company: opcional; se `True`, associa o dado à empresa.
+    """
+    data: dict[str, Any] = {"name": name, "value": value}
+    if associate_with_company is not None:
+        data["associateWithCompany"] = associate_with_company
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(BANKING_INFO_CREATE_MUTATION, variables)
+        return unwrap(result, "bankingInfoCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: as mutations `*Delete` devolvem o tipo `DeletionError` — que NÃO segue o
+# envelope `{errors, data}`: tem `status`, `deletedCount`, `elementsCount` e `errors`
+# diretamente (sem `data`). Por isso o `unwrap()` não se aplica; lê-se o nó à mão.
+BANKING_INFO_DELETE_MUTATION = """
+mutation ($companyId: Int!, $bankingInfoId: [Int]!) {
+  bankingInfoDelete(companyId: $companyId, bankingInfoId: $bankingInfoId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_banking_info(company_id: int, banking_info_ids: list[int]) -> Any:
+    """Apaga um ou mais dados bancários de uma empresa (em lote). Devolve `status` (sucesso
+    global), `deletedCount` (quantos foram apagados) e `elementsCount` (quantos restam).
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os dados bancários
+    indicados. Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        banking_info_ids: lista de IDs dos dados bancários a apagar.
+    """
+    variables = {"companyId": company_id, "bankingInfoId": banking_info_ids}
+    try:
+        raw = await _client.query(BANKING_INFO_DELETE_MUTATION, variables)
+        node = (raw or {}).get("bankingInfoDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'bankingInfoDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+BANKING_INFO_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: BankingInfoUpdate!) {
+  bankingInfoUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      bankingInfoId
+      name
+      value
+      associateWithCompany
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_banking_info(
+    company_id: int,
+    banking_info_id: int,
+    name: str | None = None,
+    value: str | None = None,
+    associate_with_company: bool | None = None,
+) -> Any:
+    """Atualiza um dado bancário de uma empresa. Identifica-se pelo `banking_info_id`; só são
+    alterados os campos que passares — o rótulo (`name`), o valor (`value`) e/ou a associação
+    à empresa (`associate_with_company`). Devolve o dado atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        banking_info_id: ID do dado bancário a atualizar.
+        name: opcional; novo rótulo do dado bancário.
+        value: opcional; novo valor do dado bancário.
+        associate_with_company: opcional; associar (ou não) o dado à empresa.
+    """
+    data: dict[str, Any] = {"bankingInfoId": banking_info_id}
+    if name is not None:
+        data["name"] = name
+    if value is not None:
+        data["value"] = value
+    if associate_with_company is not None:
+        data["associateWithCompany"] = associate_with_company
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(BANKING_INFO_UPDATE_MUTATION, variables)
+        return unwrap(result, "bankingInfoUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Remessas bancárias (SEPA) — criar (Mutation bankRemittanceCreate)
+# ===========================================================================
+
+BANK_REMITTANCE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: BankRemittanceInsert!) {
+  bankRemittanceCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      bankRemittanceId
+      handled
+      type
+      name
+      date
+      notes
+      totalValue
+      file
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_bank_remittance(
+    company_id: int,
+    remittance_type: int,
+    name: str,
+    date: str,
+    documents: list[int],
+    notes: str | None = None,
+) -> Any:
+    """Cria uma remessa bancária (SEPA) numa empresa, agrupando documentos para débito/
+    cobrança. Indica o tipo (`remittance_type`), o nome, a data e a lista de IDs de
+    documentos a incluir (`documents`); `notes` é opcional. Devolve a remessa criada com o
+    seu `bankRemittanceId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        remittance_type: tipo da remessa (Int, conforme a Moloni ON).
+        name: nome/identificação da remessa.
+        date: data da remessa no formato `YYYY-MM-DD`.
+        documents: lista de IDs de documentos a incluir na remessa.
+        notes: opcional; notas da remessa.
+    """
+    data: dict[str, Any] = {
+        "type": remittance_type,
+        "name": name,
+        "date": date,
+        "documents": documents,
+    }
+    if notes is not None:
+        data["notes"] = notes
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(BANK_REMITTANCE_CREATE_MUTATION, variables)
+        return unwrap(result, "bankRemittanceCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+BANK_REMITTANCE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $bankRemittanceId: [Int]!) {
+  bankRemittanceDelete(companyId: $companyId, bankRemittanceId: $bankRemittanceId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_bank_remittance(
+    company_id: int, bank_remittance_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais remessas bancárias de uma empresa (em lote). Só são elegíveis as
+    remessas ainda não processadas. Devolve `status`, `deletedCount` e `elementsCount`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as remessas indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        bank_remittance_ids: lista de IDs das remessas bancárias a apagar.
+    """
+    variables = {"companyId": company_id, "bankRemittanceId": bank_remittance_ids}
+    try:
+        raw = await _client.query(BANK_REMITTANCE_DELETE_MUTATION, variables)
+        node = (raw or {}).get("bankRemittanceDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'bankRemittanceDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+BANK_REMITTANCE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: BankRemittanceUpdate!) {
+  bankRemittanceUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      bankRemittanceId
+      handled
+      type
+      name
+      date
+      notes
+      totalValue
+      file
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_bank_remittance(
+    company_id: int,
+    bank_remittance_id: int,
+    remittance_type: int | None = None,
+    name: str | None = None,
+    date: str | None = None,
+    notes: str | None = None,
+    documents: list[int] | None = None,
+    handled: int | None = None,
+) -> Any:
+    """Atualiza uma remessa bancária (SEPA) de uma empresa. Identifica-se pelo
+    `bank_remittance_id`; só são alterados os campos que passares — o tipo
+    (`remittance_type`), o nome, a data, as notas, a lista de documentos incluídos
+    (`documents`, substitui o conjunto atual) e o estado de processamento (`handled`).
+    Devolve a remessa atualizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        bank_remittance_id: ID da remessa bancária a atualizar.
+        remittance_type: opcional; novo tipo da remessa.
+        name: opcional; novo nome da remessa.
+        date: opcional; nova data no formato `YYYY-MM-DD`.
+        notes: opcional; novas notas.
+        documents: opcional; nova lista de IDs de documentos da remessa.
+        handled: opcional; estado de processamento da remessa.
+    """
+    data: dict[str, Any] = {"bankRemittanceId": bank_remittance_id}
+    if remittance_type is not None:
+        data["type"] = remittance_type
+    if name is not None:
+        data["name"] = name
+    if date is not None:
+        data["date"] = date
+    if notes is not None:
+        data["notes"] = notes
+    if documents is not None:
+        data["documents"] = documents
+    if handled is not None:
+        data["handled"] = handled
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(BANK_REMITTANCE_UPDATE_MUTATION, variables)
+        return unwrap(result, "bankRemittanceUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Guias de transporte — criar em lote (Mutation billsOfLadingBulkCreate)
+# ===========================================================================
+
+# NOTA: criação de DOCUMENTOS. O input (`XxxInsert`) é grande e profundo (linhas de
+# produtos, datas, entidade, transporte…). Em vez de dezenas de parâmetros, expõe-se um
+# `documents: list[dict]` (passthrough estruturado) e documentam-se as chaves no
+# docstring. O retorno é uma LISTA de envelopes (um por documento) — devolve-se por item
+# `{errors, data}` para se ver quais foram criados e quais falharam.
+BILLS_OF_LADING_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: BillsOfLadingBulkInsert!) {
+  billsOfLadingBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_bills_of_lading(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais guias de transporte (documento) numa empresa, em lote.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase, como na API). Chaves
+    OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): validade.
+      - `customerId` (int): cliente.
+      - `deliveryLoadDate` (str "YYYY-MM-DD HH:MM:SS"): data/hora de carga.
+      - `products` (list[dict]): linhas; cada linha tem `productId` (int),
+        `ordering` (int, ordem 1,2,3…) e `qty` (float) OBRIGATÓRIOS, e opcionais
+        `price` (float), `discount` (float, %), `name`, `summary`, `warehouseId` (int),
+        `exemptionReason` (str), `retentionId` (int) e `taxes`
+        (list[dict] com `taxId` e `value`).
+    Chaves OPCIONAIS úteis por documento: `notes`, `yourReference`, `ourReference`,
+      `status` (int; rascunho vs fechado), `globalDiscount` (float),
+      `deliveryMethodId`, `vehicleId`, `deliveryLoadAddress`/`deliveryLoadCity`/
+      `deliveryLoadZipCode`, `deliveryUnloadAddress`/`deliveryUnloadCity`/
+      `deliveryUnloadZipCode`, `maturityDateId`, `currencyExchangeId`,
+      `economicActivityClassificationCodeId`, `fiscalZone`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `date`,
+    `status`, `totalValue`, `entityName`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por guia de transporte a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(BILLS_OF_LADING_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("billsOfLadingBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+BILL_OF_LADING_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: BillsOfLadingInsert!) {
+  billsOfLadingCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_bill_of_lading(
+    company_id: int, document: dict[str, Any]
+) -> Any:
+    """Cria uma guia de transporte (documento) numa empresa. Versão singular do
+    `create_bills_of_lading` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_bills_of_lading`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
+    `expirationDate` ("YYYY-MM-DD"), `customerId` (int), `deliveryLoadDate`
+    ("YYYY-MM-DD HH:MM:SS") e `products` (list[dict], cada linha com `productId`,
+    `ordering`, `qty` e opcionais `price`/`discount`/`taxes`/…). Opcionais úteis: `notes`,
+    `yourReference`, `status`, `globalDiscount`, `deliveryMethodId`, `vehicleId`, dados de
+    carga/descarga, etc. (ver `create_bills_of_lading` para a lista completa).
+
+    Devolve a guia criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da guia de transporte a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(BILL_OF_LADING_CREATE_MUTATION, variables)
+        return unwrap(result, "billsOfLadingCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: ao contrário de `bankingInfoDelete` (um único `DeletionError`), os `*Delete` de
+# DOCUMENTOS devolvem uma LISTA de `DeletionError` (um por ID) — devolve-se por item.
+BILLS_OF_LADING_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  billsOfLadingDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_bills_of_lading(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais guias de transporte de uma empresa (em lote). Devolve, por ID, o
+    resultado `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Documentos já fechados/certificados (com `hash`) normalmente NÃO se apagam (anulam-se).
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das guias de transporte a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(BILLS_OF_LADING_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("billsOfLadingDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+BILLS_OF_LADING_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  billsOfLadingDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_bill_of_lading_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma guia de transporte finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da guia de transporte a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(BILLS_OF_LADING_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "billsOfLadingDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: esta mutation devolve um `Boolean!` diretamente (sem envelope `{errors, data}`)
+# — no GraphQL o campo não leva sub-seleção; lê-se `raw[operation]`.
+BILLS_OF_LADING_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  billsOfLadingGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_bill_of_lading_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma guia de transporte do lado do servidor. Devolve `success`
+    (booleano) a indicar se a geração foi despoletada com sucesso. Para depois descarregar
+    o ficheiro, usa `get_bill_of_lading_pdf_token` (gera o token de download).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da guia de transporte cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(BILLS_OF_LADING_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("billsOfLadingGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+BILLS_OF_LADING_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  billsOfLadingGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_bills_of_lading_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias guias de
+    transporte. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_bills_of_lading_zip_token` (gera o token de download a partir do caminho do ZIP).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das guias de transporte a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(BILLS_OF_LADING_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("billsOfLadingGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+BILLS_OF_LADING_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  billsOfLadingNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_bill_of_lading(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma guia de transporte (marca como anulada, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que não
+    pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da guia de transporte a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(BILLS_OF_LADING_NULLIFY_MUTATION, variables)
+        return unwrap(result, "billsOfLadingNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: as mutations `*SendMail` partilham o input `MailData` { to/cc/bcc: [MailAddress],
+# message: String, attachment: Boolean } e `MailAddress` { email: String!, name: String }.
+# Devolvem `Boolean!` direto. Helper para construir o `mailData` a partir de emails simples.
+def _mail_data(
+    to: list[str],
+    cc: list[str] | None,
+    bcc: list[str] | None,
+    message: str | None,
+    attachment: bool | None,
+) -> dict[str, Any]:
+    md: dict[str, Any] = {"to": [{"email": e} for e in to]}
+    if cc:
+        md["cc"] = [{"email": e} for e in cc]
+    if bcc:
+        md["bcc"] = [{"email": e} for e in bcc]
+    if message is not None:
+        md["message"] = message
+    if attachment is not None:
+        md["attachment"] = attachment
+    return md
+
+
+BILLS_OF_LADING_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  billsOfLadingSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_bill_of_lading_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais guias de transporte por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_bills_of_lading_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das guias de transporte a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(BILLS_OF_LADING_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("billsOfLadingSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+BILLS_OF_LADING_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: BillsOfLadingUpdate!) {
+  billsOfLadingUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_bill_of_lading(
+    company_id: int, document: dict[str, Any]
+) -> Any:
+    """Atualiza uma guia de transporte (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) normalmente não se editam (anulam-se com
+    `nullify_bill_of_lading`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_bills_of_lading`
+    (`date`, `expirationDate`, `customerId`, `documentSetId`, `products`, `notes`,
+    `yourReference`, `status`, dados de carga/descarga, etc.). Em `products`, passar a
+    lista substitui as linhas atuais.
+
+    Devolve a guia atualizada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": document}
+    try:
+        result = await _client.query(BILLS_OF_LADING_UPDATE_MUTATION, variables)
+        return unwrap(result, "billsOfLadingUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Perfis de permissões (roles) — criar (Mutation companyRoleCreate)
+# ===========================================================================
+
+COMPANY_ROLE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CompanyRoleInsert!) {
+  companyRoleCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      roleId
+      companyId
+      code
+      name
+      description
+      admin
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_company_role(
+    company_id: int,
+    code: str,
+    name: str,
+    permissions: list[dict[str, Any]],
+    description: str | None = None,
+    parent_id: int | None = None,
+) -> Any:
+    """Cria um perfil de permissões (role) numa empresa, com um conjunto de permissões
+    recurso-ação. Opcionalmente herda de um perfil-pai (`parent_id`).
+
+    Cada item de `permissions` é um dicionário `{resource, action, allow}`: `resource` (str,
+    obrigatório) é o recurso (ex. "invoices"), `action` (str, opcional) é a ação (ex.
+    "create"), e `allow` (bool, obrigatório) concede ou nega. Devolve o perfil criado com o
+    seu `roleId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        code: código único do perfil.
+        name: nome do perfil.
+        permissions: lista de permissões `{resource, action, allow}`.
+        description: opcional; descrição do perfil.
+        parent_id: opcional; ID do perfil-pai de quem herda permissões.
+    """
+    data: dict[str, Any] = {
+        "code": code,
+        "name": name,
+        "permissions": permissions,
+    }
+    if description is not None:
+        data["description"] = description
+    if parent_id is not None:
+        data["parentId"] = parent_id
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(COMPANY_ROLE_CREATE_MUTATION, variables)
+        return unwrap(result, "companyRoleCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+COMPANY_ROLE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $roleId: [Int]!) {
+  companyRoleDelete(companyId: $companyId, roleId: $roleId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_company_roles(company_id: int, role_ids: list[int]) -> Any:
+    """Apaga um ou mais perfis de permissões (roles) de uma empresa (em lote). Devolve
+    `status`, `deletedCount` e `elementsCount`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os perfis indicados. Os
+    utilizadores associados a um perfil apagado perdem essas permissões. Confirma os IDs
+    antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        role_ids: lista de IDs dos perfis (roles) a apagar.
+    """
+    variables = {"companyId": company_id, "roleId": role_ids}
+    try:
+        raw = await _client.query(COMPANY_ROLE_DELETE_MUTATION, variables)
+        node = (raw or {}).get("companyRoleDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'companyRoleDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+COMPANY_ROLE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: CompanyRoleUpdate!) {
+  companyRoleUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      roleId
+      companyId
+      code
+      name
+      description
+      admin
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_company_role(
+    company_id: int,
+    role_id: int,
+    code: str | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    parent_id: int | None = None,
+    permissions: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Atualiza um perfil de permissões (role) de uma empresa. Identifica-se pelo `role_id`;
+    só são alterados os campos que passares — o código, o nome, a descrição, o perfil-pai
+    (`parent_id`) e/ou o conjunto de permissões (`permissions`, substitui o conjunto atual;
+    cada item `{resource, action, allow}`). Devolve o perfil atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        role_id: ID do perfil (role) a atualizar.
+        code: opcional; novo código do perfil.
+        name: opcional; novo nome do perfil.
+        description: opcional; nova descrição.
+        parent_id: opcional; novo perfil-pai de quem herda permissões.
+        permissions: opcional; nova lista de permissões `{resource, action, allow}`.
+    """
+    data: dict[str, Any] = {"roleId": role_id}
+    if code is not None:
+        data["code"] = code
+    if name is not None:
+        data["name"] = name
+    if description is not None:
+        data["description"] = description
+    if parent_id is not None:
+        data["parentId"] = parent_id
+    if permissions is not None:
+        data["permissions"] = permissions
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(COMPANY_ROLE_UPDATE_MUTATION, variables)
+        return unwrap(result, "companyRoleUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Empresa — atualizar (Mutation companyUpdate)
+# ===========================================================================
+
+COMPANY_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: CompanyUpdate!) {
+  companyUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      companyId
+      name
+      commercialName
+      vat
+      email
+      phone
+      address
+      city
+      zipCode
+      countryId
+      website
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_company(company_id: int, fields: dict[str, Any]) -> Any:
+    """Atualiza os dados de uma empresa. Só são alterados os campos presentes em `fields`
+    (atualização parcial — o input `CompanyUpdate` não tem campos obrigatórios).
+
+    ⚠️ ALTERA OS DADOS DA EMPRESA — incluindo dados fiscais (`vat`) e de faturação que
+    aparecem nos documentos. Confirma antes de aplicar.
+
+    `fields` é um dicionário (camelCase, como na API) com os campos a alterar. Os mais
+    comuns: `name`, `commercialName`, `vat`, `email`, `phone`, `address`, `city`,
+    `zipCode`, `countryId`, `website`, `fax`, `swift`, `iban`, `currencyId`,
+    `invoicingEmail`. O input tem ~80 campos no total (identificação, fiscal, banca,
+    definições de documentos, etc.).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        fields: dicionário com os campos da empresa a alterar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": fields}
+    try:
+        result = await _client.query(COMPANY_UPDATE_MUTATION, variables)
+        return unwrap(result, "companyUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Utilizadores da empresa — criar (Mutation companyUserCreate)
+# ===========================================================================
+
+COMPANY_USER_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: CompanyUserInsert!) {
+  companyUserCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      userCompanyId
+      userId
+      roleId
+      companyId
+      deletable
+      user {
+        userId
+        name
+        email
+        phone
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_company_user(
+    company_id: int,
+    email: str,
+    name: str,
+    language_id: int,
+    phone: str | None = None,
+    role_id: int | None = None,
+) -> Any:
+    """Adiciona um utilizador a uma empresa (convite por email). Indica o `email`, o `name` e
+    o `language_id` (obrigatórios); opcionalmente o telefone (`phone`) e o perfil de
+    permissões (`role_id`, ver `list_company_roles`). Devolve a ligação utilizador↔empresa
+    criada com o `userId`/`userCompanyId`.
+
+    ⚠️ Dá ACESSO à empresa ao utilizador indicado (e envia-lhe um convite por email). As
+    permissões dependem do `role_id` atribuído.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        email: email do utilizador a adicionar.
+        name: nome do utilizador.
+        language_id: ID do idioma do utilizador (ver `list_languages`).
+        phone: opcional; telefone do utilizador.
+        role_id: opcional; ID do perfil de permissões a atribuir.
+    """
+    data: dict[str, Any] = {
+        "email": email,
+        "name": name,
+        "languageId": language_id,
+    }
+    if phone is not None:
+        data["phone"] = phone
+    if role_id is not None:
+        data["roleId"] = role_id
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(COMPANY_USER_CREATE_MUTATION, variables)
+        return unwrap(result, "companyUserCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+COMPANY_USER_DELETE_MUTATION = """
+mutation ($companyId: Int!, $companyUserId: [Int!]!) {
+  companyUserDelete(companyId: $companyId, companyUserId: $companyUserId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_company_users(
+    company_id: int, company_user_ids: list[int]
+) -> Any:
+    """Remove um ou mais utilizadores de uma empresa (em lote). Os IDs são os
+    `userCompanyId` (ligação utilizador↔empresa, obtidos via `list_company_users`/
+    `get_company_user`), não os `userId`. Devolve `status`, `deletedCount` e `elementsCount`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA — retira definitivamente o acesso destes utilizadores à empresa.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        company_user_ids: lista de IDs das ligações utilizador↔empresa (`userCompanyId`).
+    """
+    variables = {"companyId": company_id, "companyUserId": company_user_ids}
+    try:
+        raw = await _client.query(COMPANY_USER_DELETE_MUTATION, variables)
+        node = (raw or {}).get("companyUserDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'companyUserDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: `data` é um scalar Boolean (envelope `{errors, data}` mas `data` sem subcampos).
+COMPANY_USER_RECOVERY_REQUEST_MUTATION = """
+mutation ($companyId: Int!, $userId: Int!) {
+  companyUserRecoveryRequest(companyId: $companyId, userId: $userId) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def send_company_user_recovery(company_id: int, user_id: int) -> Any:
+    """Envia um email de recuperação de password a um utilizador de uma empresa, iniciando o
+    processo de reposição de credenciais. Devolve um booleano a indicar se o pedido foi
+    aceite.
+
+    ⚠️ ENVIA EMAIL REAL ao utilizador indicado. Usa apenas a pedido do próprio utilizador.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        user_id: ID do utilizador a quem enviar o email de recuperação.
+    """
+    variables = {"companyId": company_id, "userId": user_id}
+    try:
+        result = await _client.query(
+            COMPANY_USER_RECOVERY_REQUEST_MUTATION, variables
+        )
+        return unwrap(result, "companyUserRecoveryRequest")
+    except MolonionError as e:
+        return _err(e)
+
+
+COMPANY_USER_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: CompanyUserUpdate!) {
+  companyUserUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      userCompanyId
+      userId
+      roleId
+      companyId
+      deletable
+      user {
+        userId
+        name
+        email
+        phone
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_company_user(
+    company_id: int,
+    user_id: int,
+    name: str,
+    phone: str | None = None,
+    role_id: int | None = None,
+    language_id: int | None = None,
+) -> Any:
+    """Atualiza um utilizador de uma empresa. Identifica-se pelo `user_id`; o `name` é
+    obrigatório. Opcionalmente altera o telefone (`phone`), o perfil de permissões
+    (`role_id`) e o idioma (`language_id`). O email não é editável por aqui. Devolve a
+    ligação utilizador↔empresa atualizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        user_id: ID do utilizador a atualizar.
+        name: nome do utilizador (obrigatório).
+        phone: opcional; novo telefone.
+        role_id: opcional; novo perfil de permissões (ver `list_company_roles`).
+        language_id: opcional; novo idioma (ver `list_languages`).
+    """
+    data: dict[str, Any] = {"userId": user_id, "name": name}
+    if phone is not None:
+        data["phone"] = phone
+    if role_id is not None:
+        data["roleId"] = role_id
+    if language_id is not None:
+        data["languageId"] = language_id
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(COMPANY_USER_UPDATE_MUTATION, variables)
+        return unwrap(result, "companyUserUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

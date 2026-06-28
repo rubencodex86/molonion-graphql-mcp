@@ -90,6 +90,48 @@ async def get_bills_of_lading(company_id: int, document_id: int) -> Any:
         return _err(e)
 ```
 
+## Padrão para mutations (escrita)
+
+As mutations (`/reference/mutations/...`) seguem o **mesmo** padrão (envelope
+`{errors, data}`, `unwrap`, `_err`), com estas diferenças:
+
+- **Nome em inglês com verbo**: `create_*`, `update_*`, `delete_*`, `apply_*`, etc.
+- **Input maior**: a mutation leva um `input`/`data` de tipo `XxxInput`/`XxxApply`.
+  Expõe como **parâmetros** os campos **obrigatórios** + os úteis; constrói o dict do
+  input só com os parâmetros não-nulos (não envies chaves a `None`).
+- **Avisa no docstring** quando a operação é **destrutiva/irreversível** (apagar,
+  anular, comunicar à AT) ou **altera dados em massa** — começa a linha com `⚠️`.
+- Algumas mutations são **assíncronas**: devolvem `progressiveTaskId` (tarefa em
+  segundo plano) em vez do resultado final.
+
+Template:
+
+```python
+APPLY_PRICE_CLASS_MUTATION = """
+mutation ($companyId: Int!, $priceClassId: Int!, $percentage: Float!, $data: PriceClassApply!) {
+  applyPriceClass(companyId: $companyId, priceClassId: $priceClassId, percentage: $percentage, data: $data) {
+    errors { field msg }
+    data { progressiveTaskId }
+  }
+}
+"""
+
+@mcp.tool()
+async def apply_price_class(company_id: int, price_class_id: int, percentage: float,
+                            product_ids: list[int] | None = None) -> Any:
+    """⚠️ Aplica uma classe de preço (altera preços em massa). ..."""
+    data: dict[str, Any] = {}
+    if product_ids is not None:
+        data["productIds"] = product_ids
+    variables = {"companyId": company_id, "priceClassId": price_class_id,
+                 "percentage": percentage, "data": data}
+    try:
+        result = await _client.query(APPLY_PRICE_CLASS_MUTATION, variables)
+        return unwrap(result, "applyPriceClass")
+    except MolonionError as e:
+        return _err(e)
+```
+
 ## Convenções
 
 - **Nomes de tools em inglês**; **docstrings, README e CLAUDE.md em português**.
