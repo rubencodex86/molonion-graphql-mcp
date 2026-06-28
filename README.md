@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.471.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.476.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -531,6 +531,11 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `get_supplier_receipt_relatable` | Recibos de compra de um fornecedor relacionáveis com outro documento (deprecada). |
 | `list_supplier_receipts` | Lista paginada dos recibos de compra de uma empresa. |
 | `list_suppliers` | Lista paginada dos fornecedores de uma empresa. |
+| `get_tax` | Detalhes de uma taxa de imposto (IVA) pelo seu ID (valor, zona fiscal, isenção). |
+| `list_taxes` | Lista paginada das taxas de imposto (IVA) de uma empresa. |
+| `get_taxes_map` | Mapa de impostos/apuramento de IVA — incidência e total por taxa (deprecada; usar `get_taxes_map2`). |
+| `get_taxes_map2` | Mapa de impostos/apuramento de IVA (versão atual) — totais e taxas por grupo. |
+| `get_tax_logs` | Histórico de alterações (logs) às taxas de imposto. |
 | `get_invoice_receipt` | Detalhes de uma fatura-recibo pelo seu ID (documento, entidade, reconciliação, pagamento). |
 | `get_invoice_receipt_pdf_token` | Token temporário para descarregar o PDF de uma fatura-recibo. |
 | `get_invoice_receipt_zip_token` | Token temporário para descarregar várias faturas-recibo em ZIP. |

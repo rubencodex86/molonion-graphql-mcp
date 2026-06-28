@@ -23358,6 +23358,277 @@ async def list_suppliers(
         return _err(e)
 
 
+# ===========================================================================
+# Impostos / taxas de IVA (Tax)
+# ===========================================================================
+
+TAX_QUERY = """
+query ($companyId: Int!, $taxId: Int!) {
+  tax(companyId: $companyId, taxId: $taxId) {
+    errors { field msg }
+    data {
+      taxId
+      name
+      value
+      type
+      fiscalZone
+      fiscalZoneFinanceType
+      fiscalZoneFinanceTypeMode
+      exemptionReason
+      isDefault
+      countryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_tax(company_id: int, tax_id: int) -> Any:
+    """Obtém os detalhes de uma taxa de imposto (IVA) pelo seu ID: o nome (`name`), o valor
+    em percentagem (`value`), o tipo (`type`), a zona fiscal (`fiscalZone`,
+    `fiscalZoneFinanceType`, `fiscalZoneFinanceTypeMode`), a razão de isenção
+    (`exemptionReason`, quando o valor é 0), se é a taxa por omissão (`isDefault`) e o país
+    (`countryId`). As taxas aplicam-se às linhas dos documentos. O país, a empresa e o regime
+    especial de imposto (`specialTaxScheme`) não são incluídos neste selection set.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        tax_id: ID da taxa de imposto a obter.
+    """
+    variables = {"companyId": company_id, "taxId": tax_id}
+    try:
+        data = await _client.query(TAX_QUERY, variables)
+        return unwrap(data, "tax")
+    except MolonionError as e:
+        return _err(e)
+
+
+TAXES_QUERY = """
+query ($companyId: Int!, $options: TaxOptions) {
+  taxes(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      taxId
+      name
+      value
+      type
+      fiscalZone
+      exemptionReason
+      isDefault
+      countryId
+      visible
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_taxes(
+    company_id: int,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista (paginada) as taxas de imposto (IVA) de uma empresa, cada uma com `taxId`,
+    `name`, o valor em percentagem (`value`), o tipo (`type`), a zona fiscal (`fiscalZone`),
+    a razão de isenção (`exemptionReason`), se é a taxa por omissão (`isDefault`) e o país
+    (`countryId`). Útil para escolher a taxa a aplicar a uma linha de documento.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(TAXES_QUERY, variables)
+        return unwrap(data, "taxes")
+    except MolonionError as e:
+        return _err(e)
+
+
+TAXES_MAP_QUERY = """
+query ($companyId: Int!, $options: TaxesMapOptions!) {
+  taxesMap(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      group
+      taxes {
+        taxId
+        name
+        fiscalZone
+        value
+        type
+        incidence
+        total
+        incidencePositive
+        totalPositive
+        incidenceNegative
+        totalNegative
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_taxes_map(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém o mapa de impostos (IVA) de uma empresa: os valores de incidência (base
+    tributável) e de imposto, agrupados. Cada grupo (`group`) traz a lista de `taxes`, e
+    cada taxa tem `taxId`, `name`, `fiscalZone`, `value` (%), a incidência e o total
+    (`incidence`/`total`) e a separação por movimentos positivos/negativos
+    (`incidencePositive`/`totalPositive`/`incidenceNegative`/`totalNegative`). Útil para o
+    apuramento de IVA.
+
+    DEPRECATED na API Moloni ON — preferir `taxesMap2`. Mantida por cobertura.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`). O `options` é obrigatório nesta operação.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: lista de filtros `{field, comparison, value}` (ex. intervalo de datas).
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables = {"companyId": company_id, "options": options}
+    try:
+        data = await _client.query(TAXES_MAP_QUERY, variables)
+        return unwrap(data, "taxesMap")
+    except MolonionError as e:
+        return _err(e)
+
+
+TAXES_MAP2_QUERY = """
+query ($companyId: Int!, $options: TaxesMapOptions!) {
+  taxesMap2(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      group
+      totals {
+        incidence
+        total
+        incidencePositive
+        totalPositive
+        incidenceNegative
+        totalNegative
+      }
+      taxes {
+        taxId
+        name
+        fiscalZone
+        value
+        type
+        incidence
+        total
+        incidencePositive
+        totalPositive
+        incidenceNegative
+        totalNegative
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_taxes_map2(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Obtém o mapa de impostos (IVA) de uma empresa — versão atual (substitui o
+    `get_taxes_map`, deprecado). Por grupo (`group`) devolve os `totals` (incidência/base
+    e total de imposto, com separação positivos/negativos) e a lista de `taxes`, cada uma
+    com `taxId`, `name`, `fiscalZone`, `value` (%), incidência e total e os valores
+    positivos/negativos. Útil para o apuramento de IVA.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários
+    (ver `get_sales_analysis_by_date`). O `options` é obrigatório nesta operação.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: lista de filtros `{field, comparison, value}` (ex. intervalo de datas).
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables = {"companyId": company_id, "options": options}
+    try:
+        data = await _client.query(TAXES_MAP2_QUERY, variables)
+        return unwrap(data, "taxesMap2")
+    except MolonionError as e:
+        return _err(e)
+
+
+TAX_LOGS_QUERY = """
+query ($companyId: Int!, $options: LogOptions) {
+  taxLogs(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data {
+      logId
+      relatedId
+      operation
+      oldValues
+      newValues
+      userId
+      username
+      email
+      operationTime
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_tax_logs(
+    company_id: int,
+    tax_id: int | None = None,
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Obtém o histórico de alterações (logs) às taxas de imposto de uma empresa: criações,
+    modificações e remoções. Cada entrada indica a operação (`operation`), os valores
+    antigos/novos (`oldValues`/`newValues`), quem a fez (`userId`, `username`, `email`)
+    e quando (`operationTime`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        tax_id: opcional; filtra os logs de uma taxa específica (corresponde a `relatedId`).
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if tax_id is not None:
+        options["relatedId"] = tax_id
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {"companyId": company_id}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(TAX_LOGS_QUERY, variables)
+        return unwrap(data, "taxLogs")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
