@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.683.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.692.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -544,6 +544,8 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 
 | Tool | Descrição |
 |------|-----------|
+| `acknowledge_all_notifications` | Marca todas as notificações como lidas/confirmadas na conta autenticada. |
+| `acknowledge_notification` | Marca uma notificação como lida/confirmada na conta autenticada. |
 | `apply_price_class` | Aplica uma classe de preço a produtos (ajuste de preço em %, assíncrono). ⚠️ altera preços em massa. |
 | `update_at_settings` | Atualiza as definições de comunicação à AT (automáticos, credenciais AT). ⚠️ credenciais sensíveis. |
 | `create_banking_info` | Cria um dado bancário (IBAN/SWIFT/conta) numa empresa. |
@@ -741,6 +743,13 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `delete_measurement_units` | Apaga uma ou mais unidades de medida (em lote). ⚠️ destrutiva/irreversível. |
 | `import_measurement_unit` | Importa uma unidade de medida da lista padrão (UN/ECE). |
 | `update_measurement_unit` | Atualiza uma unidade de medida (nome, abreviatura, código UN/ECE). |
+| `create_my_password` | Define a primeira palavra-passe da conta autenticada. ⚠️ altera credenciais. |
+| `create_partner_proposal` | Submete uma candidatura ao programa de parceiros (dados de negócio e contacto). |
+| `update_partner_proposal` | Atualiza uma candidatura ao programa de parceiros existente. |
+| `create_payment_method` | Cria um método de pagamento numa empresa (numerário, transferência, MB...). |
+| `delete_payment_methods` | Apaga um ou mais métodos de pagamento (em lote). ⚠️ destrutiva. |
+| `update_payment_method` | Atualiza um método de pagamento de uma empresa. |
+| `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

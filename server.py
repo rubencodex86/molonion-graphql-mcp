@@ -31532,6 +31532,575 @@ async def update_measurement_unit(
         return _err(e)
 
 
+# ===========================================================================
+# Conta do utilizador autenticado (Mutations me*)
+# ===========================================================================
+
+ME_CREATE_PASSWORD_MUTATION = """
+mutation ($data: MeCreatePassword!) {
+  meCreatePassword(data: $data) {
+    errors { field msg }
+    data {
+      userId
+      userCompanies { companyId name }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_my_password(pwd: str) -> Any:
+    """Define a primeira palavra-passe da conta do utilizador autenticado (ex. contas criadas
+    sem palavra-passe). Aplica-se à conta associada à API key — não recebe `company_id`.
+    Devolve os dados do utilizador (`me`).
+
+    ⚠️ ALTERA CREDENCIAIS de acesso da conta autenticada. Usa apenas em fluxos autorizados.
+
+    Args:
+        pwd: nova palavra-passe a definir.
+    """
+    variables = {"data": {"pwd": pwd}}
+    try:
+        result = await _client.query(ME_CREATE_PASSWORD_MUTATION, variables)
+        return unwrap(result, "meCreatePassword")
+    except MolonionError as e:
+        return _err(e)
+
+
+ME_UPDATE_MUTATION = """
+mutation ($data: MeUpdate!) {
+  meUpdate(data: $data) {
+    errors { field msg }
+    data {
+      userId
+      userCompanies { companyId name }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_me(
+    name: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    language_id: int | None = None,
+    pwd: str | None = None,
+    current_pwd: str | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza os dados da conta do utilizador autenticado (associada à API key) — nome,
+    email, telefone, idioma e/ou palavra-passe. Só são alterados os campos que passares. Para
+    alterar a palavra-passe (`pwd`) e/ou o email é normalmente necessário indicar a
+    palavra-passe atual (`current_pwd`). Devolve os dados do utilizador (`me`).
+
+    ⚠️ Pode ALTERAR CREDENCIAIS de acesso (email/palavra-passe) da conta autenticada. Usa
+    apenas em fluxos autorizados.
+
+    Args:
+        name: opcional; novo nome do utilizador.
+        email: opcional; novo email (login).
+        phone: opcional; novo telefone.
+        language_id: opcional; novo ID de idioma.
+        pwd: opcional; nova palavra-passe.
+        current_pwd: opcional; palavra-passe atual (necessária para mudar email/palavra-passe).
+        extra_fields: opcional; outros campos do `MeUpdate` (camelCase), p.ex. `img`.
+    """
+    data: dict[str, Any] = {}
+    if name is not None:
+        data["name"] = name
+    if email is not None:
+        data["email"] = email
+    if phone is not None:
+        data["phone"] = phone
+    if language_id is not None:
+        data["languageId"] = language_id
+    if pwd is not None:
+        data["pwd"] = pwd
+    if current_pwd is not None:
+        data["currentPwd"] = current_pwd
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"data": data}
+    try:
+        result = await _client.query(ME_UPDATE_MUTATION, variables)
+        return unwrap(result, "meUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+NOTIFICATION_ACKNOWLEDGE_MUTATION = """
+mutation ($notificationId: Int!) {
+  notificationAcknowledge(notificationId: $notificationId) {
+    errors { field msg }
+    data {
+      notificationId
+      ackd
+      path
+      title
+      titleParams
+      extraParams
+      type
+      createdAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def acknowledge_notification(notification_id: int) -> Any:
+    """Marca uma notificação como lida/confirmada (acknowledged) na Moloni ON.
+
+    Não leva `companyId` — atua sobre a notificação da conta autenticada pela API Key.
+    Devolve a notificação atualizada (com `ackd: true`).
+
+    Args:
+        notification_id: ID da notificação a confirmar.
+    """
+    variables = {"notificationId": notification_id}
+    try:
+        result = await _client.query(NOTIFICATION_ACKNOWLEDGE_MUTATION, variables)
+        return unwrap(result, "notificationAcknowledge")
+    except MolonionError as e:
+        return _err(e)
+
+
+NOTIFICATION_ACKNOWLEDGE_ALL_MUTATION = """
+mutation {
+  notificationAcknowledgeAll {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def acknowledge_all_notifications() -> Any:
+    """Marca TODAS as notificações como lidas/confirmadas na conta autenticada.
+
+    Não leva argumentos nem `companyId` — atua sobre todas as notificações da conta
+    autenticada pela API Key. O `data` devolvido é um booleano (sucesso da operação).
+    """
+    try:
+        result = await _client.query(NOTIFICATION_ACKNOWLEDGE_ALL_MUTATION, {})
+        return unwrap(result, "notificationAcknowledgeAll")
+    except MolonionError as e:
+        return _err(e)
+
+
+PARTNER_PROPOSAL_CREATE_MUTATION = """
+mutation ($data: PartnerProposalInsert!) {
+  partnerProposalCreate(data: $data) {
+    errors { field msg }
+    data {
+      partnerProposalId
+      acceptsPublication
+      name
+      accountManagerName
+      description
+      vat
+      email
+      address
+      city
+      zipCode
+      phone
+      fax
+      website
+      obs
+      clientSupportMail
+      clientSupportPhone
+      approved
+      createdAt
+      updatedAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_partner_proposal(
+    name: str,
+    account_manager_name: str,
+    description: str,
+    vat: str,
+    email: str,
+    address: str,
+    city: str,
+    zip_code: str,
+    phone: str,
+    client_support_mail: str,
+    client_support_phone: str,
+    country_id: int,
+    language_id: int,
+    accepts_publication: bool = True,
+    fax: str | None = None,
+    website: str | None = None,
+    obs: str | None = None,
+    partner_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Submete uma candidatura ao programa de parceiros da Moloni ON.
+
+    Não leva `companyId` — é uma candidatura com os dados de negócio e contacto do
+    proponente. `accepts_publication` indica consentimento de publicação dos dados.
+    O campo `img1` (logótipo, tipo Upload) não é suportado por esta tool.
+
+    Args:
+        name: Nome do parceiro/empresa.
+        account_manager_name: Nome do gestor de conta/responsável.
+        description: Descrição da atividade do parceiro.
+        vat: NIF/contribuinte.
+        email: Email de contacto.
+        address: Morada.
+        city: Localidade.
+        zip_code: Código postal.
+        phone: Telefone.
+        client_support_mail: Email de apoio a clientes.
+        client_support_phone: Telefone de apoio a clientes.
+        country_id: ID do país.
+        language_id: ID do idioma.
+        accepts_publication: Consentimento de publicação dos dados (por omissão True).
+        fax: Fax (opcional).
+        website: Website (opcional).
+        obs: Observações (opcional).
+        partner_id: ID de parceiro existente (opcional).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "accountManagerName": account_manager_name,
+        "description": description,
+        "vat": vat,
+        "email": email,
+        "address": address,
+        "city": city,
+        "zipCode": zip_code,
+        "phone": phone,
+        "clientSupportMail": client_support_mail,
+        "clientSupportPhone": client_support_phone,
+        "countryId": country_id,
+        "languageId": language_id,
+        "acceptsPublication": accepts_publication,
+    }
+    if fax is not None:
+        data["fax"] = fax
+    if website is not None:
+        data["website"] = website
+    if obs is not None:
+        data["obs"] = obs
+    if partner_id is not None:
+        data["partnerId"] = partner_id
+    if extra_fields:
+        data.update(extra_fields)
+    try:
+        result = await _client.query(PARTNER_PROPOSAL_CREATE_MUTATION, {"data": data})
+        return unwrap(result, "partnerProposalCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PARTNER_PROPOSAL_UPDATE_MUTATION = """
+mutation ($data: PartnerProposalUpdate!) {
+  partnerProposalUpdate(data: $data) {
+    errors { field msg }
+    data {
+      partnerProposalId
+      acceptsPublication
+      name
+      accountManagerName
+      description
+      vat
+      email
+      address
+      city
+      zipCode
+      phone
+      fax
+      website
+      obs
+      clientSupportMail
+      clientSupportPhone
+      approved
+      createdAt
+      updatedAt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_partner_proposal(
+    partner_proposal_id: int,
+    name: str | None = None,
+    account_manager_name: str | None = None,
+    description: str | None = None,
+    vat: str | None = None,
+    email: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    phone: str | None = None,
+    client_support_mail: str | None = None,
+    client_support_phone: str | None = None,
+    country_id: int | None = None,
+    language_id: int | None = None,
+    accepts_publication: bool | None = None,
+    fax: str | None = None,
+    website: str | None = None,
+    obs: str | None = None,
+    partner_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza uma candidatura ao programa de parceiros existente.
+
+    Só `partner_proposal_id` é obrigatório; envia apenas os campos a alterar.
+    Não leva `companyId`. O campo `img1` (logótipo, tipo Upload) não é suportado.
+
+    Args:
+        partner_proposal_id: ID da candidatura a atualizar.
+        name: Nome do parceiro/empresa.
+        account_manager_name: Nome do gestor de conta/responsável.
+        description: Descrição da atividade do parceiro.
+        vat: NIF/contribuinte.
+        email: Email de contacto.
+        address: Morada.
+        city: Localidade.
+        zip_code: Código postal.
+        phone: Telefone.
+        client_support_mail: Email de apoio a clientes.
+        client_support_phone: Telefone de apoio a clientes.
+        country_id: ID do país.
+        language_id: ID do idioma.
+        accepts_publication: Consentimento de publicação dos dados.
+        fax: Fax.
+        website: Website.
+        obs: Observações.
+        partner_id: ID de parceiro existente.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"partnerProposalId": partner_proposal_id}
+    if name is not None:
+        data["name"] = name
+    if account_manager_name is not None:
+        data["accountManagerName"] = account_manager_name
+    if description is not None:
+        data["description"] = description
+    if vat is not None:
+        data["vat"] = vat
+    if email is not None:
+        data["email"] = email
+    if address is not None:
+        data["address"] = address
+    if city is not None:
+        data["city"] = city
+    if zip_code is not None:
+        data["zipCode"] = zip_code
+    if phone is not None:
+        data["phone"] = phone
+    if client_support_mail is not None:
+        data["clientSupportMail"] = client_support_mail
+    if client_support_phone is not None:
+        data["clientSupportPhone"] = client_support_phone
+    if country_id is not None:
+        data["countryId"] = country_id
+    if language_id is not None:
+        data["languageId"] = language_id
+    if accepts_publication is not None:
+        data["acceptsPublication"] = accepts_publication
+    if fax is not None:
+        data["fax"] = fax
+    if website is not None:
+        data["website"] = website
+    if obs is not None:
+        data["obs"] = obs
+    if partner_id is not None:
+        data["partnerId"] = partner_id
+    if extra_fields:
+        data.update(extra_fields)
+    try:
+        result = await _client.query(PARTNER_PROPOSAL_UPDATE_MUTATION, {"data": data})
+        return unwrap(result, "partnerProposalUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_METHOD_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PaymentMethodInsert!) {
+  paymentMethodCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      paymentMethodId
+      name
+      isDefault
+      visible
+      commission
+      fixedCommission
+      type
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_payment_method(
+    company_id: int,
+    name: str,
+    is_default: bool | None = None,
+    commission: float | None = None,
+    fixed_commission: float | None = None,
+    type: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um método de pagamento numa empresa (ex.: numerário, transferência, MB).
+
+    Só `name` é obrigatório no input.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome do método de pagamento.
+        is_default: Marcar como método por omissão.
+        commission: Comissão em percentagem.
+        fixed_commission: Comissão fixa (valor).
+        type: Tipo do método (código interno).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"name": name}
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if commission is not None:
+        data["commission"] = commission
+    if fixed_commission is not None:
+        data["fixedCommission"] = fixed_commission
+    if type is not None:
+        data["type"] = type
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PAYMENT_METHOD_CREATE_MUTATION, variables)
+        return unwrap(result, "paymentMethodCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_METHOD_DELETE_MUTATION = """
+mutation ($companyId: Int!, $paymentMethodId: [Int!]!) {
+  paymentMethodDelete(companyId: $companyId, paymentMethodId: $paymentMethodId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_payment_methods(
+    company_id: int, payment_method_ids: list[int]
+) -> Any:
+    """Apaga um ou mais métodos de pagamento de uma empresa (em lote). Métodos em uso por
+    documentos ou clientes podem não ser elimináveis (o erro vem em `errors`). Devolve,
+    por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os métodos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        payment_method_ids: lista de IDs dos métodos de pagamento a apagar.
+    """
+    variables = {"companyId": company_id, "paymentMethodId": payment_method_ids}
+    try:
+        raw = await _client.query(PAYMENT_METHOD_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("paymentMethodDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_METHOD_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: PaymentMethodUpdate!) {
+  paymentMethodUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      paymentMethodId
+      name
+      isDefault
+      visible
+      commission
+      fixedCommission
+      type
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_payment_method(
+    company_id: int,
+    payment_method_id: int,
+    name: str | None = None,
+    is_default: bool | None = None,
+    commission: float | None = None,
+    fixed_commission: float | None = None,
+    type: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um método de pagamento de uma empresa.
+
+    Só `payment_method_id` é obrigatório; envia apenas os campos a alterar.
+
+    Args:
+        company_id: ID da empresa.
+        payment_method_id: ID do método de pagamento a atualizar.
+        name: Nome do método de pagamento.
+        is_default: Marcar como método por omissão.
+        commission: Comissão em percentagem.
+        fixed_commission: Comissão fixa (valor).
+        type: Tipo do método (código interno).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"paymentMethodId": payment_method_id}
+    if name is not None:
+        data["name"] = name
+    if is_default is not None:
+        data["isDefault"] = is_default
+    if commission is not None:
+        data["commission"] = commission
+    if fixed_commission is not None:
+        data["fixedCommission"] = fixed_commission
+    if type is not None:
+        data["type"] = type
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PAYMENT_METHOD_UPDATE_MUTATION, variables)
+        return unwrap(result, "paymentMethodUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
