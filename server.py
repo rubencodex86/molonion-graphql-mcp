@@ -27078,6 +27078,233 @@ async def update_event(
         return _err(e)
 
 
+# ===========================================================================
+# Inventário AT — gerar ficheiro (Mutation generateATInventoryV1File)
+# ===========================================================================
+
+GENERATE_AT_INVENTORY_V1_FILE_MUTATION = """
+mutation ($companyId: Int!, $options: ATInventoryV1Options!) {
+  generateATInventoryV1File(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def generate_at_inventory_v1_file(
+    company_id: int, date_end: str, format: str
+) -> Any:
+    """Gera, do lado do servidor, o ficheiro de inventário para a Autoridade Tributária (AT)
+    no formato V1, com referência à data `date_end` ("YYYY-MM-DD") e no formato (`format`)
+    indicado (valor do enum `ATInventoryFormats` da Moloni ON, ex. XML/CSV). Devolve um
+    booleano a indicar se a geração foi despoletada com sucesso. Para depois descarregar o
+    ficheiro, usa `get_at_inventory_file_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        date_end: data de referência do inventário ("YYYY-MM-DD").
+        format: formato do ficheiro (valor do enum `ATInventoryFormats`).
+    """
+    options = {"dateEnd": date_end, "format": format}
+    variables = {"companyId": company_id, "options": options}
+    try:
+        result = await _client.query(
+            GENERATE_AT_INVENTORY_V1_FILE_MUTATION, variables
+        )
+        return unwrap(result, "generateATInventoryV1File")
+    except MolonionError as e:
+        return _err(e)
+
+
+GENERATE_AT_INVENTORY_V2_FILE_MUTATION = """
+mutation ($companyId: Int!, $options: ATInventoryV2Options!) {
+  generateATInventoryV2File(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def generate_at_inventory_v2_file(
+    company_id: int,
+    date_end: str,
+    format: str,
+    costing_method: str,
+    date_start: str | None = None,
+) -> Any:
+    """Gera, do lado do servidor, o ficheiro de inventário para a Autoridade Tributária (AT)
+    no formato V2 — que, ao contrário do V1, inclui o método de custeio (`costing_method`) e,
+    opcionalmente, a data de início (`date_start`) do período. Indica a data de referência
+    `date_end` ("YYYY-MM-DD") e o formato (`format`). Devolve um booleano a indicar se a
+    geração foi despoletada com sucesso. Para depois descarregar o ficheiro, usa
+    `get_at_inventory_file_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        date_end: data de referência/fim do inventário ("YYYY-MM-DD").
+        format: formato do ficheiro (valor do enum `ATInventoryFormats`).
+        costing_method: método de custeio (valor do enum `ATInventoryCostingMethods`).
+        date_start: opcional; data de início do período ("YYYY-MM-DD").
+    """
+    options: dict[str, Any] = {
+        "dateEnd": date_end,
+        "format": format,
+        "costingMethod": costing_method,
+    }
+    if date_start is not None:
+        options["dateStart"] = date_start
+    variables = {"companyId": company_id, "options": options}
+    try:
+        result = await _client.query(
+            GENERATE_AT_INVENTORY_V2_FILE_MUTATION, variables
+        )
+        return unwrap(result, "generateATInventoryV2File")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# EDI — gerar XML (Mutation generateEDIXML)
+# ===========================================================================
+
+GENERATE_EDI_XML_MUTATION = """
+mutation ($companyId: Int!, $documentIds: [Int!]!, $format: EDIFormats!) {
+  generateEDIXML(companyId: $companyId, documentIds: $documentIds, format: $format) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def generate_edi_xml(
+    company_id: int, document_ids: list[int], format: str
+) -> Any:
+    """Gera, do lado do servidor, um ficheiro EDI XML (Electronic Data Interchange — ex.
+    UBL ou CIUS-PT) a partir dos documentos indicados, no formato (`format`) escolhido.
+    Devolve um booleano a indicar se a geração foi despoletada com sucesso. Para depois
+    descarregar o ficheiro, usa `get_edi_xml_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos documentos a incluir no EDI XML.
+        format: formato EDI (valor do enum `EDIFormats`, ex. UBL / CIUS-PT).
+    """
+    variables = {
+        "companyId": company_id,
+        "documentIds": document_ids,
+        "format": format,
+    }
+    try:
+        result = await _client.query(GENERATE_EDI_XML_MUTATION, variables)
+        return unwrap(result, "generateEDIXML")
+    except MolonionError as e:
+        return _err(e)
+
+
+GENERATE_MANDATE_SEPA_PDF_MUTATION = """
+mutation ($companyId: Int!, $entityType: String!, $entityId: Int!) {
+  generateMandateSEPAPDF(companyId: $companyId, entityType: $entityType, entityId: $entityId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_mandate_sepa_pdf(
+    company_id: int, entity_type: str, entity_id: int
+) -> Any:
+    """Gera, do lado do servidor, o PDF do mandato de débito direto SEPA de uma entidade
+    (cliente ou fornecedor) — o documento que autoriza os pagamentos recorrentes por débito
+    direto. Devolve `success` (booleano).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        entity_type: tipo de entidade ("customer" ou "supplier").
+        entity_id: ID da entidade (cliente ou fornecedor).
+    """
+    variables = {
+        "companyId": company_id,
+        "entityType": entity_type,
+        "entityId": entity_id,
+    }
+    try:
+        raw = await _client.query(GENERATE_MANDATE_SEPA_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("generateMandateSEPAPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# SAF-T (PT) — gerar XML (Mutation generateSAFTXML)
+# ===========================================================================
+
+GENERATE_SAFT_XML_MUTATION = """
+mutation ($companyId: Int!, $options: SAFTOptions!) {
+  generateSAFTXML(companyId: $companyId, options: $options) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def generate_saft_xml(
+    company_id: int, date_start: str, date_end: str
+) -> Any:
+    """Gera, do lado do servidor, o ficheiro SAF-T(PT) XML (ficheiro fiscal normalizado para
+    a Autoridade Tributária) relativo ao período entre `date_start` e `date_end`
+    ("YYYY-MM-DD"). Devolve um booleano a indicar se a geração foi despoletada com sucesso.
+    Para depois descarregar o ficheiro, usa `get_saft_xml_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        date_start: data de início do período ("YYYY-MM-DD").
+        date_end: data de fim do período ("YYYY-MM-DD").
+    """
+    options = {"dateStart": date_start, "dateEnd": date_end}
+    variables = {"companyId": company_id, "options": options}
+    try:
+        result = await _client.query(GENERATE_SAFT_XML_MUTATION, variables)
+        return unwrap(result, "generateSAFTXML")
+    except MolonionError as e:
+        return _err(e)
+
+
+GENERATE_SEPA_XML_MUTATION = """
+mutation ($companyId: Int!, $bankRemittanceId: Int!) {
+  generateSEPAXML(companyId: $companyId, bankRemittanceId: $bankRemittanceId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_sepa_xml(company_id: int, bank_remittance_id: int) -> Any:
+    """Exporta, do lado do servidor, uma remessa bancária como ficheiro SEPA XML (formato
+    pain.008 para débito direto ou pain.001 para transferência a crédito), pronto a carregar
+    nos portais bancários. Devolve `success` (booleano). Para depois descarregar o ficheiro,
+    usa o token de download adequado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        bank_remittance_id: ID da remessa bancária a exportar (ver `list_bank_remittances`).
+    """
+    variables = {
+        "companyId": company_id,
+        "bankRemittanceId": bank_remittance_id,
+    }
+    try:
+        raw = await _client.query(GENERATE_SEPA_XML_MUTATION, variables)
+        return {"success": (raw or {}).get("generateSEPAXML")}
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

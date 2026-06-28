@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.583.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.589.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -641,6 +641,12 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_event` | Cria um evento/lembrete (nome, data; repetição via extra_fields). |
 | `delete_events` | Apaga um ou mais eventos/lembretes (em lote). ⚠️ destrutiva/irreversível. |
 | `update_event` | Atualiza um evento/lembrete (nome, data, repetição, documento). |
+| `generate_at_inventory_v1_file` | Gera o ficheiro de inventário AT (V1) no servidor (descarregar via token). |
+| `generate_at_inventory_v2_file` | Gera o ficheiro de inventário AT (V2, com método de custeio) no servidor (descarregar via token). |
+| `generate_edi_xml` | Gera um ficheiro EDI XML (UBL/CIUS-PT) de documentos no servidor (descarregar via token). |
+| `generate_mandate_sepa_pdf` | Gera o PDF do mandato de débito direto SEPA de um cliente/fornecedor. |
+| `generate_saft_xml` | Gera o ficheiro SAF-T(PT) XML de um período no servidor (descarregar via token). |
+| `generate_sepa_xml` | Exporta uma remessa bancária como SEPA XML (pain.008/pain.001) no servidor. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).
