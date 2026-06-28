@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.555.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.560.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -613,6 +613,11 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_delivery_note` | Anula uma guia de remessa (com motivo). ⚠️ operação fiscal irreversível. |
 | `send_delivery_note_mail` | Envia guias de remessa por email. ⚠️ envia email real. |
 | `update_delivery_note` | Atualiza uma guia de remessa (input de documento por dict). ⚠️ altera documento real. |
+| `mark_document_at_communication_solved` | Marca uma comunicação AT de documento como resolvida (não comunica à AT). |
+| `retry_document_at_communication` | Repete a comunicação à AT de um documento. ⚠️ ação fiscal (comunica à AT). |
+| `retry_all_document_at_communications` | Repete todas as comunicações à AT falhadas (em lote). ⚠️ ação fiscal em massa. |
+| `update_document_at` | Atualiza os dados AT de um documento (código AT de transporte). ⚠️ altera dados fiscais. |
+| `delete_documents` | Apaga um ou mais documentos de qualquer tipo (em lote, só rascunhos). ⚠️ destrutiva/irreversível. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
 [docs.molonion.pt/reference](https://docs.molonion.pt/reference).

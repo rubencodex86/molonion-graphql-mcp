@@ -25775,6 +25775,215 @@ async def update_delivery_note(company_id: int, document: dict[str, Any]) -> Any
         return _err(e)
 
 
+# ===========================================================================
+# Comunicação AT de documentos — ações
+# (Mutation documentATCommunicationMarkAsSolved)
+# ===========================================================================
+
+DOCUMENT_AT_COMMUNICATION_MARK_AS_SOLVED_MUTATION = """
+mutation ($companyId: Int!, $documentATCommunicationStatusId: String!) {
+  documentATCommunicationMarkAsSolved(companyId: $companyId, documentATCommunicationStatusId: $documentATCommunicationStatusId)
+}
+"""
+
+
+@mcp.tool()
+async def mark_document_at_communication_solved(
+    company_id: int, document_at_communication_status_id: str
+) -> Any:
+    """Marca manualmente uma comunicação à Autoridade Tributária (AT) de um documento como
+    resolvida. Útil quando uma comunicação ficou com erro mas o assunto já foi tratado por
+    outra via. Devolve `success` (booleano).
+
+    ⚠️ Marcar como resolvido NÃO comunica o documento à AT — apenas limpa o estado de erro/
+    pendente no Moloni ON. Usa só quando a comunicação foi efetivamente regularizada.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_at_communication_status_id: ID do estado de comunicação AT a marcar como
+            resolvido (String; obtém-se via `get_document_at_communication_statuses`).
+    """
+    variables = {
+        "companyId": company_id,
+        "documentATCommunicationStatusId": document_at_communication_status_id,
+    }
+    try:
+        raw = await _client.query(
+            DOCUMENT_AT_COMMUNICATION_MARK_AS_SOLVED_MUTATION, variables
+        )
+        return {
+            "success": (raw or {}).get("documentATCommunicationMarkAsSolved")
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+# NOTA: envelope `{errors, data}` com `data` escalar Boolean (sem subcampos).
+DOCUMENT_AT_COMMUNICATION_RETRY_MUTATION = """
+mutation ($companyId: Int!, $documentATCommunicationStatusId: String!) {
+  documentATCommunicationRetry(companyId: $companyId, documentATCommunicationStatusId: $documentATCommunicationStatusId) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def retry_document_at_communication(
+    company_id: int, document_at_communication_status_id: str
+) -> Any:
+    """Repete (retry) a comunicação à Autoridade Tributária (AT) de um documento cuja
+    comunicação anterior falhou. Devolve um booleano a indicar se a nova tentativa foi
+    aceite.
+
+    ⚠️ COMUNICA O DOCUMENTO À AT — é uma ação fiscal real (envia os dados do documento à
+    Autoridade Tributária). Confirma que a configuração AT está correta antes de repetir.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_at_communication_status_id: ID do estado de comunicação AT a repetir
+            (String; obtém-se via `get_document_at_communication_statuses`).
+    """
+    variables = {
+        "companyId": company_id,
+        "documentATCommunicationStatusId": document_at_communication_status_id,
+    }
+    try:
+        result = await _client.query(
+            DOCUMENT_AT_COMMUNICATION_RETRY_MUTATION, variables
+        )
+        return unwrap(result, "documentATCommunicationRetry")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_AT_COMMUNICATION_RETRY_ALL_MUTATION = """
+mutation ($companyId: Int!) {
+  documentATCommunicationRetryAll(companyId: $companyId) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def retry_all_document_at_communications(company_id: int) -> Any:
+    """Repete (retry) TODAS as comunicações à Autoridade Tributária (AT) que falharam, para
+    uma empresa, em lote. Devolve um booleano a indicar se o reprocessamento foi aceite.
+
+    ⚠️ COMUNICA À AT EM MASSA — é uma ação fiscal real que reenvia à Autoridade Tributária
+    todos os documentos com comunicação falhada. Confirma que a configuração AT está correta
+    antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+    """
+    try:
+        result = await _client.query(
+            DOCUMENT_AT_COMMUNICATION_RETRY_ALL_MUTATION, {"companyId": company_id}
+        )
+        return unwrap(result, "documentATCommunicationRetryAll")
+    except MolonionError as e:
+        return _err(e)
+
+
+DOCUMENT_AT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: DocumentATUpdate!) {
+  documentATUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentATId
+      documentId
+      transportAtCode
+      transportAtCodeMethod
+      atcud
+      hash
+      hashControl
+      qr
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_document_at(
+    company_id: int, document_id: int, transport_at_code: str | None = None
+) -> Any:
+    """Atualiza os dados AT (Autoridade Tributária) de um documento — em particular o código
+    AT de transporte (`transport_at_code`), por exemplo quando uma guia de transporte foi
+    comunicada à AT por outra via (telefone/portal) e se quer registar manualmente o código
+    devolvido. Devolve os dados AT do documento (ATCUD, hash, QR, código de transporte).
+
+    ⚠️ ALTERA DADOS FISCAIS do documento (código AT de transporte). Usa apenas com o código
+    efetivamente atribuído pela AT.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento cujos dados AT se atualizam.
+        transport_at_code: opcional; código AT de transporte a registar no documento.
+    """
+    data: dict[str, Any] = {"documentId": document_id}
+    if transport_at_code is not None:
+        data["transportAtCode"] = transport_at_code
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(DOCUMENT_AT_UPDATE_MUTATION, variables)
+        return unwrap(result, "documentATUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+# ===========================================================================
+# Documentos (genérico) — apagar (Mutation documentDelete)
+# ===========================================================================
+
+DOCUMENT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  documentDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_documents(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga um ou mais documentos de uma empresa (em lote), de QUALQUER tipo (faturas, notas,
+    guias, etc.) — versão genérica que não exige saber o tipo do documento. Só são elegíveis
+    os documentos em rascunho — documentos já fechados/certificados (com `hash`) NÃO se
+    apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos documentos a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(DOCUMENT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("documentDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
