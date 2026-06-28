@@ -20605,6 +20605,90 @@ async def list_simplified_invoices(
         return _err(e)
 
 
+# ===========================================================================
+# Regimes especiais de imposto (SpecialTaxScheme)
+# ===========================================================================
+
+SPECIAL_TAX_SCHEME_QUERY = """
+query ($specialTaxSchemeId: Int!) {
+  specialTaxScheme(specialTaxSchemeId: $specialTaxSchemeId) {
+    errors { field msg }
+    data {
+      specialTaxSchemeId
+      code
+      title
+      notes
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def get_special_tax_scheme(special_tax_scheme_id: int) -> Any:
+    """Obtém um regime especial de imposto (tabela de referência global da Moloni ON) pelo
+    seu ID: o código do país de IVA (`code`, ex. "pt"), o título (`title`), notas
+    (`notes`), se está visível (`visible`) e se é removível (`deletable`). Nota: ao
+    contrário da maioria das operações, NÃO recebe `companyId` — é uma tabela global. O
+    país e as traduções não são incluídos neste selection set.
+
+    Args:
+        special_tax_scheme_id: ID do regime especial de imposto a obter.
+    """
+    variables = {"specialTaxSchemeId": special_tax_scheme_id}
+    try:
+        data = await _client.query(SPECIAL_TAX_SCHEME_QUERY, variables)
+        return unwrap(data, "specialTaxScheme")
+    except MolonionError as e:
+        return _err(e)
+
+
+SPECIAL_TAX_SCHEMES_QUERY = """
+query ($options: SpecialTaxSchemeOptions) {
+  specialTaxSchemes(options: $options) {
+    errors { field msg }
+    data {
+      specialTaxSchemeId
+      code
+      title
+      notes
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def list_special_tax_schemes(
+    page: int | None = None,
+    qty: int | None = None,
+) -> Any:
+    """Lista os regimes especiais de imposto (tabela de referência global da Moloni ON),
+    cada um com `specialTaxSchemeId`, o código de país de IVA (`code`), o título (`title`),
+    notas (`notes`) e `visible`. Nota: ao contrário da maioria das operações, NÃO recebe
+    `companyId` — é uma tabela global.
+
+    Args:
+        page: opcional; página da paginação (começa em 1). Requer também `qty`.
+        qty: opcional; número de registos por página. Requer também `page`.
+    """
+    options: dict[str, Any] = {}
+    if page is not None and qty is not None:
+        options["pagination"] = {"page": page, "qty": qty}
+    variables: dict[str, Any] = {}
+    if options:
+        variables["options"] = options
+    try:
+        data = await _client.query(SPECIAL_TAX_SCHEMES_QUERY, variables)
+        return unwrap(data, "specialTaxSchemes")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
