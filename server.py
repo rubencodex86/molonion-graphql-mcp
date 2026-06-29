@@ -37083,6 +37083,260 @@ async def update_simplified_invoice(
         return _err(e)
 
 
+STOCK_MOVEMENT_MANUAL_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  stockMovementManualDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_manual_stock_movements(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga um ou mais movimentos de stock manuais de uma empresa (em lote). Movimentos
+    manuais são acertos/entradas/saídas de stock registados à mão (não gerados por documentos
+    de venda/compra). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os movimentos indicados e
+    reverte o respetivo impacto no stock. Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos movimentos de stock manuais a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(STOCK_MOVEMENT_MANUAL_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("stockMovementManualDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+STOCK_MOVEMENT_MANUAL_ENTRY_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: StockMovementManualEntryInsert!, $options: StockMovementManualEntryMutateOptions) {
+  stockMovementManualEntryCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_manual_stock_entry(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria um movimento de stock manual de ENTRADA (documento) numa empresa — regista a entrada
+    de produtos em armazém à mão (acertos, devoluções, inventário, etc.).
+
+    ⚠️ CRIA UM DOCUMENTO REAL e AUMENTA O STOCK dos produtos indicados. Conforme o `status`, o
+    documento pode ficar fechado/certificado (com `hash`). Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase). Chaves OBRIGATÓRIAS típicas:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do movimento.
+      - `products` (list[dict]): linhas, cada uma com `productId` (int), `ordering` (int),
+        `qty` (float) e, normalmente, `warehouseId` (int) do armazém de destino; opcionais
+        `name`, `price`, etc.
+    Chaves OPCIONAIS úteis: `notes`, `status`, `supplierId`/`customerId`, `movementDate`.
+
+    Devolve o movimento criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do movimento de entrada a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(STOCK_MOVEMENT_MANUAL_ENTRY_CREATE_MUTATION, variables)
+        return unwrap(result, "stockMovementManualEntryCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+STOCK_MOVEMENT_MANUAL_EXIT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: StockMovementManualExitInsert!, $options: StockMovementManualExitMutateOptions) {
+  stockMovementManualExitCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_manual_stock_exit(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria um movimento de stock manual de SAÍDA (documento) numa empresa — regista a saída
+    de produtos de armazém à mão (acertos, quebras, consumo interno, etc.).
+
+    ⚠️ CRIA UM DOCUMENTO REAL e REDUZ O STOCK dos produtos indicados. Conforme o `status`, o
+    documento pode ficar fechado/certificado (com `hash`). Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase). Chaves OBRIGATÓRIAS típicas:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do movimento.
+      - `products` (list[dict]): linhas, cada uma com `productId` (int), `ordering` (int),
+        `qty` (float) e, normalmente, `warehouseId` (int) do armazém de origem; opcionais
+        `name`, `price`, etc.
+    Chaves OPCIONAIS úteis: `notes`, `status`, `supplierId`/`customerId`, `movementDate`.
+
+    Devolve o movimento criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do movimento de saída a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(STOCK_MOVEMENT_MANUAL_EXIT_CREATE_MUTATION, variables)
+        return unwrap(result, "stockMovementManualExitCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+STOCK_MOVEMENT_WAREHOUSE_TRANSFER_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: StockMovementWarehouseTransferInsert!, $options: StockMovementWarehouseTransferMutateOptions) {
+  stockMovementWarehouseTransferCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_warehouse_transfer(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria uma transferência de stock entre armazéns (documento) numa empresa — move produtos
+    de um armazém de origem para um de destino.
+
+    ⚠️ CRIA UM DOCUMENTO REAL e MOVE O STOCK entre armazéns (saída na origem, entrada no
+    destino). Conforme o `status`, o documento pode ficar fechado/certificado (com `hash`).
+    Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase). Chaves OBRIGATÓRIAS típicas:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data da transferência.
+      - `sourceWarehouseId` / `targetWarehouseId` (int): armazéns de origem e destino.
+      - `products` (list[dict]): linhas, cada uma com `productId` (int), `ordering` (int),
+        `qty` (float) a transferir; opcionais `name`, `price`, etc.
+    Chaves OPCIONAIS úteis: `notes`, `status`, `movementDate`.
+
+    Devolve a transferência criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da transferência a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(STOCK_MOVEMENT_WAREHOUSE_TRANSFER_CREATE_MUTATION, variables)
+        return unwrap(result, "stockMovementWarehouseTransferCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+STOCK_MOVEMENT_WAREHOUSE_TRANSFER_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  stockMovementWarehouseTransferDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_warehouse_transfers(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais transferências de stock entre armazéns de uma empresa (em lote).
+    Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as transferências indicadas
+    e reverte o respetivo movimento de stock entre armazéns. Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das transferências a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(STOCK_MOVEMENT_WAREHOUSE_TRANSFER_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("stockMovementWarehouseTransferDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

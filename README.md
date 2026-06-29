@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.798.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.803.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -855,6 +855,11 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_simplified_invoice` | Anula uma fatura simplificada. ⚠️ operação fiscal irreversível. |
 | `send_simplified_invoice_mail` | Envia faturas simplificadas por email. ⚠️ envia email real. |
 | `update_simplified_invoice` | Atualiza uma fatura simplificada (só rascunhos). ⚠️ altera documento real. |
+| `delete_manual_stock_movements` | Apaga movimentos de stock manuais (em lote). ⚠️ destrutivo e irreversível. |
+| `create_manual_stock_entry` | Cria um movimento de stock manual de entrada. ⚠️ cria documento e aumenta stock. |
+| `create_manual_stock_exit` | Cria um movimento de stock manual de saída. ⚠️ cria documento e reduz stock. |
+| `create_warehouse_transfer` | Cria uma transferência de stock entre armazéns. ⚠️ cria documento e move stock. |
+| `delete_warehouse_transfers` | Apaga transferências de stock entre armazéns (em lote). ⚠️ destrutivo e irreversível. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
