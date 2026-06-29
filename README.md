@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.803.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.812.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -860,6 +860,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_manual_stock_exit` | Cria um movimento de stock manual de saída. ⚠️ cria documento e reduz stock. |
 | `create_warehouse_transfer` | Cria uma transferência de stock entre armazéns. ⚠️ cria documento e move stock. |
 | `delete_warehouse_transfers` | Apaga transferências de stock entre armazéns (em lote). ⚠️ destrutivo e irreversível. |
+| `create_supplier_bills_of_lading` | Cria guias de transporte de fornecedor (documento) em lote. ⚠️ cria documentos reais. |
+| `create_supplier_bill_of_lading` | Cria uma guia de transporte de fornecedor (documento). ⚠️ cria documento real. |
+| `delete_supplier_bills_of_lading` | Apaga guias de transporte de fornecedor (em lote). ⚠️ destrutivo e irreversível. |
+| `revert_supplier_bill_of_lading_to_draft` | Reverte uma guia de transporte de fornecedor para rascunho. ⚠️ altera estado. |
+| `generate_supplier_bill_of_lading_pdf` | (Re)gera o PDF de uma guia de transporte de fornecedor. |
+| `generate_supplier_bills_of_lading_zip` | (Re)gera um ZIP com PDFs de várias guias de transporte de fornecedor. |
+| `nullify_supplier_bill_of_lading` | Anula uma guia de transporte de fornecedor. ⚠️ operação fiscal irreversível. |
+| `send_supplier_bill_of_lading_mail` | Envia guias de transporte de fornecedor por email. ⚠️ envia email real. |
+| `update_supplier_bill_of_lading` | Atualiza uma guia de transporte de fornecedor (só rascunhos). ⚠️ altera documento real. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
