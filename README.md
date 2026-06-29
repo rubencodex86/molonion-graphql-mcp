@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.754.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.765.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -811,6 +811,17 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_receipt` | Anula um recibo (motivo opcional). ⚠️ fiscal, irreversível. |
 | `send_receipt_mail` | Envia recibos por email. ⚠️ envia email real. |
 | `update_receipt` | Atualiza um recibo (só rascunhos). ⚠️ altera documento real. |
+| `create_recurring_agreements` | Cria um ou mais contratos de venda recorrente (em lote). ⚠️ cria documentos reais. |
+| `create_recurring_agreement` | Cria um contrato de venda recorrente (singular). ⚠️ cria documento real. |
+| `delete_recurring_agreements` | Apaga um ou mais contratos de venda recorrente (em lote). ⚠️ destrutiva. |
+| `revert_recurring_agreement_to_draft` | Reverte um contrato de venda recorrente finalizado para rascunho. ⚠️ altera estado. |
+| `generate_recurring_agreement_pdf` | (Re)gera o PDF de um contrato de venda recorrente. |
+| `generate_recurring_agreements_zip` | (Re)gera um ZIP com os PDFs de vários contratos de venda recorrente. |
+| `nullify_recurring_agreement` | Anula um contrato de venda recorrente (motivo opcional). ⚠️ irreversível. |
+| `send_recurring_agreement_mail` | Envia contratos de venda recorrente por email. ⚠️ envia email real. |
+| `update_recurring_agreement` | Atualiza um contrato de venda recorrente (só rascunhos). ⚠️ altera documento real. |
+| `remove_price_class` | Remove (desaplica) uma classe de preço aplicada, revertendo preços. ⚠️ altera preços em massa. |
+| `request_transport_code` | Pede à AT o código de transporte de um documento. ⚠️ comunica à AT. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de

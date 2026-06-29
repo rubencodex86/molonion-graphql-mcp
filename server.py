@@ -35068,6 +35068,470 @@ async def update_receipt(
         return _err(e)
 
 
+RECURRING_AGREEMENT_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: RecurringAgreementBulkInsert!) {
+  recurringAgreementBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_recurring_agreements(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria um ou mais contratos de venda recorrente (documento) numa empresa, em lote. Um
+    contrato recorrente gera documentos de venda periodicamente, segundo os eventos agendados.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas; cada linha com `productId` (int), `ordering`
+        (int) e `qty` (float) OBRIGATÓRIOS, e opcionais `price`, `discount`, `name`,
+        `taxes` (list[dict] `{taxId, value}`), etc. (ver `create_bills_of_lading`).
+    Chaves OPCIONAIS úteis: `events` (list[dict] `EventInput` — agendamento da recorrência),
+      `globalDiscount`, `maturityDateId`, `notes`, `status` (0=rascunho, 1=fechado),
+      `suspended`, `currencyExchangeId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por contrato de venda recorrente (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(RECURRING_AGREEMENT_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("recurringAgreementBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: RecurringAgreementInsert!, $options: RecurringAgreementMutateOptions) {
+  recurringAgreementCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_recurring_agreement(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria um contrato de venda recorrente (documento) numa empresa. Versão singular do
+    `create_recurring_agreements` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_recurring_agreements`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
+    `expirationDate` ("YYYY-MM-DD"), `customerId` (int), `products` (list[dict]). Opcionais
+    úteis: `events` (agendamento da recorrência), `globalDiscount`, `maturityDateId`, `notes`,
+    `status`, `suspended`, etc.
+
+    Devolve o contrato criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do contrato de venda recorrente (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(RECURRING_AGREEMENT_CREATE_MUTATION, variables)
+        return unwrap(result, "recurringAgreementCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  recurringAgreementDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_recurring_agreements(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """Apaga um ou mais contratos de venda recorrente de uma empresa (em lote). Só são
+    elegíveis os que estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO
+    se apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos contratos de venda recorrente a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(RECURRING_AGREEMENT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("recurringAgreementDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  recurringAgreementDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_recurring_agreement_to_draft(
+    company_id: int, document_id: int
+) -> Any:
+    """Reverte um contrato de venda recorrente finalizado de volta a rascunho, para permitir
+    voltar a editá-lo. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do contrato de venda recorrente a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(RECURRING_AGREEMENT_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "recurringAgreementDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  recurringAgreementGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_recurring_agreement_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de um contrato de venda recorrente do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_recurring_agreement_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do contrato de venda recorrente cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(RECURRING_AGREEMENT_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("recurringAgreementGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  recurringAgreementGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_recurring_agreements_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de vários contratos de venda
+    recorrente. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_recurring_agreement_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos contratos de venda recorrente a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(RECURRING_AGREEMENT_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("recurringAgreementGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  recurringAgreementNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_recurring_agreement(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula um contrato de venda recorrente (marca como anulado, `nullified=True`), com um
+    motivo opcional. É a forma correta de "cancelar" um documento já emitido que não pode ser
+    apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO IRREVERSÍVEL — anular um documento é definitivo e fica registado. Confirma o
+    documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do contrato de venda recorrente a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(RECURRING_AGREEMENT_NULLIFY_MUTATION, variables)
+        return unwrap(result, "recurringAgreementNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  recurringAgreementSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_recurring_agreement_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia um ou mais contratos de venda recorrente por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_recurring_agreement_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos contratos de venda recorrente a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(RECURRING_AGREEMENT_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("recurringAgreementSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+RECURRING_AGREEMENT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: RecurringAgreementUpdate!, $options: RecurringAgreementMutateOptions) {
+  recurringAgreementUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_recurring_agreement(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza um contrato de venda recorrente (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_recurring_agreement`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_recurring_agreements`
+    (`date`, `expirationDate`, `customerId`, `documentSetId`, `products`, `events`, `notes`,
+    `status`, etc.). Em `products`, passar a lista substitui o conjunto atual.
+
+    Devolve o contrato atualizado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(RECURRING_AGREEMENT_UPDATE_MUTATION, variables)
+        return unwrap(result, "recurringAgreementUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+REMOVE_PRICE_CLASS_MUTATION = """
+mutation ($companyId: Int!, $priceClassId: Int!) {
+  removePriceClass(companyId: $companyId, priceClassId: $priceClassId) {
+    errors { field msg }
+    removed
+  }
+}
+"""
+
+
+@mcp.tool()
+async def remove_price_class(company_id: int, price_class_id: int) -> Any:
+    """Remove uma classe de preço previamente APLICADA a produtos/clientes, revertendo os
+    preços afetados. Difere de `delete_price_classes` (que apaga a própria classe) — aqui
+    desfaz-se a aplicação da classe.
+
+    ⚠️ ALTERA PREÇOS EM MASSA — reverte os preços de todos os produtos/clientes afetados.
+
+    O envelope desta operação é atípico: devolve `{errors, removed}` (`removed` é um booleano
+    de sucesso), não o habitual `{errors, data}`.
+
+    Args:
+        company_id: ID da empresa.
+        price_class_id: ID da classe de preço a remover (desaplicar).
+    """
+    variables = {"companyId": company_id, "priceClassId": price_class_id}
+    try:
+        raw = await _client.query(REMOVE_PRICE_CLASS_MUTATION, variables)
+        env = (raw or {}).get("removePriceClass") or {}
+        return {"errors": env.get("errors"), "removed": env.get("removed")}
+    except MolonionError as e:
+        return _err(e)
+
+
+REQUEST_TRANSPORT_CODE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  requestTransportCode(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data
+  }
+}
+"""
+
+
+@mcp.tool()
+async def request_transport_code(company_id: int, document_id: int) -> Any:
+    """Pede à Autoridade Tributária (AT) o código de transporte (código AT) de um documento de
+    transporte (ex. guia de remessa/transporte). Devolve um booleano a indicar se o pedido foi
+    aceite.
+
+    ⚠️ COMUNICA O DOCUMENTO À AT — é uma ação fiscal real. Confirma que a configuração AT está
+    correta antes de pedir.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do documento de transporte para o qual se pede o código AT.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(REQUEST_TRANSPORT_CODE_MUTATION, variables)
+        return unwrap(result, "requestTransportCode")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
