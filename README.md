@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.780.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.789.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -837,6 +837,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `send_salesperson_payment_mail` | Envia pagamentos de comissões a vendedores por email. ⚠️ envia email real. |
 | `update_salesperson_payment` | Atualiza um pagamento de comissões a vendedor (só rascunhos). ⚠️ altera documento real. |
 | `update_salesperson` | Atualiza um vendedor de uma empresa. |
+| `create_settlement_notes` | Cria notas de acerto (documento) em lote. ⚠️ cria documentos reais. |
+| `create_settlement_note` | Cria uma nota de acerto (documento). ⚠️ cria documento real. |
+| `delete_settlement_notes` | Apaga notas de acerto (em lote). ⚠️ destrutivo e irreversível. |
+| `revert_settlement_note_to_draft` | Reverte uma nota de acerto finalizada para rascunho. ⚠️ altera estado. |
+| `generate_settlement_note_pdf` | (Re)gera o PDF de uma nota de acerto. |
+| `generate_settlement_notes_zip` | (Re)gera um ZIP com PDFs de várias notas de acerto. |
+| `nullify_settlement_note` | Anula uma nota de acerto. ⚠️ operação fiscal irreversível. |
+| `send_settlement_note_mail` | Envia notas de acerto por email. ⚠️ envia email real. |
+| `update_settlement_note` | Atualiza uma nota de acerto (só rascunhos). ⚠️ altera documento real. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de

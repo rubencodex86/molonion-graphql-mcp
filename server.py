@@ -36305,6 +36305,393 @@ async def update_salesperson(
         return _err(e)
 
 
+SETTLEMENT_NOTE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SettlementNoteBulkInsert!) {
+  settlementNoteBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_settlement_notes(company_id: int, documents: list[dict[str, Any]]) -> Any:
+    """Cria uma ou mais notas de acerto (documento) numa empresa, em lote. Uma nota de acerto
+    regulariza saldos entre documentos/entidades (ajustes de conta-corrente).
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente/entidade.
+      - `relatedWith` (list[dict]): documento(s) regularizado(s); cada item
+        `{relatedDocumentId (int), value (float)}`.
+    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
+      `ourReference`, `currencyExchangeId`, `suspended`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por nota de acerto a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(SETTLEMENT_NOTE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("settlementNoteBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SettlementNoteInsert!, $options: SettlementNoteMutateOptions) {
+  settlementNoteCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_settlement_note(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria uma nota de acerto (documento) numa empresa. Versão singular do
+    `create_settlement_notes` (que cria em lote). Regulariza saldos entre documentos/entidades.
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_settlement_notes`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
+    `relatedWith` (list[dict] `{relatedDocumentId, value}`). Opcionais úteis: `notes`,
+    `status`, `yourReference`, `ourReference`, `currencyExchangeId`, etc.
+
+    Devolve a nota de acerto criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da nota de acerto a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SETTLEMENT_NOTE_CREATE_MUTATION, variables)
+        return unwrap(result, "settlementNoteCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  settlementNoteDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_settlement_notes(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais notas de acerto de uma empresa (em lote). Só são elegíveis as que
+    estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam
+    (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de acerto a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(SETTLEMENT_NOTE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("settlementNoteDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  settlementNoteDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_settlement_note_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma nota de acerto finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de acerto a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(SETTLEMENT_NOTE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "settlementNoteDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  settlementNoteGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_settlement_note_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma nota de acerto do lado do servidor. Devolve `success` (booleano).
+    Para depois descarregar o ficheiro, usa `get_settlement_note_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de acerto cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(SETTLEMENT_NOTE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("settlementNoteGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  settlementNoteGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_settlement_notes_zip(company_id: int, document_ids: list[int]) -> Any:
+    """(Re)gera um ZIP com os PDFs de várias notas de acerto do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa `get_settlement_note_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de acerto a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(SETTLEMENT_NOTE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("settlementNoteGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  settlementNoteNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_settlement_note(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma nota de acerto (marca como anulada, `nullified=True`), com um motivo opcional.
+    É a forma correta de "cancelar" um documento já emitido/certificado, que não pode ser
+    apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de acerto a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(SETTLEMENT_NOTE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "settlementNoteNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  settlementNoteSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_settlement_note_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais notas de acerto por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_settlement_note_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de acerto a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(SETTLEMENT_NOTE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("settlementNoteSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SETTLEMENT_NOTE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: SettlementNoteUpdate!, $options: SettlementNoteMutateOptions) {
+  settlementNoteUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_settlement_note(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza uma nota de acerto (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_settlement_note`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_settlement_notes`
+    (`date`, `customerId`, `documentSetId`, `relatedWith`, `notes`, `status`, etc.). Em
+    `relatedWith`, passar a lista substitui o conjunto atual.
+
+    Devolve a nota de acerto atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SETTLEMENT_NOTE_UPDATE_MUTATION, variables)
+        return unwrap(result, "settlementNoteUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
