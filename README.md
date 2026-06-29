@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.812.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.841.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -869,6 +869,35 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_supplier_bill_of_lading` | Anula uma guia de transporte de fornecedor. ⚠️ operação fiscal irreversível. |
 | `send_supplier_bill_of_lading_mail` | Envia guias de transporte de fornecedor por email. ⚠️ envia email real. |
 | `update_supplier_bill_of_lading` | Atualiza uma guia de transporte de fornecedor (só rascunhos). ⚠️ altera documento real. |
+| `create_supplier` | Cria um fornecedor numa empresa. |
+| `create_supplier_credit_notes` | Cria notas de crédito de fornecedor (documento) em lote. ⚠️ cria documentos reais. |
+| `create_supplier_credit_note` | Cria uma nota de crédito de fornecedor (documento). ⚠️ cria documento real. |
+| `delete_supplier_credit_notes` | Apaga notas de crédito de fornecedor (em lote). ⚠️ destrutivo e irreversível. |
+| `revert_supplier_credit_note_to_draft` | Reverte uma nota de crédito de fornecedor para rascunho. ⚠️ altera estado. |
+| `generate_supplier_credit_note_pdf` | (Re)gera o PDF de uma nota de crédito de fornecedor. |
+| `generate_supplier_credit_notes_zip` | (Re)gera um ZIP com PDFs de várias notas de crédito de fornecedor. |
+| `nullify_supplier_credit_note` | Anula uma nota de crédito de fornecedor. ⚠️ operação fiscal irreversível. |
+| `send_supplier_credit_note_mail` | Envia notas de crédito de fornecedor por email. ⚠️ envia email real. |
+| `update_supplier_credit_note` | Atualiza uma nota de crédito de fornecedor (só rascunhos). ⚠️ altera documento real. |
+| `delete_suppliers` | Apaga fornecedores de uma empresa (em lote). ⚠️ destrutivo e irreversível. |
+| `create_supplier_invoices` | Cria faturas de fornecedor (documento) em lote. ⚠️ cria documentos reais. |
+| `create_supplier_invoice` | Cria uma fatura de fornecedor (documento). ⚠️ cria documento real. |
+| `delete_supplier_invoices` | Apaga faturas de fornecedor (em lote). ⚠️ destrutivo e irreversível. |
+| `revert_supplier_invoice_to_draft` | Reverte uma fatura de fornecedor para rascunho. ⚠️ altera estado. |
+| `generate_supplier_invoice_pdf` | (Re)gera o PDF de uma fatura de fornecedor. |
+| `generate_supplier_invoices_zip` | (Re)gera um ZIP com PDFs de várias faturas de fornecedor. |
+| `nullify_supplier_invoice` | Anula uma fatura de fornecedor. ⚠️ operação fiscal irreversível. |
+| `send_supplier_invoice_mail` | Envia faturas de fornecedor por email. ⚠️ envia email real. |
+| `update_supplier_invoice` | Atualiza uma fatura de fornecedor (só rascunhos). ⚠️ altera documento real. |
+| `create_supplier_purchase_orders` | Cria notas de encomenda a fornecedor (documento) em lote. ⚠️ cria documentos reais. |
+| `create_supplier_purchase_order` | Cria uma nota de encomenda a fornecedor (documento). ⚠️ cria documento real. |
+| `delete_supplier_purchase_orders` | Apaga notas de encomenda a fornecedor (em lote). ⚠️ destrutivo e irreversível. |
+| `revert_supplier_purchase_order_to_draft` | Reverte uma nota de encomenda a fornecedor para rascunho. ⚠️ altera estado. |
+| `generate_supplier_purchase_order_pdf` | (Re)gera o PDF de uma nota de encomenda a fornecedor. |
+| `generate_supplier_purchase_orders_zip` | (Re)gera um ZIP com PDFs de várias notas de encomenda a fornecedor. |
+| `nullify_supplier_purchase_order` | Anula uma nota de encomenda a fornecedor. ⚠️ operação fiscal irreversível. |
+| `send_supplier_purchase_order_mail` | Envia notas de encomenda a fornecedor por email. ⚠️ envia email real. |
+| `update_supplier_purchase_order` | Atualiza uma nota de encomenda a fornecedor (só rascunhos). ⚠️ altera documento real. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
