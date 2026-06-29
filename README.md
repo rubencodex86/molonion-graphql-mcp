@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.713.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.725.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -770,6 +770,18 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `delete_products` | Apaga um ou mais produtos do catálogo (em lote). ⚠️ destrutiva. |
 | `update_product` | Atualiza um produto/serviço do catálogo (associações complexas via `extra_fields`). |
 | `generate_profit_margins_xls` | Gera um XLS com as margens de lucro (por produto/documento/tudo). |
+| `create_pro_forma_invoices` | Cria uma ou mais faturas pró-forma (em lote). ⚠️ cria documentos reais. |
+| `create_pro_forma_invoice` | Cria uma fatura pró-forma (singular). ⚠️ cria documento real. |
+| `delete_pro_forma_invoices` | Apaga uma ou mais faturas pró-forma (em lote). ⚠️ destrutiva. |
+| `revert_pro_forma_invoice_to_draft` | Reverte uma fatura pró-forma finalizada para rascunho. ⚠️ altera estado. |
+| `generate_pro_forma_invoice_pdf` | (Re)gera o PDF de uma fatura pró-forma. |
+| `generate_pro_forma_invoices_zip` | (Re)gera um ZIP com os PDFs de várias faturas pró-forma. |
+| `nullify_pro_forma_invoice` | Anula uma fatura pró-forma (motivo opcional). ⚠️ irreversível. |
+| `send_pro_forma_invoice_mail` | Envia faturas pró-forma por email. ⚠️ envia email real. |
+| `update_pro_forma_invoice` | Atualiza uma fatura pró-forma (só rascunhos). ⚠️ altera documento real. |
+| `create_property_group` | Cria um grupo de propriedades (atributos/variantes de produto). |
+| `delete_property_groups` | Apaga um ou mais grupos de propriedades (em lote). ⚠️ destrutiva. |
+| `update_property_group` | Atualiza um grupo de propriedades (nome, visibilidade, propriedades). |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de

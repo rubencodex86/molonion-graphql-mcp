@@ -33230,6 +33230,562 @@ async def generate_profit_margins_xls(
         return _err(e)
 
 
+PRO_FORMA_INVOICE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProFormaInvoiceBulkInsert!) {
+  proFormaInvoiceBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_pro_forma_invoices(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais faturas pró-forma (documento) numa empresa, em lote. Uma fatura
+    pró-forma é um documento provisório/orçamental, sem efeitos fiscais de fatura.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
+      - `customerId` (int): cliente.
+      - `products` (list[dict]): linhas; cada linha com `productId` (int), `ordering`
+        (int) e `qty` (float) OBRIGATÓRIOS, e opcionais `price`, `discount`, `name`,
+        `taxes` (list[dict] `{taxId, value}`), etc. (ver `create_bills_of_lading`).
+    Chaves OPCIONAIS úteis: `globalDiscount`, `salespersonId`, `notes`, `status`
+      (0=rascunho, 1=fechado), `deliveryMethodId`, `currencyExchangeId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por fatura pró-forma a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(PRO_FORMA_INVOICE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("proFormaInvoiceBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProFormaInvoiceInsert!, $options: ProFormaInvoiceMutateOptions) {
+  proFormaInvoiceCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_pro_forma_invoice(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria uma fatura pró-forma (documento) numa empresa. Versão singular do
+    `create_pro_forma_invoices` (que cria em lote). É um documento provisório/orçamental,
+    sem efeitos fiscais de fatura.
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_pro_forma_invoices`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
+    `expirationDate` ("YYYY-MM-DD"), `customerId` (int), `products` (list[dict]). Opcionais
+    úteis: `globalDiscount`, `salespersonId`, `notes`, `status`, `deliveryMethodId`, etc.
+
+    Devolve a fatura pró-forma criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da fatura pró-forma a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PRO_FORMA_INVOICE_CREATE_MUTATION, variables)
+        return unwrap(result, "proFormaInvoiceCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  proFormaInvoiceDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_pro_forma_invoices(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais faturas pró-forma de uma empresa (em lote). Só são elegíveis as que
+    estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam
+    (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas pró-forma a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(PRO_FORMA_INVOICE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("proFormaInvoiceDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  proFormaInvoiceDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_pro_forma_invoice_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma fatura pró-forma finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura pró-forma a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(PRO_FORMA_INVOICE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "proFormaInvoiceDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  proFormaInvoiceGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_pro_forma_invoice_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma fatura pró-forma do lado do servidor. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa `get_pro_forma_invoice_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura pró-forma cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(PRO_FORMA_INVOICE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("proFormaInvoiceGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  proFormaInvoiceGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_pro_forma_invoices_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias faturas pró-forma.
+    Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_pro_forma_invoice_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas pró-forma a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(PRO_FORMA_INVOICE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("proFormaInvoiceGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  proFormaInvoiceNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_pro_forma_invoice(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma fatura pró-forma (marca como anulada, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido que não pode ser
+    apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO IRREVERSÍVEL — anular um documento é definitivo e fica registado. Confirma o
+    documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura pró-forma a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(PRO_FORMA_INVOICE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "proFormaInvoiceNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  proFormaInvoiceSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_pro_forma_invoice_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais faturas pró-forma por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_pro_forma_invoice_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas pró-forma a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(PRO_FORMA_INVOICE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("proFormaInvoiceSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PRO_FORMA_INVOICE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProFormaInvoiceUpdate!, $options: ProFormaInvoiceMutateOptions) {
+  proFormaInvoiceUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_pro_forma_invoice(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza uma fatura pró-forma (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_pro_forma_invoice`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_pro_forma_invoices`
+    (`date`, `expirationDate`, `customerId`, `documentSetId`, `products`, `notes`, `status`,
+    etc.). Em `products`, passar a lista substitui o conjunto atual.
+
+    Devolve a fatura pró-forma atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PRO_FORMA_INVOICE_UPDATE_MUTATION, variables)
+        return unwrap(result, "proFormaInvoiceUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROPERTY_GROUP_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PropertyGroupInsert!) {
+  propertyGroupCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      propertyGroupId
+      name
+      visible
+      deletable
+      properties {
+        propertyId
+        name
+        visible
+        ordering
+        deletable
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_property_group(
+    company_id: int,
+    name: str,
+    properties: list[dict[str, Any]],
+    visible: int = 1,
+) -> Any:
+    """Cria um grupo de propriedades (atributos/variantes) numa empresa. Usa-se para definir
+    características de produtos (ex.: "Cor", "Tamanho") e os respetivos valores.
+
+    OBRIGATÓRIOS: `name`, `visible` e `properties` (lista não vazia). Cada propriedade em
+    `properties` é um dicionário (camelCase) com `name` (str), `ordering` (int), `visible`
+    (int) e `values` (lista de `PropertyValueInsert`, ex. `[{"name": "Vermelho", ...}]`),
+    todos obrigatórios.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome do grupo de propriedades.
+        properties: lista de propriedades a criar no grupo (ver acima).
+        visible: visibilidade do grupo (por omissão 1).
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "visible": visible,
+        "properties": properties,
+    }
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PROPERTY_GROUP_CREATE_MUTATION, variables)
+        return unwrap(result, "propertyGroupCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROPERTY_GROUP_DELETE_MUTATION = """
+mutation ($companyId: Int!, $propertyGroupId: [String!]!) {
+  propertyGroupDelete(companyId: $companyId, propertyGroupId: $propertyGroupId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_property_groups(
+    company_id: int, property_group_ids: list[str]
+) -> Any:
+    """Apaga um ou mais grupos de propriedades de uma empresa (em lote). Grupos em uso por
+    produtos podem não ser elimináveis (o erro vem em `errors`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os grupos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        property_group_ids: lista de IDs (strings) dos grupos de propriedades a apagar.
+    """
+    variables = {"companyId": company_id, "propertyGroupId": property_group_ids}
+    try:
+        raw = await _client.query(PROPERTY_GROUP_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("propertyGroupDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PROPERTY_GROUP_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: PropertyGroupUpdate!) {
+  propertyGroupUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      propertyGroupId
+      name
+      visible
+      deletable
+      properties {
+        propertyId
+        name
+        visible
+        ordering
+        deletable
+      }
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_property_group(
+    company_id: int,
+    property_group_id: str,
+    name: str | None = None,
+    visible: int | None = None,
+    properties: list[dict[str, Any]] | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um grupo de propriedades de uma empresa. Só os campos enviados são alterados.
+
+    Só `property_group_id` é obrigatório. Em `properties` (lista de `PropertyUpdate`), passar
+    a lista substitui/atualiza o conjunto de propriedades.
+
+    Args:
+        company_id: ID da empresa.
+        property_group_id: ID (string) do grupo de propriedades a atualizar.
+        name: novo nome do grupo.
+        visible: visibilidade do grupo.
+        properties: lista de propriedades a atualizar (`PropertyUpdate`).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"propertyGroupId": property_group_id}
+    if name is not None:
+        data["name"] = name
+    if visible is not None:
+        data["visible"] = visible
+    if properties is not None:
+        data["properties"] = properties
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PROPERTY_GROUP_UPDATE_MUTATION, variables)
+        return unwrap(result, "propertyGroupUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
