@@ -32903,6 +32903,333 @@ async def update_product_category(
         return _err(e)
 
 
+PRODUCT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProductInsert!) {
+  productCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      productId
+      type
+      reference
+      name
+      summary
+      price
+      priceWithTaxes
+      hasStock
+      stock
+      minStock
+      exemptionReason
+      posFavorite
+      visible
+      productCategoryId
+      warehouseId
+      measurementUnitId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_product(
+    company_id: int,
+    name: str,
+    reference: str,
+    product_category_id: int,
+    type: int,
+    measurement_unit_id: int,
+    price: float | None = None,
+    summary: str | None = None,
+    notes: str | None = None,
+    has_stock: bool | None = None,
+    min_stock: float | None = None,
+    warehouse_id: int | None = None,
+    exemption_reason: str | None = None,
+    visible: int | None = None,
+    pos_favorite: bool | None = None,
+    taxes: list[dict[str, Any]] | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um produto/serviço no catálogo de uma empresa.
+
+    OBRIGATÓRIOS: `name`, `reference`, `product_category_id`, `type` (1=produto, 2=serviço,
+    3=outro), `measurement_unit_id`. Se o produto não for isento de IVA, normalmente é
+    preciso indicar `taxes`; se for isento, indicar `exemption_reason`.
+
+    As associações complexas (`variants`, `identifications`, `customFields`, `priceClasses`,
+    `warehouses`, `suppliers`, `productAT`) passam-se por `extra_fields` (camelCase, com a
+    forma esperada pela API). O campo `img` (tipo Upload) não é suportado por esta tool.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome do produto.
+        reference: Referência (código) do produto.
+        product_category_id: ID da categoria de produtos.
+        type: Tipo (1=produto, 2=serviço, 3=outro).
+        measurement_unit_id: ID da unidade de medida.
+        price: Preço unitário (sem IVA).
+        summary: Descrição/resumo.
+        notes: Notas.
+        has_stock: Se o produto controla stock.
+        min_stock: Stock mínimo.
+        warehouse_id: ID do armazém por omissão.
+        exemption_reason: Motivo de isenção de IVA (se aplicável).
+        visible: Visibilidade (código).
+        pos_favorite: Favorito no POS.
+        taxes: lista de impostos `ProductTaxAssociation`, ex. `[{"taxId": 1, "ordering": 1}]`.
+        extra_fields: Campos/associações adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "reference": reference,
+        "productCategoryId": product_category_id,
+        "type": type,
+        "measurementUnitId": measurement_unit_id,
+    }
+    if price is not None:
+        data["price"] = price
+    if summary is not None:
+        data["summary"] = summary
+    if notes is not None:
+        data["notes"] = notes
+    if has_stock is not None:
+        data["hasStock"] = has_stock
+    if min_stock is not None:
+        data["minStock"] = min_stock
+    if warehouse_id is not None:
+        data["warehouseId"] = warehouse_id
+    if exemption_reason is not None:
+        data["exemptionReason"] = exemption_reason
+    if visible is not None:
+        data["visible"] = visible
+    if pos_favorite is not None:
+        data["posFavorite"] = pos_favorite
+    if taxes is not None:
+        data["taxes"] = taxes
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRODUCT_CREATE_MUTATION, variables)
+        return unwrap(result, "productCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $productId: [Int]!) {
+  productDelete(companyId: $companyId, productId: $productId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_products(company_id: int, product_ids: list[int]) -> Any:
+    """Apaga um ou mais produtos do catálogo de uma empresa (em lote). Produtos com
+    movimentos (em documentos, stock, etc.) podem não ser elimináveis (o erro vem em
+    `errors`). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os produtos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_ids: lista de IDs dos produtos a apagar.
+    """
+    variables = {"companyId": company_id, "productId": product_ids}
+    try:
+        raw = await _client.query(PRODUCT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("productDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProductUpdate!) {
+  productUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      productId
+      type
+      reference
+      name
+      summary
+      price
+      priceWithTaxes
+      hasStock
+      stock
+      minStock
+      exemptionReason
+      posFavorite
+      visible
+      productCategoryId
+      warehouseId
+      measurementUnitId
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_product(
+    company_id: int,
+    product_id: int,
+    name: str | None = None,
+    reference: str | None = None,
+    product_category_id: int | None = None,
+    type: int | None = None,
+    measurement_unit_id: int | None = None,
+    price: float | None = None,
+    summary: str | None = None,
+    notes: str | None = None,
+    has_stock: bool | None = None,
+    min_stock: float | None = None,
+    warehouse_id: int | None = None,
+    exemption_reason: str | None = None,
+    visible: int | None = None,
+    pos_favorite: bool | None = None,
+    taxes: list[dict[str, Any]] | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um produto/serviço do catálogo de uma empresa.
+
+    Só `product_id` é obrigatório; envia apenas os campos a alterar. Nas associações em
+    lista (`taxes`, etc.), passar a lista substitui o conjunto atual.
+
+    As associações complexas (`variants`, `identifications`, `customFields`, `priceClasses`,
+    `warehouses`, `suppliers`, `productAT`) passam-se por `extra_fields` (camelCase). O campo
+    `img` (tipo Upload) não é suportado por esta tool.
+
+    Args:
+        company_id: ID da empresa.
+        product_id: ID do produto a atualizar.
+        name: Nome do produto.
+        reference: Referência (código) do produto.
+        product_category_id: ID da categoria de produtos.
+        type: Tipo (1=produto, 2=serviço, 3=outro).
+        measurement_unit_id: ID da unidade de medida.
+        price: Preço unitário (sem IVA).
+        summary: Descrição/resumo.
+        notes: Notas.
+        has_stock: Se o produto controla stock.
+        min_stock: Stock mínimo.
+        warehouse_id: ID do armazém por omissão.
+        exemption_reason: Motivo de isenção de IVA (se aplicável).
+        visible: Visibilidade (código).
+        pos_favorite: Favorito no POS.
+        taxes: lista de impostos `ProductTaxAssociation` (substitui o conjunto atual).
+        extra_fields: Campos/associações adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"productId": product_id}
+    if name is not None:
+        data["name"] = name
+    if reference is not None:
+        data["reference"] = reference
+    if product_category_id is not None:
+        data["productCategoryId"] = product_category_id
+    if type is not None:
+        data["type"] = type
+    if measurement_unit_id is not None:
+        data["measurementUnitId"] = measurement_unit_id
+    if price is not None:
+        data["price"] = price
+    if summary is not None:
+        data["summary"] = summary
+    if notes is not None:
+        data["notes"] = notes
+    if has_stock is not None:
+        data["hasStock"] = has_stock
+    if min_stock is not None:
+        data["minStock"] = min_stock
+    if warehouse_id is not None:
+        data["warehouseId"] = warehouse_id
+    if exemption_reason is not None:
+        data["exemptionReason"] = exemption_reason
+    if visible is not None:
+        data["visible"] = visible
+    if pos_favorite is not None:
+        data["posFavorite"] = pos_favorite
+    if taxes is not None:
+        data["taxes"] = taxes
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRODUCT_UPDATE_MUTATION, variables)
+        return unwrap(result, "productUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PROFIT_MARGINS_XLS_MUTATION = """
+mutation ($companyId: Int!, $xlsType: ProfitMarginsXlsType!, $options: ProfitMarginsOptions) {
+  profitMarginsXls(companyId: $companyId, xlsType: $xlsType, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_profit_margins_xls(
+    company_id: int,
+    xls_type: str = "All",
+    filter: list[dict[str, Any]] | None = None,
+    order: list[dict[str, Any]] | None = None,
+    pagination: dict[str, Any] | None = None,
+    default_language_id: int | None = None,
+    list_type: str | None = None,
+) -> Any:
+    """Gera um ficheiro XLS (Excel) com as margens de lucro de uma empresa. Devolve
+    `success` (booleano). O ficheiro fica disponível para descarga do lado do servidor.
+
+    Args:
+        company_id: ID da empresa.
+        xls_type: âmbito do export (`ProfitMarginsXlsType`): "All" (tudo),
+            "Products" (por produto) ou "ProductDocuments" (por documento de produto).
+        filter: lista de filtros `{field, comparison, value}` (datas e outros critérios).
+        order: lista de critérios de ordenação `ProfitMarginsOrderOptions`.
+        pagination: paginação `{page, qty}`.
+        default_language_id: idioma por omissão.
+        list_type: variante da lista (`ProfitMarginsListType`).
+    """
+    options: dict[str, Any] = {}
+    if filter is not None:
+        options["filter"] = filter
+    if order is not None:
+        options["order"] = order
+    if pagination is not None:
+        options["pagination"] = pagination
+    if default_language_id is not None:
+        options["defaultLanguageId"] = default_language_id
+    if list_type is not None:
+        options["listType"] = list_type
+    variables: dict[str, Any] = {"companyId": company_id, "xlsType": xls_type}
+    if options:
+        variables["options"] = options
+    try:
+        raw = await _client.query(PROFIT_MARGINS_XLS_MUTATION, variables)
+        return {"success": (raw or {}).get("profitMarginsXls")}
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

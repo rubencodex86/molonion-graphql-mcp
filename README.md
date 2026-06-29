@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.709.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.713.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -766,6 +766,10 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `delete_product_categories` | Apaga uma ou mais categorias de produtos (em lote). ⚠️ destrutiva. |
 | `import_product_category` | Importa uma categoria de produtos (ex. de SAF-T). |
 | `update_product_category` | Atualiza uma categoria de produtos (renomear, mudar de categoria-mãe). |
+| `create_product` | Cria um produto/serviço no catálogo (associações complexas via `extra_fields`). |
+| `delete_products` | Apaga um ou mais produtos do catálogo (em lote). ⚠️ destrutiva. |
+| `update_product` | Atualiza um produto/serviço do catálogo (associações complexas via `extra_fields`). |
+| `generate_profit_margins_xls` | Gera um XLS com as margens de lucro (por produto/documento/tudo). |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
