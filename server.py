@@ -39503,6 +39503,692 @@ async def update_supplier(
         return _err(e)
 
 
+TAX_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: TaxInsert!) {
+  taxCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      taxId
+      name
+      value
+      type
+      fiscalZone
+      fiscalZoneFinanceType
+      fiscalZoneFinanceTypeMode
+      exemptionReason
+      isDefault
+      countryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_tax(
+    company_id: int,
+    name: str,
+    value: float,
+    type: int | None = None,
+    fiscal_zone: str | None = None,
+    exemption_reason: str | None = None,
+    is_default: bool | None = None,
+    country_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria uma taxa de imposto (IVA) numa empresa. As taxas aplicam-se às linhas dos
+    documentos. OBRIGATÓRIOS: `name` e `value` (percentagem). Os campos comuns estão expostos
+    como parâmetros opcionais; para campos menos comuns (zona fiscal detalhada, regime especial),
+    usa `extra_fields` (dicionário camelCase, conforme `TaxInsert`). Devolve a taxa criada com
+    o seu `taxId`.
+
+    Nota: quando `value` é 0 (isenta), normalmente é preciso indicar `exemption_reason`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: nome da taxa (ex.: "IVA 23%").
+        value: valor da taxa em percentagem (ex.: 23.0; 0 para isenta).
+        type: opcional; tipo da taxa (código interno).
+        fiscal_zone: opcional; zona fiscal (ex.: "PT", "PT-AC", "PT-MA").
+        exemption_reason: opcional; razão de isenção (obrigatória quando `value` é 0).
+        is_default: opcional; marcar como taxa por omissão.
+        country_id: opcional; país da taxa (ver `list_countries`).
+        extra_fields: opcional; dicionário com outros campos do `TaxInsert` (camelCase),
+            ex. `fiscalZoneFinanceType`, `fiscalZoneFinanceTypeMode`, `specialTaxScheme`.
+    """
+    data: dict[str, Any] = {"name": name, "value": value}
+    optional = {
+        "type": type,
+        "fiscalZone": fiscal_zone,
+        "exemptionReason": exemption_reason,
+        "isDefault": is_default,
+        "countryId": country_id,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(TAX_CREATE_MUTATION, variables)
+        return unwrap(result, "taxCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+TAX_DELETE_MUTATION = """
+mutation ($companyId: Int!, $taxId: [Int]!) {
+  taxDelete(companyId: $companyId, taxId: $taxId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_taxes(company_id: int, tax_ids: list[int]) -> Any:
+    """Apaga uma ou mais taxas de imposto (IVA) de uma empresa (em lote). Taxas referenciadas
+    por documentos existentes ou marcadas como não elimináveis (`deletable=False`) podem não
+    ser apagadas (o erro vem em `errors`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as taxas indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        tax_ids: lista de IDs das taxas a apagar.
+    """
+    variables = {"companyId": company_id, "taxId": tax_ids}
+    try:
+        raw = await _client.query(TAX_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("taxDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+TAXES_MAP_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $options: TaxesMapOptions!) {
+  taxesMapGetPDF(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_taxes_map_pdf(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """(Re)gera, do lado do servidor, o PDF do mapa de impostos (IVA) de uma empresa — a versão
+    em documento do `get_taxes_map2`, útil para o apuramento/arquivo do IVA. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa o token correspondente.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários (igual ao
+    `get_taxes_map2`). O `options` é obrigatório nesta operação.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: lista de filtros `{field, comparison, value}` (ex. intervalo de datas).
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables = {"companyId": company_id, "options": options}
+    try:
+        raw = await _client.query(TAXES_MAP_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("taxesMapGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+TAXES_MAP_GET_XLS_MUTATION = """
+mutation ($companyId: Int!, $options: TaxesMapOptions!) {
+  taxesMapGetXLS(companyId: $companyId, options: $options)
+}
+"""
+
+
+@mcp.tool()
+async def generate_taxes_map_xls(
+    company_id: int,
+    filters: list[dict[str, Any]] | None = None,
+) -> Any:
+    """(Re)gera, do lado do servidor, o ficheiro Excel (XLS) do mapa de impostos (IVA) de uma
+    empresa — a versão em folha de cálculo do `get_taxes_map2`, útil para o apuramento/arquivo
+    do IVA. Devolve `success` (booleano). Para depois descarregar o ficheiro, usa o token
+    correspondente.
+
+    Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
+    `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários (igual ao
+    `get_taxes_map2`). O `options` é obrigatório nesta operação.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        filters: lista de filtros `{field, comparison, value}` (ex. intervalo de datas).
+    """
+    options: dict[str, Any] = {}
+    if filters:
+        options["filter"] = filters
+    variables = {"companyId": company_id, "options": options}
+    try:
+        raw = await _client.query(TAXES_MAP_GET_XLS_MUTATION, variables)
+        return {"success": (raw or {}).get("taxesMapGetXLS")}
+    except MolonionError as e:
+        return _err(e)
+
+
+TAX_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: TaxUpdate!) {
+  taxUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      taxId
+      name
+      value
+      type
+      fiscalZone
+      fiscalZoneFinanceType
+      fiscalZoneFinanceTypeMode
+      exemptionReason
+      isDefault
+      countryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_tax(
+    company_id: int,
+    tax_id: int,
+    name: str | None = None,
+    value: float | None = None,
+    type: int | None = None,
+    fiscal_zone: str | None = None,
+    exemption_reason: str | None = None,
+    is_default: bool | None = None,
+    country_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza uma taxa de imposto (IVA) de uma empresa. Identifica-se pelo `tax_id`
+    (obrigatório); só são alterados os campos que passares. Os campos comuns estão expostos
+    como parâmetros opcionais; para campos menos comuns, usa `extra_fields` (dicionário
+    camelCase, conforme `TaxUpdate`). Devolve a taxa atualizada.
+
+    ⚠️ Alterar uma taxa já usada em documentos pode ter implicações fiscais — confirma o
+    impacto antes de mudar `value`/`fiscalZone`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        tax_id: ID da taxa a atualizar.
+        name: opcional; nome da taxa.
+        value: opcional; valor da taxa em percentagem.
+        type: opcional; tipo da taxa (código interno).
+        fiscal_zone: opcional; zona fiscal (ex.: "PT", "PT-AC", "PT-MA").
+        exemption_reason: opcional; razão de isenção (quando `value` é 0).
+        is_default: opcional; marcar como taxa por omissão.
+        country_id: opcional; país da taxa (ver `list_countries`).
+        extra_fields: opcional; dicionário com outros campos do `TaxUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"taxId": tax_id}
+    optional = {
+        "name": name,
+        "value": value,
+        "type": type,
+        "fiscalZone": fiscal_zone,
+        "exemptionReason": exemption_reason,
+        "isDefault": is_default,
+        "countryId": country_id,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(TAX_UPDATE_MUTATION, variables)
+        return unwrap(result, "taxUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+VEHICLE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: VehicleInsert!) {
+  vehicleCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      vehicleId
+      name
+      licensePlate
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_vehicle(
+    company_id: int,
+    name: str,
+    license_plate: str | None = None,
+    is_default: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um veículo numa empresa. Os veículos identificam o meio de transporte usado nas
+    guias de transporte/remessa (documentos com expedição). OBRIGATÓRIO: `name` (designação).
+    Para campos menos comuns, usa `extra_fields` (dicionário camelCase, conforme `VehicleInsert`).
+    Devolve o veículo criado com o seu `vehicleId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        name: designação do veículo.
+        license_plate: opcional; matrícula do veículo.
+        is_default: opcional; marcar como veículo por omissão.
+        extra_fields: opcional; dicionário com outros campos do `VehicleInsert` (camelCase).
+    """
+    data: dict[str, Any] = {"name": name}
+    optional = {
+        "licensePlate": license_plate,
+        "isDefault": is_default,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(VEHICLE_CREATE_MUTATION, variables)
+        return unwrap(result, "vehicleCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+VEHICLE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $vehicleId: [Int]!) {
+  vehicleDelete(companyId: $companyId, vehicleId: $vehicleId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_vehicles(company_id: int, vehicle_ids: list[int]) -> Any:
+    """Apaga um ou mais veículos de uma empresa (em lote). Veículos referenciados por
+    documentos existentes ou marcados como não elimináveis (`deletable=False`) podem não ser
+    apagados (o erro vem em `errors`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os veículos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        vehicle_ids: lista de IDs dos veículos a apagar.
+    """
+    variables = {"companyId": company_id, "vehicleId": vehicle_ids}
+    try:
+        raw = await _client.query(VEHICLE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("vehicleDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+VEHICLE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: VehicleUpdate!) {
+  vehicleUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      vehicleId
+      name
+      licensePlate
+      isDefault
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_vehicle(
+    company_id: int,
+    vehicle_id: int,
+    name: str | None = None,
+    license_plate: str | None = None,
+    is_default: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um veículo de uma empresa. Identifica-se pelo `vehicle_id` (obrigatório); só são
+    alterados os campos que passares. Para campos menos comuns, usa `extra_fields` (dicionário
+    camelCase, conforme `VehicleUpdate`). Devolve o veículo atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        vehicle_id: ID do veículo a atualizar.
+        name: opcional; designação do veículo.
+        license_plate: opcional; matrícula do veículo.
+        is_default: opcional; marcar como veículo por omissão.
+        extra_fields: opcional; dicionário com outros campos do `VehicleUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"vehicleId": vehicle_id}
+    optional = {
+        "name": name,
+        "licensePlate": license_plate,
+        "isDefault": is_default,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(VEHICLE_UPDATE_MUTATION, variables)
+        return unwrap(result, "vehicleUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+WAREHOUSE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: WarehouseInsert!) {
+  warehouseCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      warehouseId
+      number
+      name
+      address
+      city
+      zipCode
+      phone
+      contactName
+      contactEmail
+      isDefault
+      hasStock
+      countryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_warehouse(
+    company_id: int,
+    number: str,
+    name: str,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    country_id: int | None = None,
+    phone: str | None = None,
+    contact_name: str | None = None,
+    contact_email: str | None = None,
+    is_default: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um armazém numa empresa. Os armazéns localizam o stock e são referenciados nas
+    linhas dos documentos e nos movimentos de stock. OBRIGATÓRIOS: `number` (número/código) e
+    `name`. Os campos comuns (morada, contactos) estão expostos como parâmetros opcionais;
+    para campos menos comuns, usa `extra_fields` (dicionário camelCase, conforme
+    `WarehouseInsert`). Devolve o armazém criado com o seu `warehouseId`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        number: número/código único do armazém.
+        name: nome do armazém.
+        address: opcional; morada.
+        city: opcional; cidade.
+        zip_code: opcional; código postal.
+        country_id: opcional; país (ver `list_countries`).
+        phone: opcional; telefone.
+        contact_name: opcional; nome do contacto.
+        contact_email: opcional; email do contacto.
+        is_default: opcional; marcar como armazém por omissão.
+        extra_fields: opcional; dicionário com outros campos do `WarehouseInsert` (camelCase).
+    """
+    data: dict[str, Any] = {"number": number, "name": name}
+    optional = {
+        "address": address,
+        "city": city,
+        "zipCode": zip_code,
+        "countryId": country_id,
+        "phone": phone,
+        "contactName": contact_name,
+        "contactEmail": contact_email,
+        "isDefault": is_default,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(WAREHOUSE_CREATE_MUTATION, variables)
+        return unwrap(result, "warehouseCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+WAREHOUSE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $warehouseId: [Int]!) {
+  warehouseDelete(companyId: $companyId, warehouseId: $warehouseId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_warehouses(company_id: int, warehouse_ids: list[int]) -> Any:
+    """Apaga um ou mais armazéns de uma empresa (em lote). Armazéns com stock, referenciados por
+    documentos/movimentos existentes ou marcados como não elimináveis (`deletable=False`) podem
+    não ser apagados (o erro vem em `errors`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os armazéns indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        warehouse_ids: lista de IDs dos armazéns a apagar.
+    """
+    variables = {"companyId": company_id, "warehouseId": warehouse_ids}
+    try:
+        raw = await _client.query(WAREHOUSE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("warehouseDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+WAREHOUSE_MOVE_STOCK_MUTATION = """
+mutation ($companyId: Int!, $data: WarehouseStockMovementUpdate!) {
+  warehouseMoveStock(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      fromWarehouseId
+      toWarehouseId
+      productsMovedCnt
+      productsSetDefaultCnt
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def warehouse_move_stock(
+    company_id: int,
+    from_warehouse_id: int,
+    to_warehouse_id: int,
+    date: str | None = None,
+    notes: str | None = None,
+    set_default: bool | None = None,
+) -> Any:
+    """Move TODO o stock de todos os produtos de um armazém de origem para um armazém de destino,
+    criando os movimentos de stock correspondentes (para rastreabilidade). Devolve um resumo:
+    `fromWarehouseId`, `toWarehouseId`, número de produtos movidos (`productsMovedCnt`) e
+    número de produtos cujo armazém por omissão passou a ser o destino (`productsSetDefaultCnt`).
+
+    ⚠️ MOVE STOCK EM MASSA e IRREVERSÍVEL — esvazia o armazém de origem (transfere a totalidade
+    do stock para o destino). Confirma os armazéns antes de executar. Útil, por exemplo, antes
+    de desativar/apagar um armazém.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        from_warehouse_id: ID do armazém de ORIGEM (de onde sai o stock).
+        to_warehouse_id: ID do armazém de DESTINO (para onde entra o stock).
+        date: opcional; data/hora do movimento (ISO, ex. "2026-06-29T10:00:00"). Por omissão, agora.
+        notes: opcional; notas a associar aos movimentos de stock.
+        set_default: opcional; se `True`, define o armazém de destino como o armazém por omissão
+            dos produtos movidos.
+    """
+    data: dict[str, Any] = {
+        "fromWarehouseId": from_warehouse_id,
+        "toWarehouseId": to_warehouse_id,
+    }
+    optional = {"date": date, "notes": notes, "setDefault": set_default}
+    data.update({k: v for k, v in optional.items() if v is not None})
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(WAREHOUSE_MOVE_STOCK_MUTATION, variables)
+        return unwrap(result, "warehouseMoveStock")
+    except MolonionError as e:
+        return _err(e)
+
+
+WAREHOUSE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: WarehouseUpdate!) {
+  warehouseUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      warehouseId
+      number
+      name
+      address
+      city
+      zipCode
+      phone
+      contactName
+      contactEmail
+      isDefault
+      hasStock
+      countryId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_warehouse(
+    company_id: int,
+    warehouse_id: int,
+    number: str | None = None,
+    name: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    country_id: int | None = None,
+    phone: str | None = None,
+    contact_name: str | None = None,
+    contact_email: str | None = None,
+    is_default: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um armazém de uma empresa (nome, morada, contactos ou outra configuração).
+    Identifica-se pelo `warehouse_id` (obrigatório); só são alterados os campos que passares.
+    Os campos comuns estão expostos como parâmetros opcionais; para campos menos comuns, usa
+    `extra_fields` (dicionário camelCase, conforme `WarehouseUpdate`). Devolve o armazém
+    atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        warehouse_id: ID do armazém a atualizar.
+        number: opcional; número/código do armazém.
+        name: opcional; nome do armazém.
+        address: opcional; morada.
+        city: opcional; cidade.
+        zip_code: opcional; código postal.
+        country_id: opcional; país (ver `list_countries`).
+        phone: opcional; telefone.
+        contact_name: opcional; nome do contacto.
+        contact_email: opcional; email do contacto.
+        is_default: opcional; marcar como armazém por omissão.
+        extra_fields: opcional; dicionário com outros campos do `WarehouseUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"warehouseId": warehouse_id}
+    optional = {
+        "number": number,
+        "name": name,
+        "address": address,
+        "city": city,
+        "zipCode": zip_code,
+        "countryId": country_id,
+        "phone": phone,
+        "contactName": contact_name,
+        "contactEmail": contact_email,
+        "isDefault": is_default,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(WAREHOUSE_UPDATE_MUTATION, variables)
+        return unwrap(result, "warehouseUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

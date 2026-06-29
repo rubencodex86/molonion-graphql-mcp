@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.851.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.863.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -908,6 +908,18 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `send_supplier_receipt_mail` | Envia um ou mais recibos de fornecedor por email. ⚠️ envia email real. |
 | `update_supplier_receipt` | Atualiza um recibo de fornecedor (só rascunhos). ⚠️ altera documento real. |
 | `update_supplier` | Atualiza um fornecedor (campos comuns + `extra_fields`). |
+| `create_tax` | Cria uma taxa de imposto (IVA) numa empresa (`name` + `value` + `extra_fields`). |
+| `delete_taxes` | Apaga uma ou mais taxas de imposto (IVA), em lote. ⚠️ destrutivo e irreversível. |
+| `generate_taxes_map_pdf` | (Re)gera o PDF do mapa de impostos (IVA) no servidor (filtros por data). |
+| `generate_taxes_map_xls` | (Re)gera o Excel (XLS) do mapa de impostos (IVA) no servidor (filtros por data). |
+| `update_tax` | Atualiza uma taxa de imposto (IVA) (campos comuns + `extra_fields`). ⚠️ implicações fiscais. |
+| `create_vehicle` | Cria um veículo numa empresa (transporte/expedição) — `name` + `extra_fields`. |
+| `delete_vehicles` | Apaga um ou mais veículos, em lote. ⚠️ destrutivo e irreversível. |
+| `update_vehicle` | Atualiza um veículo (campos comuns + `extra_fields`). |
+| `create_warehouse` | Cria um armazém numa empresa (`number` + `name` + `extra_fields`). |
+| `delete_warehouses` | Apaga um ou mais armazéns, em lote. ⚠️ destrutivo e irreversível. |
+| `warehouse_move_stock` | Move todo o stock de um armazém para outro. ⚠️ move stock em massa e irreversível. |
+| `update_warehouse` | Atualiza um armazém (campos comuns + `extra_fields`). |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
