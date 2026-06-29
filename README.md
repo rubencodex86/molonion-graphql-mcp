@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.725.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.743.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -782,6 +782,24 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_property_group` | Cria um grupo de propriedades (atributos/variantes de produto). |
 | `delete_property_groups` | Apaga um ou mais grupos de propriedades (em lote). ⚠️ destrutiva. |
 | `update_property_group` | Atualiza um grupo de propriedades (nome, visibilidade, propriedades). |
+| `create_purchase_orders` | Cria uma ou mais notas de encomenda a fornecedor (em lote). ⚠️ cria documentos reais. |
+| `create_purchase_order` | Cria uma nota de encomenda a fornecedor (singular). ⚠️ cria documento real. |
+| `delete_purchase_orders` | Apaga uma ou mais notas de encomenda a fornecedor (em lote). ⚠️ destrutiva. |
+| `revert_purchase_order_to_draft` | Reverte uma nota de encomenda a fornecedor finalizada para rascunho. ⚠️ altera estado. |
+| `generate_purchase_order_pdf` | (Re)gera o PDF de uma nota de encomenda a fornecedor. |
+| `generate_purchase_orders_zip` | (Re)gera um ZIP com os PDFs de várias notas de encomenda a fornecedor. |
+| `nullify_purchase_order` | Anula uma nota de encomenda a fornecedor (motivo opcional). ⚠️ irreversível. |
+| `send_purchase_order_mail` | Envia notas de encomenda a fornecedor por email. ⚠️ envia email real. |
+| `update_purchase_order` | Atualiza uma nota de encomenda a fornecedor (só rascunhos). ⚠️ altera documento real. |
+| `create_purchase_recurring_agreements` | Cria um ou mais contratos de compra recorrente (em lote). ⚠️ cria documentos reais. |
+| `create_purchase_recurring_agreement` | Cria um contrato de compra recorrente (singular). ⚠️ cria documento real. |
+| `delete_purchase_recurring_agreements` | Apaga um ou mais contratos de compra recorrente (em lote). ⚠️ destrutiva. |
+| `revert_purchase_recurring_agreement_to_draft` | Reverte um contrato de compra recorrente finalizado para rascunho. ⚠️ altera estado. |
+| `generate_purchase_recurring_agreement_pdf` | (Re)gera o PDF de um contrato de compra recorrente. |
+| `generate_purchase_recurring_agreements_zip` | (Re)gera um ZIP com os PDFs de vários contratos de compra recorrente. |
+| `nullify_purchase_recurring_agreement` | Anula um contrato de compra recorrente (motivo opcional). ⚠️ irreversível. |
+| `send_purchase_recurring_agreement_mail` | Envia contratos de compra recorrente por email. ⚠️ envia email real. |
+| `update_purchase_recurring_agreement` | Atualiza um contrato de compra recorrente (só rascunhos). ⚠️ altera documento real. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de

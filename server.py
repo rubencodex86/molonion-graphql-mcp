@@ -33786,6 +33786,801 @@ async def update_property_group(
         return _err(e)
 
 
+PURCHASE_ORDER_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PurchaseOrderBulkInsert!) {
+  purchaseOrderBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_purchase_orders(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais notas de encomenda a fornecedor (documento) numa empresa, em lote.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
+      - `customerId` (int): FORNECEDOR (nas compras, a entidade vai neste campo).
+      - `products` (list[dict]): linhas; cada linha com `productId` (int), `ordering`
+        (int) e `qty` (float) OBRIGATÓRIOS, e opcionais `price`, `discount`, `name`,
+        `taxes` (list[dict] `{taxId, value}`), etc. (ver `create_bills_of_lading`).
+    Chaves OPCIONAIS úteis: `globalDiscount`, `notes`, `status` (0=rascunho, 1=fechado),
+      `yourReference`, `ourReference`, `deliveryMethodId`, `salespersonId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por nota de encomenda a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(PURCHASE_ORDER_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("purchaseOrderBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PurchaseOrderInsert!, $options: PurchaseOrderMutateOptions) {
+  purchaseOrderCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_purchase_order(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria uma nota de encomenda a fornecedor (documento) numa empresa. Versão singular do
+    `create_purchase_orders` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_purchase_orders`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"),
+    `customerId` (int, FORNECEDOR), `products` (list[dict]). Opcionais úteis: `globalDiscount`,
+    `notes`, `status`, `yourReference`, `ourReference`, `deliveryMethodId`, etc.
+
+    Devolve a nota de encomenda criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da nota de encomenda a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PURCHASE_ORDER_CREATE_MUTATION, variables)
+        return unwrap(result, "purchaseOrderCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  purchaseOrderDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_purchase_orders(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais notas de encomenda a fornecedor de uma empresa (em lote). Só são
+    elegíveis as que estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO
+    se apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de encomenda a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(PURCHASE_ORDER_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("purchaseOrderDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  purchaseOrderDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_purchase_order_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma nota de encomenda a fornecedor finalizada de volta a rascunho, para
+    permitir voltar a editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de encomenda a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(PURCHASE_ORDER_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "purchaseOrderDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  purchaseOrderGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_purchase_order_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma nota de encomenda a fornecedor do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_purchase_order_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de encomenda cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(PURCHASE_ORDER_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("purchaseOrderGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  purchaseOrderGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_purchase_orders_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias notas de encomenda
+    a fornecedor. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_purchase_order_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de encomenda a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(PURCHASE_ORDER_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("purchaseOrderGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  purchaseOrderNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_purchase_order(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma nota de encomenda a fornecedor (marca como anulada, `nullified=True`), com um
+    motivo opcional. É a forma correta de "cancelar" um documento já emitido que não pode ser
+    apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO IRREVERSÍVEL — anular um documento é definitivo e fica registado. Confirma o
+    documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da nota de encomenda a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(PURCHASE_ORDER_NULLIFY_MUTATION, variables)
+        return unwrap(result, "purchaseOrderNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  purchaseOrderSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_purchase_order_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais notas de encomenda a fornecedor por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_purchase_order_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das notas de encomenda a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(PURCHASE_ORDER_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("purchaseOrderSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_ORDER_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: PurchaseOrderUpdate!, $options: PurchaseOrderMutateOptions) {
+  purchaseOrderUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_purchase_order(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza uma nota de encomenda a fornecedor (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_purchase_order`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_purchase_orders`
+    (`date`, `expirationDate`, `customerId`, `documentSetId`, `products`, `notes`, `status`,
+    etc.). Em `products`, passar a lista substitui o conjunto atual.
+
+    Devolve a nota de encomenda atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PURCHASE_ORDER_UPDATE_MUTATION, variables)
+        return unwrap(result, "purchaseOrderUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PurchaseRecurringAgreementBulkInsert!) {
+  purchaseRecurringAgreementBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_purchase_recurring_agreements(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria um ou mais contratos de compra recorrente (documento) numa empresa, em lote. Um
+    contrato recorrente gera documentos de compra periodicamente, segundo os eventos agendados.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
+      - `supplierId` (int): FORNECEDOR (nas compras recorrentes a entidade vai neste campo).
+      - `products` (list[dict]): linhas; cada linha com `productId` (int), `ordering`
+        (int) e `qty` (float) OBRIGATÓRIOS, e opcionais `price`, `discount`, `name`,
+        `taxes` (list[dict] `{taxId, value}`), etc. (ver `create_bills_of_lading`).
+    Chaves OPCIONAIS úteis: `events` (list[dict] `EventInput` — agendamento da recorrência),
+      `globalDiscount`, `maturityDateId`, `notes`, `status` (0=rascunho, 1=fechado),
+      `suspended`, `currencyExchangeId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por contrato de compra recorrente (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(PURCHASE_RECURRING_AGREEMENT_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("purchaseRecurringAgreementBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PurchaseRecurringAgreementInsert!, $options: PurchaseRecurringAgreementMutateOptions) {
+  purchaseRecurringAgreementCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_purchase_recurring_agreement(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria um contrato de compra recorrente (documento) numa empresa. Versão singular do
+    `create_purchase_recurring_agreements` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_purchase_recurring_agreements`: OBRIGATÓRIAS `documentSetId` (int), `date`
+    ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"), `supplierId` (int), `products`
+    (list[dict]). Opcionais úteis: `events` (agendamento da recorrência), `globalDiscount`,
+    `maturityDateId`, `notes`, `status`, `suspended`, etc.
+
+    Devolve o contrato criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do contrato de compra recorrente (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PURCHASE_RECURRING_AGREEMENT_CREATE_MUTATION, variables)
+        return unwrap(result, "purchaseRecurringAgreementCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  purchaseRecurringAgreementDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_purchase_recurring_agreements(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """Apaga um ou mais contratos de compra recorrente de uma empresa (em lote). Só são
+    elegíveis os que estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO
+    se apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos contratos de compra recorrente a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(PURCHASE_RECURRING_AGREEMENT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("purchaseRecurringAgreementDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  purchaseRecurringAgreementDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_purchase_recurring_agreement_to_draft(
+    company_id: int, document_id: int
+) -> Any:
+    """Reverte um contrato de compra recorrente finalizado de volta a rascunho, para permitir
+    voltar a editá-lo. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do contrato de compra recorrente a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(PURCHASE_RECURRING_AGREEMENT_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "purchaseRecurringAgreementDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  purchaseRecurringAgreementGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_purchase_recurring_agreement_pdf(
+    company_id: int, document_id: int
+) -> Any:
+    """(Re)gera o PDF de um contrato de compra recorrente do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_purchase_recurring_agreement_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do contrato de compra recorrente cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(PURCHASE_RECURRING_AGREEMENT_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("purchaseRecurringAgreementGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  purchaseRecurringAgreementGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_purchase_recurring_agreements_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de vários contratos de compra
+    recorrente. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_purchase_recurring_agreement_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos contratos de compra recorrente a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(PURCHASE_RECURRING_AGREEMENT_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("purchaseRecurringAgreementGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  purchaseRecurringAgreementNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_purchase_recurring_agreement(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula um contrato de compra recorrente (marca como anulado, `nullified=True`), com um
+    motivo opcional. É a forma correta de "cancelar" um documento já emitido que não pode ser
+    apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO IRREVERSÍVEL — anular um documento é definitivo e fica registado. Confirma o
+    documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do contrato de compra recorrente a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(PURCHASE_RECURRING_AGREEMENT_NULLIFY_MUTATION, variables)
+        return unwrap(result, "purchaseRecurringAgreementNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  purchaseRecurringAgreementSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_purchase_recurring_agreement_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia um ou mais contratos de compra recorrente por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_purchase_recurring_agreement_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos contratos de compra recorrente a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(PURCHASE_RECURRING_AGREEMENT_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("purchaseRecurringAgreementSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PURCHASE_RECURRING_AGREEMENT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: PurchaseRecurringAgreementUpdate!, $options: PurchaseRecurringAgreementMutateOptions) {
+  purchaseRecurringAgreementUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_purchase_recurring_agreement(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza um contrato de compra recorrente (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_purchase_recurring_agreement`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de
+    `create_purchase_recurring_agreements` (`date`, `expirationDate`, `supplierId`,
+    `documentSetId`, `products`, `events`, `notes`, `status`, etc.). Em `products`, passar a
+    lista substitui o conjunto atual.
+
+    Devolve o contrato atualizado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PURCHASE_RECURRING_AGREEMENT_UPDATE_MUTATION, variables)
+        return unwrap(result, "purchaseRecurringAgreementUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
