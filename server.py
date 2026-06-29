@@ -36692,6 +36692,397 @@ async def update_settlement_note(
         return _err(e)
 
 
+SIMPLIFIED_INVOICE_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SimplifiedInvoiceBulkInsert!) {
+  simplifiedInvoiceBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_simplified_invoices(company_id: int, documents: list[dict[str, Any]]) -> Any:
+    """Cria uma ou mais faturas simplificadas (documento) numa empresa, em lote. A fatura
+    simplificada é um documento de venda para valores baixos (limites legais), tipicamente
+    sem necessidade de identificação completa do cliente.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `products` (list[dict]): linhas `DocumentProductInput`, cada uma com
+        `productId` (int), `ordering` (int, 1,2,3…), `qty` (float) e opcionais `name`,
+        `price`, `discount`, `taxes` (`[{taxId, value}]`), etc.
+    Chaves OPCIONAIS úteis: `customerId` (int, opcional nas simplificadas), `notes`,
+      `status` (0=rascunho, 1=fechado), `payments`, `yourReference`, `ourReference`,
+      `currencyExchangeId`, `suspended`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por fatura simplificada a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(SIMPLIFIED_INVOICE_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("simplifiedInvoiceBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SimplifiedInvoiceInsert!, $options: SimplifiedInvoiceMutateOptions) {
+  simplifiedInvoiceCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_simplified_invoice(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria uma fatura simplificada (documento) numa empresa. Versão singular do
+    `create_simplified_invoices` (que cria em lote). Documento de venda para valores baixos.
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_simplified_invoices`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
+    `products` (list[dict] `DocumentProductInput`). Opcionais úteis: `customerId`, `notes`,
+    `status`, `payments`, `yourReference`, `ourReference`, etc.
+
+    Devolve a fatura simplificada criada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da fatura simplificada a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SIMPLIFIED_INVOICE_CREATE_MUTATION, variables)
+        return unwrap(result, "simplifiedInvoiceCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  simplifiedInvoiceDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_simplified_invoices(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais faturas simplificadas de uma empresa (em lote). Só são elegíveis as
+    que estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam
+    (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas simplificadas a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(SIMPLIFIED_INVOICE_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("simplifiedInvoiceDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  simplifiedInvoiceDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_simplified_invoice_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma fatura simplificada finalizada de volta a rascunho, para permitir voltar a
+    editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura simplificada a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(SIMPLIFIED_INVOICE_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "simplifiedInvoiceDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  simplifiedInvoiceGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_simplified_invoice_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma fatura simplificada do lado do servidor. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa `get_simplified_invoice_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura simplificada cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(SIMPLIFIED_INVOICE_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("simplifiedInvoiceGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  simplifiedInvoiceGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_simplified_invoices_zip(company_id: int, document_ids: list[int]) -> Any:
+    """(Re)gera um ZIP com os PDFs de várias faturas simplificadas do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_simplified_invoice_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas simplificadas a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(SIMPLIFIED_INVOICE_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("simplifiedInvoiceGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  simplifiedInvoiceNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_simplified_invoice(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma fatura simplificada (marca como anulada, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que não
+    pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da fatura simplificada a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(SIMPLIFIED_INVOICE_NULLIFY_MUTATION, variables)
+        return unwrap(result, "simplifiedInvoiceNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  simplifiedInvoiceSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_simplified_invoice_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais faturas simplificadas por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_simplified_invoice_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das faturas simplificadas a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(SIMPLIFIED_INVOICE_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("simplifiedInvoiceSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SIMPLIFIED_INVOICE_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: SimplifiedInvoiceUpdate!, $options: SimplifiedInvoiceMutateOptions) {
+  simplifiedInvoiceUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_simplified_invoice(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza uma fatura simplificada (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_simplified_invoice`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_simplified_invoices`
+    (`date`, `customerId`, `documentSetId`, `products`, `payments`, `notes`, `status`, etc.).
+    Em `products`/`payments`, passar a lista substitui o conjunto atual.
+
+    Devolve a fatura simplificada atualizada com `documentId`, `number`, `status`,
+    `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SIMPLIFIED_INVOICE_UPDATE_MUTATION, variables)
+        return unwrap(result, "simplifiedInvoiceUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.789.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.798.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -846,6 +846,15 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_settlement_note` | Anula uma nota de acerto. ⚠️ operação fiscal irreversível. |
 | `send_settlement_note_mail` | Envia notas de acerto por email. ⚠️ envia email real. |
 | `update_settlement_note` | Atualiza uma nota de acerto (só rascunhos). ⚠️ altera documento real. |
+| `create_simplified_invoices` | Cria faturas simplificadas (documento) em lote. ⚠️ cria documentos reais. |
+| `create_simplified_invoice` | Cria uma fatura simplificada (documento). ⚠️ cria documento real. |
+| `delete_simplified_invoices` | Apaga faturas simplificadas (em lote). ⚠️ destrutivo e irreversível. |
+| `revert_simplified_invoice_to_draft` | Reverte uma fatura simplificada finalizada para rascunho. ⚠️ altera estado. |
+| `generate_simplified_invoice_pdf` | (Re)gera o PDF de uma fatura simplificada. |
+| `generate_simplified_invoices_zip` | (Re)gera um ZIP com PDFs de várias faturas simplificadas. |
+| `nullify_simplified_invoice` | Anula uma fatura simplificada. ⚠️ operação fiscal irreversível. |
+| `send_simplified_invoice_mail` | Envia faturas simplificadas por email. ⚠️ envia email real. |
+| `update_simplified_invoice` | Atualiza uma fatura simplificada (só rascunhos). ⚠️ altera documento real. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
