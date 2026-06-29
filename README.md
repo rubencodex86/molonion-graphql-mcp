@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.692.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.709.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -749,6 +749,23 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `create_payment_method` | Cria um método de pagamento numa empresa (numerário, transferência, MB...). |
 | `delete_payment_methods` | Apaga um ou mais métodos de pagamento (em lote). ⚠️ destrutiva. |
 | `update_payment_method` | Atualiza um método de pagamento de uma empresa. |
+| `create_payment_returns` | Cria uma ou mais devoluções de pagamento/recibo (em lote). ⚠️ cria documentos reais. |
+| `create_payment_return` | Cria uma devolução de pagamento/recibo (singular). ⚠️ cria documento real. |
+| `delete_payment_returns` | Apaga uma ou mais devoluções de pagamento/recibo (em lote). ⚠️ destrutiva. |
+| `revert_payment_return_to_draft` | Reverte uma devolução de pagamento/recibo finalizada para rascunho. ⚠️ altera estado. |
+| `generate_payment_return_pdf` | (Re)gera o PDF de uma devolução de pagamento/recibo. |
+| `generate_payment_returns_zip` | (Re)gera um ZIP com os PDFs de várias devoluções de pagamento/recibo. |
+| `nullify_payment_return` | Anula uma devolução de pagamento/recibo (motivo opcional). ⚠️ fiscal, irreversível. |
+| `send_payment_return_mail` | Envia devoluções de pagamento/recibo por email. ⚠️ envia email real. |
+| `update_payment_return` | Atualiza uma devolução de pagamento/recibo (só rascunhos). ⚠️ altera documento real. |
+| `create_price_class` | Cria uma classe de preço numa empresa (ajustes de preço por %). |
+| `delete_price_classes` | Apaga uma ou mais classes de preço (em lote). ⚠️ destrutiva. |
+| `duplicate_price_class` | Duplica uma classe de preço com ajuste por % (assíncrono, `progressiveTaskId`). |
+| `update_price_class` | Atualiza uma classe de preço de uma empresa (renomear). |
+| `create_product_category` | Cria uma categoria de produtos (hierárquica via `parent_id`). |
+| `delete_product_categories` | Apaga uma ou mais categorias de produtos (em lote). ⚠️ destrutiva. |
+| `import_product_category` | Importa uma categoria de produtos (ex. de SAF-T). |
+| `update_product_category` | Atualiza uma categoria de produtos (renomear, mudar de categoria-mãe). |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de

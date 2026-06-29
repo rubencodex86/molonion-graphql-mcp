@@ -32101,6 +32101,808 @@ async def update_payment_method(
         return _err(e)
 
 
+PAYMENT_RETURN_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PaymentReturnBulkInsert!) {
+  paymentReturnBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_payment_returns(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria uma ou mais devoluções de pagamento/recibo (documento) numa empresa, em lote.
+    Uma devolução de pagamento estorna (total ou parcialmente) recibos/pagamentos de origem.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `customerId` (int): cliente.
+      - `relatedWith` (dict): documento(s) de origem a devolver — `RelatedDocumentInput`,
+        ex. `{relatedDocumentId (int), value (float)}`.
+      - `totalValue` (float): valor total devolvido.
+    Chaves OPCIONAIS úteis: `payments` (list[dict] `DocumentPaymentMethodInput`), `notes`,
+      `notesRelatedDocs`, `status` (0=rascunho, 1=fechado), `suspended`, `nullified`,
+      `financialDiscount`, `fiscalZone`, `countryId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por devolução de pagamento a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(PAYMENT_RETURN_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("paymentReturnBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PaymentReturnInsert!, $options: PaymentReturnMutateOptions) {
+  paymentReturnCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_payment_return(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria uma devolução de pagamento/recibo (documento) numa empresa. Versão singular do
+    `create_payment_returns` (que cria em lote). Estorna (total ou parcialmente)
+    recibos/pagamentos de origem.
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_payment_returns`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
+    `relatedWith` (dict `RelatedDocumentInput`, ex. `{relatedDocumentId, value}`) e
+    `totalValue` (float). Opcionais úteis: `payments`, `notes`, `status`, `suspended`,
+    `nullified`, `financialDiscount`, etc.
+
+    Devolve a devolução criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados da devolução a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PAYMENT_RETURN_CREATE_MUTATION, variables)
+        return unwrap(result, "paymentReturnCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  paymentReturnDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_payment_returns(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga uma ou mais devoluções de pagamento/recibo de uma empresa (em lote). Só são
+    elegíveis as que estão em rascunho — documentos já fechados/certificados (com `hash`)
+    NÃO se apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das devoluções de pagamento a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(PAYMENT_RETURN_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("paymentReturnDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  paymentReturnDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_payment_return_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte uma devolução de pagamento/recibo finalizada de volta a rascunho, para
+    permitir voltar a editá-la. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da devolução de pagamento a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(PAYMENT_RETURN_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "paymentReturnDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  paymentReturnGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_payment_return_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de uma devolução de pagamento/recibo do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_payment_return_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da devolução de pagamento cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(PAYMENT_RETURN_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("paymentReturnGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  paymentReturnGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_payment_returns_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de várias devoluções de
+    pagamento/recibo. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_payment_return_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das devoluções de pagamento a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(PAYMENT_RETURN_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("paymentReturnGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  paymentReturnNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_payment_return(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula uma devolução de pagamento/recibo (marca como anulada, `nullified=True`), com um
+    motivo opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que
+    não pode ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID da devolução de pagamento a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(PAYMENT_RETURN_NULLIFY_MUTATION, variables)
+        return unwrap(result, "paymentReturnNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  paymentReturnSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_payment_return_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia uma ou mais devoluções de pagamento/recibo por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_payment_return_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs das devoluções de pagamento a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(PAYMENT_RETURN_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("paymentReturnSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+PAYMENT_RETURN_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: PaymentReturnUpdate!, $options: PaymentReturnMutateOptions) {
+  paymentReturnUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_payment_return(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza uma devolução de pagamento/recibo (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_payment_return`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_payment_returns`
+    (`date`, `customerId`, `documentSetId`, `relatedWith`, `totalValue`, `payments`,
+    `notes`, `status`, etc.).
+
+    Devolve a devolução atualizada com `documentId`, `number`, `status`, `totalValue`,
+    `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(PAYMENT_RETURN_UPDATE_MUTATION, variables)
+        return unwrap(result, "paymentReturnUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRICE_CLASS_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: PriceClassInsert!) {
+  priceClassCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      priceClassId
+      name
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_price_class(
+    company_id: int,
+    name: str,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria uma classe de preço numa empresa (para ajustes de preços por percentagem).
+
+    Só `name` é obrigatório. Para aplicar a classe a produtos (ajuste em %), usa depois
+    `apply_price_class`.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome da classe de preço.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"name": name}
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRICE_CLASS_CREATE_MUTATION, variables)
+        return unwrap(result, "priceClassCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRICE_CLASS_DELETE_MUTATION = """
+mutation ($companyId: Int!, $priceClassId: [Int]!) {
+  priceClassDelete(companyId: $companyId, priceClassId: $priceClassId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_price_classes(company_id: int, price_class_ids: list[int]) -> Any:
+    """Apaga uma ou mais classes de preço de uma empresa (em lote). Classes em uso podem não
+    ser elimináveis (o erro vem em `errors`). Devolve, por ID,
+    `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as classes indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        price_class_ids: lista de IDs das classes de preço a apagar.
+    """
+    variables = {"companyId": company_id, "priceClassId": price_class_ids}
+    try:
+        raw = await _client.query(PRICE_CLASS_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("priceClassDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PRICE_CLASS_DUPLICATE_MUTATION = """
+mutation ($companyId: Int!, $data: PriceClassDuplicate!) {
+  priceClassDuplicate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data { progressiveTaskId }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def duplicate_price_class(
+    company_id: int,
+    name: str,
+    original_price_class_id: int,
+    percentage: float,
+    operator: int,
+) -> Any:
+    """Duplica uma classe de preço existente para uma nova, com novo nome e um ajuste de
+    preço por percentagem. Operação ASSÍNCRONA — devolve `progressiveTaskId` (tarefa em
+    segundo plano), não o resultado final.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome da nova classe de preço (duplicada).
+        original_price_class_id: ID da classe de preço a duplicar.
+        percentage: percentagem do ajuste de preço.
+        operator: como aplicar a percentagem — 1 = define novos valores;
+            2 = modifica os valores originais.
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "originalPriceClassId": original_price_class_id,
+        "percentage": percentage,
+        "operator": operator,
+    }
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRICE_CLASS_DUPLICATE_MUTATION, variables)
+        return unwrap(result, "priceClassDuplicate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRICE_CLASS_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: PriceClassUpdate!) {
+  priceClassUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      priceClassId
+      name
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_price_class(
+    company_id: int,
+    price_class_id: int,
+    name: str | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza uma classe de preço de uma empresa (ex.: renomear).
+
+    Só `price_class_id` é obrigatório; envia apenas os campos a alterar.
+
+    Args:
+        company_id: ID da empresa.
+        price_class_id: ID da classe de preço a atualizar.
+        name: Novo nome da classe de preço.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"priceClassId": price_class_id}
+    if name is not None:
+        data["name"] = name
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRICE_CLASS_UPDATE_MUTATION, variables)
+        return unwrap(result, "priceClassUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORY_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProductCategoryInsert!) {
+  productCategoryCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      summary
+      visible
+      posVisible
+      img
+      parentId
+      cntChildCategories
+      cntChildProducts
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_product_category(
+    company_id: int,
+    name: str,
+    summary: str | None = None,
+    parent_id: int | None = None,
+    pos_visible: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria uma categoria de produtos numa empresa. As categorias suportam hierarquia
+    (subcategorias) via `parent_id`.
+
+    Só `name` é obrigatório. O campo `img` (tipo Upload) não é suportado por esta tool;
+    para subcategorias aninhadas (`child`) usa `extra_fields`.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome da categoria.
+        summary: Descrição/resumo da categoria.
+        parent_id: ID da categoria-mãe (para criar uma subcategoria).
+        pos_visible: Visível no POS (ponto de venda).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"name": name}
+    if summary is not None:
+        data["summary"] = summary
+    if parent_id is not None:
+        data["parentId"] = parent_id
+    if pos_visible is not None:
+        data["posVisible"] = pos_visible
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRODUCT_CATEGORY_CREATE_MUTATION, variables)
+        return unwrap(result, "productCategoryCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORY_DELETE_MUTATION = """
+mutation ($companyId: Int!, $productCategoryId: [Int]!) {
+  productCategoryDelete(companyId: $companyId, productCategoryId: $productCategoryId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_product_categories(
+    company_id: int, product_category_ids: list[int]
+) -> Any:
+    """Apaga uma ou mais categorias de produtos de uma empresa (em lote). Categorias que
+    contenham produtos ou subcategorias NÃO podem ser apagadas (o erro vem em `errors`).
+    Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as categorias indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        product_category_ids: lista de IDs das categorias de produtos a apagar.
+    """
+    variables = {"companyId": company_id, "productCategoryId": product_category_ids}
+    try:
+        raw = await _client.query(PRODUCT_CATEGORY_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("productCategoryDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORY_IMPORT_MUTATION = """
+mutation ($companyId: Int!, $data: ProductCategoryImport!) {
+  productCategoryImport(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      summary
+      visible
+      posVisible
+      img
+      parentId
+      cntChildCategories
+      cntChildProducts
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def import_product_category(
+    company_id: int,
+    name: str,
+    summary: str | None = None,
+    parent_id: int | None = None,
+    pos_visible: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Importa uma categoria de produtos para uma empresa (a partir de fontes importadas,
+    ex. ficheiros SAF-T). Funciona como `create_product_category`.
+
+    Só `name` é obrigatório. O campo `img` (tipo Upload) não é suportado por esta tool;
+    para subcategorias aninhadas (`child`) usa `extra_fields`.
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome da categoria.
+        summary: Descrição/resumo da categoria.
+        parent_id: ID da categoria-mãe (para criar uma subcategoria).
+        pos_visible: Visível no POS (ponto de venda).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"name": name}
+    if summary is not None:
+        data["summary"] = summary
+    if parent_id is not None:
+        data["parentId"] = parent_id
+    if pos_visible is not None:
+        data["posVisible"] = pos_visible
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRODUCT_CATEGORY_IMPORT_MUTATION, variables)
+        return unwrap(result, "productCategoryImport")
+    except MolonionError as e:
+        return _err(e)
+
+
+PRODUCT_CATEGORY_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: ProductCategoryUpdate!) {
+  productCategoryUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      productCategoryId
+      name
+      summary
+      visible
+      posVisible
+      img
+      parentId
+      cntChildCategories
+      cntChildProducts
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_product_category(
+    company_id: int,
+    product_category_id: int,
+    name: str | None = None,
+    summary: str | None = None,
+    parent_id: int | None = None,
+    pos_visible: bool | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza uma categoria de produtos de uma empresa (renomear, mudar de categoria-mãe, etc.).
+
+    Só `product_category_id` é obrigatório; envia apenas os campos a alterar. O campo `img`
+    (tipo Upload) não é suportado por esta tool.
+
+    Args:
+        company_id: ID da empresa.
+        product_category_id: ID da categoria a atualizar.
+        name: Nome da categoria.
+        summary: Descrição/resumo da categoria.
+        parent_id: ID da categoria-mãe (mover para subcategoria de outra).
+        pos_visible: Visível no POS (ponto de venda).
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"productCategoryId": product_category_id}
+    if name is not None:
+        data["name"] = name
+    if summary is not None:
+        data["summary"] = summary
+    if parent_id is not None:
+        data["parentId"] = parent_id
+    if pos_visible is not None:
+        data["posVisible"] = pos_visible
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(PRODUCT_CATEGORY_UPDATE_MUTATION, variables)
+        return unwrap(result, "productCategoryUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).
