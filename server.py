@@ -35532,6 +35532,779 @@ async def request_transport_code(company_id: int, document_id: int) -> Any:
         return _err(e)
 
 
+RETENTION_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: RetentionInsert!) {
+  retentionCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      retentionId
+      name
+      value
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_retention(
+    company_id: int,
+    name: str,
+    value: float,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria uma retenção na fonte (taxa de retenção/IRS) numa empresa.
+
+    Obrigatórios `name` e `value` (percentagem da retenção).
+
+    Args:
+        company_id: ID da empresa.
+        name: Nome da retenção.
+        value: Valor/percentagem da retenção.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"name": name, "value": value}
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(RETENTION_CREATE_MUTATION, variables)
+        return unwrap(result, "retentionCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+RETENTION_DELETE_MUTATION = """
+mutation ($companyId: Int!, $retentionId: [Int]!) {
+  retentionDelete(companyId: $companyId, retentionId: $retentionId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_retentions(company_id: int, retention_ids: list[int]) -> Any:
+    """Apaga uma ou mais retenções na fonte de uma empresa (em lote). Devolve `status`
+    (sucesso global), `deletedCount` (quantas foram apagadas) e `elementsCount` (quantas
+    restam). Retenções em uso podem não ser elimináveis (o erro vem em `errors`).
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as retenções indicadas.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        retention_ids: lista de IDs das retenções a apagar.
+    """
+    variables = {"companyId": company_id, "retentionId": retention_ids}
+    try:
+        raw = await _client.query(RETENTION_DELETE_MUTATION, variables)
+        node = (raw or {}).get("retentionDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'retentionDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+RETENTION_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: RetentionUpdate!) {
+  retentionUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      retentionId
+      name
+      value
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_retention(
+    company_id: int,
+    retention_id: int,
+    name: str | None = None,
+    value: float | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza uma retenção na fonte de uma empresa. Só os campos enviados são alterados.
+
+    Só `retention_id` é obrigatório.
+
+    Args:
+        company_id: ID da empresa.
+        retention_id: ID da retenção a atualizar.
+        name: novo nome da retenção.
+        value: novo valor/percentagem da retenção.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"retentionId": retention_id}
+    if name is not None:
+        data["name"] = name
+    if value is not None:
+        data["value"] = value
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(RETENTION_UPDATE_MUTATION, variables)
+        return unwrap(result, "retentionUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SalespersonInsert!) {
+  salespersonCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      salespersonId
+      number
+      name
+      vat
+      email
+      phone
+      baseCommission
+      address
+      city
+      zipCode
+      countryId
+      languageId
+      geographicZoneId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_salesperson(
+    company_id: int,
+    number: str,
+    name: str,
+    country_id: int,
+    language_id: int,
+    vat: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    base_commission: float | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    geographic_zone_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Cria um vendedor numa empresa.
+
+    OBRIGATÓRIOS: `number`, `name`, `country_id`, `language_id`.
+
+    Args:
+        company_id: ID da empresa.
+        number: número/código do vendedor.
+        name: nome do vendedor.
+        country_id: ID do país.
+        language_id: ID do idioma.
+        vat: NIF/contribuinte.
+        email: email.
+        phone: telefone.
+        base_commission: comissão-base (percentagem).
+        address: morada.
+        city: localidade.
+        zip_code: código postal.
+        geographic_zone_id: ID da zona geográfica.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {
+        "number": number,
+        "name": name,
+        "countryId": country_id,
+        "languageId": language_id,
+    }
+    if vat is not None:
+        data["vat"] = vat
+    if email is not None:
+        data["email"] = email
+    if phone is not None:
+        data["phone"] = phone
+    if base_commission is not None:
+        data["baseCommission"] = base_commission
+    if address is not None:
+        data["address"] = address
+    if city is not None:
+        data["city"] = city
+    if zip_code is not None:
+        data["zipCode"] = zip_code
+    if geographic_zone_id is not None:
+        data["geographicZoneId"] = geographic_zone_id
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(SALESPERSON_CREATE_MUTATION, variables)
+        return unwrap(result, "salespersonCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_DELETE_MUTATION = """
+mutation ($companyId: Int!, $salespersonId: [Int]!) {
+  salespersonDelete(companyId: $companyId, salespersonId: $salespersonId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_salespersons(company_id: int, salesperson_ids: list[int]) -> Any:
+    """Apaga um ou mais vendedores de uma empresa (em lote). Devolve `status` (sucesso
+    global), `deletedCount` (quantos foram apagados) e `elementsCount` (quantos restam).
+    Vendedores em uso (em documentos) podem não ser elimináveis (o erro vem em `errors`).
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os vendedores indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        salesperson_ids: lista de IDs dos vendedores a apagar.
+    """
+    variables = {"companyId": company_id, "salespersonId": salesperson_ids}
+    try:
+        raw = await _client.query(SALESPERSON_DELETE_MUTATION, variables)
+        node = (raw or {}).get("salespersonDelete") or {}
+        if node.get("errors"):
+            raise MolonionError(
+                "A operação 'salespersonDelete' devolveu erros.",
+                errors=node["errors"],
+            )
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+        }
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SalespersonPaymentBulkInsert!) {
+  salespersonPaymentBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_salesperson_payments(
+    company_id: int, documents: list[dict[str, Any]]
+) -> Any:
+    """Cria um ou mais pagamentos de comissões a vendedores (documento) numa empresa, em lote.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `salespersonId` (int): vendedor a quem se paga a comissão.
+      - `commissions` (list[dict] `CommissionsInput`): comissões a liquidar.
+      - `totalValue` (float): valor total do pagamento.
+    Chaves OPCIONAIS úteis: `salespersonCommission`, `payments` (list[dict]
+      `DocumentPaymentMethodInput`), `notes`, `status` (0=rascunho, 1=fechado), `suspended`,
+      `financialDiscount`, `currencyExchangeId`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por pagamento de comissões a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(SALESPERSON_PAYMENT_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("salespersonPaymentBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SalespersonPaymentInsert!, $options: SalespersonPaymentMutateOptions) {
+  salespersonPaymentCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_salesperson_payment(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria um pagamento de comissões a vendedor (documento) numa empresa. Versão singular do
+    `create_salesperson_payments` (que cria em lote).
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de
+    `create_salesperson_payments`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
+    `salespersonId` (int), `commissions` (list[dict] `CommissionsInput`) e `totalValue`
+    (float). Opcionais úteis: `salespersonCommission`, `payments`, `notes`, `status`,
+    `suspended`, etc.
+
+    Devolve o pagamento criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do pagamento de comissões a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SALESPERSON_PAYMENT_CREATE_MUTATION, variables)
+        return unwrap(result, "salespersonPaymentCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  salespersonPaymentDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_salesperson_payments(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """Apaga um ou mais pagamentos de comissões a vendedores de uma empresa (em lote). Só são
+    elegíveis os que estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO
+    se apagam (anulam-se). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos pagamentos de comissões a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(SALESPERSON_PAYMENT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("salespersonPaymentDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  salespersonPaymentDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_salesperson_payment_to_draft(
+    company_id: int, document_id: int
+) -> Any:
+    """Reverte um pagamento de comissões a vendedor finalizado de volta a rascunho, para
+    permitir voltar a editá-lo. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do pagamento de comissões a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(SALESPERSON_PAYMENT_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "salespersonPaymentDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  salespersonPaymentGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salesperson_payment_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de um pagamento de comissões a vendedor do lado do servidor. Devolve
+    `success` (booleano). Para depois descarregar o ficheiro, usa
+    `get_salesperson_payment_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do pagamento de comissões cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(SALESPERSON_PAYMENT_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("salespersonPaymentGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  salespersonPaymentGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_salesperson_payments_zip(
+    company_id: int, document_ids: list[int]
+) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de vários pagamentos de
+    comissões a vendedores. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_salesperson_payment_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos pagamentos de comissões a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(SALESPERSON_PAYMENT_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("salespersonPaymentGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  salespersonPaymentNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_salesperson_payment(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula um pagamento de comissões a vendedor (marca como anulado, `nullified=True`), com
+    um motivo opcional. É a forma correta de "cancelar" um documento já emitido que não pode
+    ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO IRREVERSÍVEL — anular um documento é definitivo e fica registado. Confirma o
+    documento e o motivo antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do pagamento de comissões a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(SALESPERSON_PAYMENT_NULLIFY_MUTATION, variables)
+        return unwrap(result, "salespersonPaymentNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  salespersonPaymentSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_salesperson_payment_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia um ou mais pagamentos de comissões a vendedores por email. Devolve `success`
+    (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_salesperson_payment_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos pagamentos de comissões a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(SALESPERSON_PAYMENT_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("salespersonPaymentSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_PAYMENT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: SalespersonPaymentUpdate!, $options: SalespersonPaymentMutateOptions) {
+  salespersonPaymentUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_salesperson_payment(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza um pagamento de comissões a vendedor (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_salesperson_payment`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_salesperson_payments`
+    (`date`, `salespersonId`, `documentSetId`, `commissions`, `payments`, `totalValue`,
+    `notes`, `status`, etc.). Em `commissions`/`payments`, passar a lista substitui o conjunto
+    atual.
+
+    Devolve o pagamento atualizado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SALESPERSON_PAYMENT_UPDATE_MUTATION, variables)
+        return unwrap(result, "salespersonPaymentUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SALESPERSON_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: SalespersonUpdate!) {
+  salespersonUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      salespersonId
+      number
+      name
+      vat
+      email
+      phone
+      baseCommission
+      address
+      city
+      zipCode
+      countryId
+      languageId
+      geographicZoneId
+      visible
+      deletable
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_salesperson(
+    company_id: int,
+    salesperson_id: int,
+    number: str | None = None,
+    name: str | None = None,
+    country_id: int | None = None,
+    language_id: int | None = None,
+    vat: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    base_commission: float | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    geographic_zone_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um vendedor de uma empresa. Só os campos enviados são alterados.
+
+    Só `salesperson_id` é obrigatório.
+
+    Args:
+        company_id: ID da empresa.
+        salesperson_id: ID do vendedor a atualizar.
+        number: número/código do vendedor.
+        name: nome do vendedor.
+        country_id: ID do país.
+        language_id: ID do idioma.
+        vat: NIF/contribuinte.
+        email: email.
+        phone: telefone.
+        base_commission: comissão-base (percentagem).
+        address: morada.
+        city: localidade.
+        zip_code: código postal.
+        geographic_zone_id: ID da zona geográfica.
+        extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
+    """
+    data: dict[str, Any] = {"salespersonId": salesperson_id}
+    if number is not None:
+        data["number"] = number
+    if name is not None:
+        data["name"] = name
+    if country_id is not None:
+        data["countryId"] = country_id
+    if language_id is not None:
+        data["languageId"] = language_id
+    if vat is not None:
+        data["vat"] = vat
+    if email is not None:
+        data["email"] = email
+    if phone is not None:
+        data["phone"] = phone
+    if base_commission is not None:
+        data["baseCommission"] = base_commission
+    if address is not None:
+        data["address"] = address
+    if city is not None:
+        data["city"] = city
+    if zip_code is not None:
+        data["zipCode"] = zip_code
+    if geographic_zone_id is not None:
+        data["geographicZoneId"] = geographic_zone_id
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(SALESPERSON_UPDATE_MUTATION, variables)
+        return unwrap(result, "salespersonUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

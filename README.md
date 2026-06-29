@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.765.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.780.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -822,6 +822,21 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `update_recurring_agreement` | Atualiza um contrato de venda recorrente (só rascunhos). ⚠️ altera documento real. |
 | `remove_price_class` | Remove (desaplica) uma classe de preço aplicada, revertendo preços. ⚠️ altera preços em massa. |
 | `request_transport_code` | Pede à AT o código de transporte de um documento. ⚠️ comunica à AT. |
+| `create_retention` | Cria uma retenção na fonte (taxa de retenção/IRS) numa empresa. |
+| `delete_retentions` | Apaga uma ou mais retenções na fonte (em lote). ⚠️ destrutiva. |
+| `update_retention` | Atualiza uma retenção na fonte de uma empresa. |
+| `create_salesperson` | Cria um vendedor numa empresa. |
+| `delete_salespersons` | Apaga um ou mais vendedores (em lote). ⚠️ destrutiva. |
+| `create_salesperson_payments` | Cria um ou mais pagamentos de comissões a vendedores (em lote). ⚠️ cria documentos reais. |
+| `create_salesperson_payment` | Cria um pagamento de comissões a vendedor (singular). ⚠️ cria documento real. |
+| `delete_salesperson_payments` | Apaga um ou mais pagamentos de comissões a vendedores (em lote). ⚠️ destrutiva. |
+| `revert_salesperson_payment_to_draft` | Reverte um pagamento de comissões a vendedor finalizado para rascunho. ⚠️ altera estado. |
+| `generate_salesperson_payment_pdf` | (Re)gera o PDF de um pagamento de comissões a vendedor. |
+| `generate_salesperson_payments_zip` | (Re)gera um ZIP com os PDFs de vários pagamentos de comissões a vendedores. |
+| `nullify_salesperson_payment` | Anula um pagamento de comissões a vendedor (motivo opcional). ⚠️ irreversível. |
+| `send_salesperson_payment_mail` | Envia pagamentos de comissões a vendedores por email. ⚠️ envia email real. |
+| `update_salesperson_payment` | Atualiza um pagamento de comissões a vendedor (só rascunhos). ⚠️ altera documento real. |
+| `update_salesperson` | Atualiza um vendedor de uma empresa. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
