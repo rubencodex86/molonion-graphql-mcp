@@ -39026,6 +39026,483 @@ async def update_supplier_purchase_order(
         return _err(e)
 
 
+SUPPLIER_RECEIPT_BULK_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SupplierReceiptBulkInsert!) {
+  supplierReceiptBulkCreate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_supplier_receipts(company_id: int, documents: list[dict[str, Any]]) -> Any:
+    """Cria um ou mais recibos de FORNECEDOR (documento) numa empresa, em lote. Um recibo de
+    fornecedor liquida (total ou parcialmente) documentos de compra (ex. faturas de fornecedor),
+    registando o(s) pagamento(s) feito(s) ao fornecedor.
+
+    ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `documentSetId` (int): série de documentos.
+      - `date` (str "YYYY-MM-DD"): data do documento.
+      - `supplierId` (int): fornecedor.
+      - `relatedWith` (list[dict]): documento(s) de origem liquidado(s); cada item
+        `{relatedDocumentId (int), value (float)}` (valor liquidado desse documento).
+      - `payments` (list[dict]): meio(s) de pagamento `DocumentPaymentMethodInput`, ex.
+        `[{"paymentMethodId": int, "value": float, "date": "YYYY-MM-DD"}]`.
+      - `totalValue` (float): valor total do recibo.
+    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
+      `ourReference`, `currencyExchangeId`, `suspended`.
+
+    Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
+    `totalValue`, `hash`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        documents: lista de dicionários, um por recibo de fornecedor a criar (ver acima).
+    """
+    variables = {"companyId": company_id, "data": {"documents": documents}}
+    try:
+        raw = await _client.query(SUPPLIER_RECEIPT_BULK_CREATE_MUTATION, variables)
+        envelopes = (raw or {}).get("supplierReceiptBulkCreate") or []
+        return [
+            {"errors": env.get("errors"), "data": env.get("data")}
+            for env in envelopes
+            if env
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_CREATE_MUTATION = """
+mutation ($companyId: Int!, $data: SupplierReceiptInsert!, $options: SupplierReceiptMutateOptions) {
+  supplierReceiptCreate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def create_supplier_receipt(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Cria um recibo de FORNECEDOR (documento) numa empresa. Versão singular do
+    `create_supplier_receipts` (que cria em lote). Liquida (total ou parcialmente) documentos
+    de compra (ex. faturas de fornecedor), registando o pagamento feito ao fornecedor.
+
+    ⚠️ CRIA UM DOCUMENTO REAL. Conforme o `status`, o documento pode ficar fechado/
+    certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
+
+    O `document` é um dicionário (camelCase) com as mesmas chaves de `create_supplier_receipts`:
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `supplierId` (int),
+    `relatedWith` (list[dict] `{relatedDocumentId, value}`), `payments` (list[dict]
+    `DocumentPaymentMethodInput`) e `totalValue` (float). Opcionais úteis: `notes`, `status`,
+    `yourReference`, `ourReference`, `currencyExchangeId`, etc.
+
+    Devolve o recibo criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com os dados do recibo de fornecedor a criar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SUPPLIER_RECEIPT_CREATE_MUTATION, variables)
+        return unwrap(result, "supplierReceiptCreate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_DELETE_MUTATION = """
+mutation ($companyId: Int!, $documentId: [Int!]!) {
+  supplierReceiptDelete(companyId: $companyId, documentId: $documentId) {
+    status
+    deletedCount
+    elementsCount
+    errors { field msg }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def delete_supplier_receipts(company_id: int, document_ids: list[int]) -> Any:
+    """Apaga um ou mais recibos de FORNECEDOR de uma empresa (em lote). Só são elegíveis os que
+    estão em rascunho — documentos já fechados/certificados (com `hash`) NÃO se apagam (anulam-se).
+    Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os documentos indicados.
+    Confirma os IDs antes de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos recibos de fornecedor a apagar.
+    """
+    variables = {"companyId": company_id, "documentId": document_ids}
+    try:
+        raw = await _client.query(SUPPLIER_RECEIPT_DELETE_MUTATION, variables)
+        nodes = (raw or {}).get("supplierReceiptDelete") or []
+        return [
+            {
+                "status": n.get("status"),
+                "deletedCount": n.get("deletedCount"),
+                "elementsCount": n.get("elementsCount"),
+                "errors": n.get("errors"),
+            }
+            for n in nodes
+            if n
+        ]
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_DRAFTABLE_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  supplierReceiptDraftable(companyId: $companyId, documentId: $documentId) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def revert_supplier_receipt_to_draft(company_id: int, document_id: int) -> Any:
+    """Reverte um recibo de FORNECEDOR finalizado de volta a rascunho, para permitir voltar a
+    editá-lo. Devolve o documento com o novo estado (`status`).
+
+    ⚠️ ALTERA O ESTADO do documento. Só é possível em documentos que ainda admitam edição —
+    documentos já certificados/comunicados à AT (com `hash`) normalmente não podem voltar a
+    rascunho.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do recibo de fornecedor a reverter para rascunho.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        result = await _client.query(SUPPLIER_RECEIPT_DRAFTABLE_MUTATION, variables)
+        return unwrap(result, "supplierReceiptDraftable")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_GET_PDF_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!) {
+  supplierReceiptGetPDF(companyId: $companyId, documentId: $documentId)
+}
+"""
+
+
+@mcp.tool()
+async def generate_supplier_receipt_pdf(company_id: int, document_id: int) -> Any:
+    """(Re)gera o PDF de um recibo de FORNECEDOR do lado do servidor. Devolve `success`
+    (booleano). Para depois descarregar o ficheiro, usa `get_supplier_receipt_pdf_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do recibo de fornecedor cujo PDF se pretende (re)gerar.
+    """
+    variables = {"companyId": company_id, "documentId": document_id}
+    try:
+        raw = await _client.query(SUPPLIER_RECEIPT_GET_PDF_MUTATION, variables)
+        return {"success": (raw or {}).get("supplierReceiptGetPDF")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_GET_ZIP_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!) {
+  supplierReceiptGetZIP(companyId: $companyId, documents: $documents)
+}
+"""
+
+
+@mcp.tool()
+async def generate_supplier_receipts_zip(company_id: int, document_ids: list[int]) -> Any:
+    """(Re)gera, do lado do servidor, um arquivo ZIP com os PDFs de vários recibos de
+    FORNECEDOR. Devolve `success` (booleano). Para depois descarregar o ZIP, usa
+    `get_supplier_receipt_zip_token`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos recibos de fornecedor a incluir no ZIP.
+    """
+    variables = {"companyId": company_id, "documents": document_ids}
+    try:
+        raw = await _client.query(SUPPLIER_RECEIPT_GET_ZIP_MUTATION, variables)
+        return {"success": (raw or {}).get("supplierReceiptGetZIP")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_NULLIFY_MUTATION = """
+mutation ($companyId: Int!, $documentId: Int!, $nullifiedReason: String) {
+  supplierReceiptNullify(companyId: $companyId, documentId: $documentId, nullifiedReason: $nullifiedReason) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      nullified
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def nullify_supplier_receipt(
+    company_id: int, document_id: int, nullified_reason: str | None = None
+) -> Any:
+    """Anula um recibo de FORNECEDOR (marca como anulado, `nullified=True`), com um motivo
+    opcional. É a forma correta de "cancelar" um documento já emitido/certificado, que não pode
+    ser apagado. Devolve o documento com o novo estado.
+
+    ⚠️ OPERAÇÃO FISCAL e IRREVERSÍVEL — anular um documento certificado é definitivo e fica
+    registado (e comunicado à AT quando aplicável). Confirma o documento e o motivo antes
+    de executar.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_id: ID do recibo de fornecedor a anular.
+        nullified_reason: opcional; motivo da anulação (texto).
+    """
+    variables: dict[str, Any] = {
+        "companyId": company_id,
+        "documentId": document_id,
+        "nullifiedReason": nullified_reason,
+    }
+    try:
+        result = await _client.query(SUPPLIER_RECEIPT_NULLIFY_MUTATION, variables)
+        return unwrap(result, "supplierReceiptNullify")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_SEND_MAIL_MUTATION = """
+mutation ($companyId: Int!, $documents: [Int]!, $mailData: MailData) {
+  supplierReceiptSendMail(companyId: $companyId, documents: $documents, mailData: $mailData)
+}
+"""
+
+
+@mcp.tool()
+async def send_supplier_receipt_mail(
+    company_id: int,
+    document_ids: list[int],
+    to: list[str],
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    message: str | None = None,
+    attachment: bool | None = None,
+) -> Any:
+    """Envia um ou mais recibos de FORNECEDOR por email. Devolve `success` (booleano).
+
+    ⚠️ ENVIA EMAIL REAL a destinatários externos — confirma os endereços e o conteúdo antes
+    de enviar. O envio fica registado no histórico do documento (ver
+    `get_supplier_receipt_mails_history`).
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document_ids: lista de IDs dos recibos de fornecedor a enviar.
+        to: lista de endereços de email dos destinatários (pelo menos um).
+        cc: opcional; lista de endereços em cópia (CC).
+        bcc: opcional; lista de endereços em cópia oculta (BCC).
+        message: opcional; mensagem (corpo) do email.
+        attachment: opcional; se `True`, anexa o PDF do documento.
+    """
+    variables = {
+        "companyId": company_id,
+        "documents": document_ids,
+        "mailData": _mail_data(to, cc, bcc, message, attachment),
+    }
+    try:
+        raw = await _client.query(SUPPLIER_RECEIPT_SEND_MAIL_MUTATION, variables)
+        return {"success": (raw or {}).get("supplierReceiptSendMail")}
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_RECEIPT_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: SupplierReceiptUpdate!, $options: SupplierReceiptMutateOptions) {
+  supplierReceiptUpdate(companyId: $companyId, data: $data, options: $options) {
+    errors { field msg }
+    data {
+      documentId
+      number
+      date
+      documentSetName
+      entityName
+      totalValue
+      status
+      hash
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_supplier_receipt(
+    company_id: int,
+    document: dict[str, Any],
+    default_language_id: int | None = None,
+) -> Any:
+    """Atualiza um recibo de FORNECEDOR (documento) numa empresa.
+
+    ⚠️ ALTERA UM DOCUMENTO REAL. Só é possível em documentos editáveis (rascunho) —
+    documentos certificados (com `hash`) não se editam (anulam-se com
+    `nullify_supplier_receipt`). Confirma os dados antes de atualizar.
+
+    O `document` é um dicionário (camelCase). A ÚNICA chave OBRIGATÓRIA é `documentId`
+    (int). Inclui apenas as chaves a alterar — as mesmas de `create_supplier_receipts`
+    (`date`, `supplierId`, `documentSetId`, `relatedWith`, `payments`, `totalValue`, `notes`,
+    `status`, etc.). Em `relatedWith`/`payments`, passar a lista substitui o conjunto atual.
+
+    Devolve o recibo atualizado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        document: dicionário com `documentId` + os campos a alterar (ver acima).
+        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+    """
+    variables: dict[str, Any] = {"companyId": company_id, "data": document}
+    if default_language_id is not None:
+        variables["options"] = {"defaultLanguageId": default_language_id}
+    try:
+        result = await _client.query(SUPPLIER_RECEIPT_UPDATE_MUTATION, variables)
+        return unwrap(result, "supplierReceiptUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
+SUPPLIER_UPDATE_MUTATION = """
+mutation ($companyId: Int!, $data: SupplierUpdate!) {
+  supplierUpdate(companyId: $companyId, data: $data) {
+    errors { field msg }
+    data {
+      supplierId
+      number
+      name
+      vat
+      email
+      phone
+      countryId
+    }
+  }
+}
+"""
+
+
+@mcp.tool()
+async def update_supplier(
+    company_id: int,
+    supplier_id: int,
+    number: str | None = None,
+    name: str | None = None,
+    vat: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    city: str | None = None,
+    zip_code: str | None = None,
+    country_id: int | None = None,
+    language_id: int | None = None,
+    maturity_date_id: int | None = None,
+    payment_method_id: int | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> Any:
+    """Atualiza um fornecedor de uma empresa. Identifica-se pelo `supplier_id` (obrigatório);
+    só são alterados os campos que passares. Os campos comuns estão expostos como parâmetros
+    opcionais; para campos menos comuns, usa `extra_fields` (dicionário camelCase, conforme
+    `SupplierUpdate`). Devolve o fornecedor atualizado.
+
+    Args:
+        company_id: ID da empresa (obtém-se via `me`).
+        supplier_id: ID do fornecedor a atualizar.
+        number: opcional; número/código do fornecedor.
+        name: opcional; nome do fornecedor.
+        vat: opcional; NIF/número de contribuinte.
+        email: opcional; email.
+        phone: opcional; telefone.
+        address: opcional; morada.
+        city: opcional; cidade.
+        zip_code: opcional; código postal.
+        country_id: opcional; país (ver `list_countries`).
+        language_id: opcional; idioma (ver `list_languages`).
+        maturity_date_id: opcional; condição de vencimento (ver `list_maturity_dates`).
+        payment_method_id: opcional; método de pagamento (ver `list_payment_methods`).
+        extra_fields: opcional; dicionário com outros campos do `SupplierUpdate` (camelCase).
+    """
+    data: dict[str, Any] = {"supplierId": supplier_id}
+    optional = {
+        "number": number,
+        "name": name,
+        "vat": vat,
+        "email": email,
+        "phone": phone,
+        "address": address,
+        "city": city,
+        "zipCode": zip_code,
+        "countryId": country_id,
+        "languageId": language_id,
+        "maturityDateId": maturity_date_id,
+        "paymentMethodId": payment_method_id,
+    }
+    data.update({k: v for k, v in optional.items() if v is not None})
+    if extra_fields:
+        data.update(extra_fields)
+    variables = {"companyId": company_id, "data": data}
+    try:
+        result = await _client.query(SUPPLIER_UPDATE_MUTATION, variables)
+        return unwrap(result, "supplierUpdate")
+    except MolonionError as e:
+        return _err(e)
+
+
 # ---------------------------------------------------------------------------
 # As tools por operação são adicionadas aqui, uma a uma, a partir dos links de
 # https://docs.molonion.pt/reference (ver CLAUDE.md para o padrão).

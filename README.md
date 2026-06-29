@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.841.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.851.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -898,6 +898,16 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_supplier_purchase_order` | Anula uma nota de encomenda a fornecedor. ⚠️ operação fiscal irreversível. |
 | `send_supplier_purchase_order_mail` | Envia notas de encomenda a fornecedor por email. ⚠️ envia email real. |
 | `update_supplier_purchase_order` | Atualiza uma nota de encomenda a fornecedor (só rascunhos). ⚠️ altera documento real. |
+| `create_supplier_receipts` | Cria um ou mais recibos de fornecedor (documento), em lote — liquida documentos de compra. ⚠️ cria documentos reais. |
+| `create_supplier_receipt` | Cria um recibo de fornecedor (documento), singular. ⚠️ cria documento real. |
+| `delete_supplier_receipts` | Apaga um ou mais recibos de fornecedor (só rascunhos), em lote. ⚠️ destrutivo e irreversível. |
+| `revert_supplier_receipt_to_draft` | Reverte um recibo de fornecedor finalizado de volta a rascunho. ⚠️ altera o estado do documento. |
+| `generate_supplier_receipt_pdf` | (Re)gera o PDF de um recibo de fornecedor no servidor. |
+| `generate_supplier_receipts_zip` | (Re)gera um ZIP com os PDFs de vários recibos de fornecedor no servidor. |
+| `nullify_supplier_receipt` | Anula um recibo de fornecedor (marca como anulado). ⚠️ operação fiscal e irreversível. |
+| `send_supplier_receipt_mail` | Envia um ou mais recibos de fornecedor por email. ⚠️ envia email real. |
+| `update_supplier_receipt` | Atualiza um recibo de fornecedor (só rascunhos). ⚠️ altera documento real. |
+| `update_supplier` | Atualiza um fornecedor (campos comuns + `extra_fields`). |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
