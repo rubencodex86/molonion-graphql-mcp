@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.743.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.754.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -800,6 +800,17 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `nullify_purchase_recurring_agreement` | Anula um contrato de compra recorrente (motivo opcional). ⚠️ irreversível. |
 | `send_purchase_recurring_agreement_mail` | Envia contratos de compra recorrente por email. ⚠️ envia email real. |
 | `update_purchase_recurring_agreement` | Atualiza um contrato de compra recorrente (só rascunhos). ⚠️ altera documento real. |
+| `generate_purchases_analysis_xls` | Gera um XLS do relatório de análise de compras. |
+| `reassign_price_class` | Recalcula a percentagem de uma classe de preço já aplicada (assíncrono). ⚠️ altera preços em massa. |
+| `create_receipts` | Cria um ou mais recibos (liquida faturas; em lote). ⚠️ cria documentos reais. |
+| `create_receipt` | Cria um recibo (singular). ⚠️ cria documento real. |
+| `delete_receipts` | Apaga um ou mais recibos (em lote). ⚠️ destrutiva. |
+| `revert_receipt_to_draft` | Reverte um recibo finalizado para rascunho. ⚠️ altera estado. |
+| `generate_receipt_pdf` | (Re)gera o PDF de um recibo. |
+| `generate_receipts_zip` | (Re)gera um ZIP com os PDFs de vários recibos. |
+| `nullify_receipt` | Anula um recibo (motivo opcional). ⚠️ fiscal, irreversível. |
+| `send_receipt_mail` | Envia recibos por email. ⚠️ envia email real. |
+| `update_receipt` | Atualiza um recibo (só rascunhos). ⚠️ altera documento real. |
 | `update_me` | Atualiza a conta autenticada (nome, email, telefone, idioma, palavra-passe). ⚠️ pode alterar credenciais. |
 
 As restantes operações são adicionadas à medida que avançamos pelos links de
