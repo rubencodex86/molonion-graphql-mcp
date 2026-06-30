@@ -39878,7 +39878,6 @@ mutation ($companyId: Int!, $data: VehicleInsert!) {
       vehicleId
       name
       licensePlate
-      isDefault
       visible
       deletable
     }
@@ -39892,25 +39891,25 @@ async def create_vehicle(
     company_id: int,
     name: str,
     license_plate: str,
-    is_default: bool | None = None,
+    visible: int | None = None,
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
     """Cria um veículo numa empresa. Os veículos identificam o meio de transporte usado nas
     guias de transporte/remessa (documentos com expedição). OBRIGATÓRIOS (conforme
     `VehicleInsert`): `name` (designação) e `license_plate` (matrícula). Para campos menos
     comuns, usa `extra_fields` (dicionário camelCase). Devolve o veículo criado com o seu
-    `vehicleId`.
+    `vehicleId`. (Nota: `VehicleInsert` NÃO tem `isDefault`.)
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         name: designação do veículo.
         license_plate: matrícula do veículo.
-        is_default: opcional; marcar como veículo por omissão.
+        visible: opcional; visibilidade (Int).
         extra_fields: opcional; dicionário com outros campos do `VehicleInsert` (camelCase).
     """
     data: dict[str, Any] = {"name": name, "licensePlate": license_plate}
     optional = {
-        "isDefault": is_default,
+        "visible": visible,
     }
     data.update({k: v for k, v in optional.items() if v is not None})
     if extra_fields:
@@ -39975,7 +39974,6 @@ mutation ($companyId: Int!, $data: VehicleUpdate!) {
       vehicleId
       name
       licensePlate
-      isDefault
       visible
       deletable
     }
@@ -39990,26 +39988,27 @@ async def update_vehicle(
     vehicle_id: int,
     name: str | None = None,
     license_plate: str | None = None,
-    is_default: bool | None = None,
+    visible: int | None = None,
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
     """Atualiza um veículo de uma empresa. Identifica-se pelo `vehicle_id` (obrigatório); só são
     alterados os campos que passares. Para campos menos comuns, usa `extra_fields` (dicionário
-    camelCase, conforme `VehicleUpdate`). Devolve o veículo atualizado.
+    camelCase, conforme `VehicleUpdate`). Devolve o veículo atualizado. (Nota: `VehicleUpdate`
+    NÃO tem `isDefault`.)
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         vehicle_id: ID do veículo a atualizar.
         name: opcional; designação do veículo.
         license_plate: opcional; matrícula do veículo.
-        is_default: opcional; marcar como veículo por omissão.
+        visible: opcional; visibilidade (Int).
         extra_fields: opcional; dicionário com outros campos do `VehicleUpdate` (camelCase).
     """
     data: dict[str, Any] = {"vehicleId": vehicle_id}
     optional = {
         "name": name,
         "licensePlate": license_plate,
-        "isDefault": is_default,
+        "visible": visible,
     }
     data.update({k: v for k, v in optional.items() if v is not None})
     if extra_fields:
