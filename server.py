@@ -37189,18 +37189,18 @@ async def delete_manual_stock_movements(company_id: int, document_ids: list[int]
 
 
 STOCK_MOVEMENT_MANUAL_ENTRY_CREATE_MUTATION = """
-mutation ($companyId: Int!, $data: StockMovementManualEntryInsert!, $options: StockMovementManualEntryMutateOptions) {
-  stockMovementManualEntryCreate(companyId: $companyId, data: $data, options: $options) {
+mutation ($companyId: Int!, $data: StockMovementManualInsert!) {
+  stockMovementManualEntryCreate(companyId: $companyId, data: $data) {
     errors { field msg }
     data {
-      documentId
-      number
+      stockMovementId
+      type
+      direction
       date
-      documentSetName
-      entityName
+      qty
+      unitPrice
       totalValue
-      status
-      hash
+      notes
     }
   }
 }
@@ -37210,33 +37210,35 @@ mutation ($companyId: Int!, $data: StockMovementManualEntryInsert!, $options: St
 @mcp.tool()
 async def create_manual_stock_entry(
     company_id: int,
-    document: dict[str, Any],
-    default_language_id: int | None = None,
+    product_id: int,
+    qty: float,
+    date: str | None = None,
+    unit_price: float | None = None,
+    notes: str | None = None,
+    warehouse_id: int | None = None,
 ) -> Any:
-    """Cria um movimento de stock manual de ENTRADA (documento) numa empresa — regista a entrada
-    de produtos em armazém à mão (acertos, devoluções, inventário, etc.).
+    """Cria um movimento de stock manual de ENTRADA — regista à mão a entrada de UM produto em
+    armazém (acertos, devoluções, inventário, etc.). Ao contrário das tools de documento, o
+    movimento manual é de um único produto por chamada (input `StockMovementManualInsert`).
 
-    ⚠️ CRIA UM DOCUMENTO REAL e AUMENTA O STOCK dos produtos indicados. Conforme o `status`, o
-    documento pode ficar fechado/certificado (com `hash`). Confirma os dados antes de criar.
+    ⚠️ AUMENTA O STOCK do produto indicado. Confirma os dados antes de criar.
 
-    O `document` é um dicionário (camelCase). Chaves OBRIGATÓRIAS típicas:
-      - `documentSetId` (int): série de documentos.
-      - `date` (str "YYYY-MM-DD"): data do movimento.
-      - `products` (list[dict]): linhas, cada uma com `productId` (int), `ordering` (int),
-        `qty` (float) e, normalmente, `warehouseId` (int) do armazém de destino; opcionais
-        `name`, `price`, etc.
-    Chaves OPCIONAIS úteis: `notes`, `status`, `supplierId`/`customerId`, `movementDate`.
-
-    Devolve o movimento criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+    OBRIGATÓRIOS: `product_id` e `qty`. Devolve o movimento criado com `stockMovementId`,
+    `type`, `direction`, `qty`, `unitPrice`, `totalValue`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        document: dicionário com os dados do movimento de entrada a criar (ver acima).
-        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+        product_id: ID do produto que entra em stock.
+        qty: quantidade a dar entrada (float).
+        date: opcional; data/hora do movimento (ISO, ex. "2026-06-30T10:00:00"). Por omissão, agora.
+        unit_price: opcional; preço unitário do movimento.
+        notes: opcional; notas do movimento.
+        warehouse_id: opcional; armazém de destino (se omitido, usa o armazém por omissão).
     """
-    variables: dict[str, Any] = {"companyId": company_id, "data": document}
-    if default_language_id is not None:
-        variables["options"] = {"defaultLanguageId": default_language_id}
+    data: dict[str, Any] = {"productId": product_id, "qty": qty}
+    optional = {"date": date, "unitPrice": unit_price, "notes": notes, "warehouseId": warehouse_id}
+    data.update({k: v for k, v in optional.items() if v is not None})
+    variables = {"companyId": company_id, "data": data}
     try:
         result = await _client.query(STOCK_MOVEMENT_MANUAL_ENTRY_CREATE_MUTATION, variables)
         return unwrap(result, "stockMovementManualEntryCreate")
@@ -37245,18 +37247,18 @@ async def create_manual_stock_entry(
 
 
 STOCK_MOVEMENT_MANUAL_EXIT_CREATE_MUTATION = """
-mutation ($companyId: Int!, $data: StockMovementManualExitInsert!, $options: StockMovementManualExitMutateOptions) {
-  stockMovementManualExitCreate(companyId: $companyId, data: $data, options: $options) {
+mutation ($companyId: Int!, $data: StockMovementManualInsert!) {
+  stockMovementManualExitCreate(companyId: $companyId, data: $data) {
     errors { field msg }
     data {
-      documentId
-      number
+      stockMovementId
+      type
+      direction
       date
-      documentSetName
-      entityName
+      qty
+      unitPrice
       totalValue
-      status
-      hash
+      notes
     }
   }
 }
@@ -37266,33 +37268,35 @@ mutation ($companyId: Int!, $data: StockMovementManualExitInsert!, $options: Sto
 @mcp.tool()
 async def create_manual_stock_exit(
     company_id: int,
-    document: dict[str, Any],
-    default_language_id: int | None = None,
+    product_id: int,
+    qty: float,
+    date: str | None = None,
+    unit_price: float | None = None,
+    notes: str | None = None,
+    warehouse_id: int | None = None,
 ) -> Any:
-    """Cria um movimento de stock manual de SAÍDA (documento) numa empresa — regista a saída
-    de produtos de armazém à mão (acertos, quebras, consumo interno, etc.).
+    """Cria um movimento de stock manual de SAÍDA — regista à mão a saída de UM produto de
+    armazém (acertos, quebras, consumo interno, etc.). Ao contrário das tools de documento, o
+    movimento manual é de um único produto por chamada (input `StockMovementManualInsert`).
 
-    ⚠️ CRIA UM DOCUMENTO REAL e REDUZ O STOCK dos produtos indicados. Conforme o `status`, o
-    documento pode ficar fechado/certificado (com `hash`). Confirma os dados antes de criar.
+    ⚠️ REDUZ O STOCK do produto indicado. Confirma os dados antes de criar.
 
-    O `document` é um dicionário (camelCase). Chaves OBRIGATÓRIAS típicas:
-      - `documentSetId` (int): série de documentos.
-      - `date` (str "YYYY-MM-DD"): data do movimento.
-      - `products` (list[dict]): linhas, cada uma com `productId` (int), `ordering` (int),
-        `qty` (float) e, normalmente, `warehouseId` (int) do armazém de origem; opcionais
-        `name`, `price`, etc.
-    Chaves OPCIONAIS úteis: `notes`, `status`, `supplierId`/`customerId`, `movementDate`.
-
-    Devolve o movimento criado com `documentId`, `number`, `status`, `totalValue`, `hash`.
+    OBRIGATÓRIOS: `product_id` e `qty`. Devolve o movimento criado com `stockMovementId`,
+    `type`, `direction`, `qty`, `unitPrice`, `totalValue`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        document: dicionário com os dados do movimento de saída a criar (ver acima).
-        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+        product_id: ID do produto que sai do stock.
+        qty: quantidade a dar saída (float).
+        date: opcional; data/hora do movimento (ISO, ex. "2026-06-30T10:00:00"). Por omissão, agora.
+        unit_price: opcional; preço unitário do movimento.
+        notes: opcional; notas do movimento.
+        warehouse_id: opcional; armazém de origem (se omitido, usa o armazém por omissão).
     """
-    variables: dict[str, Any] = {"companyId": company_id, "data": document}
-    if default_language_id is not None:
-        variables["options"] = {"defaultLanguageId": default_language_id}
+    data: dict[str, Any] = {"productId": product_id, "qty": qty}
+    optional = {"date": date, "unitPrice": unit_price, "notes": notes, "warehouseId": warehouse_id}
+    data.update({k: v for k, v in optional.items() if v is not None})
+    variables = {"companyId": company_id, "data": data}
     try:
         result = await _client.query(STOCK_MOVEMENT_MANUAL_EXIT_CREATE_MUTATION, variables)
         return unwrap(result, "stockMovementManualExitCreate")
@@ -37301,18 +37305,18 @@ async def create_manual_stock_exit(
 
 
 STOCK_MOVEMENT_WAREHOUSE_TRANSFER_CREATE_MUTATION = """
-mutation ($companyId: Int!, $data: StockMovementWarehouseTransferInsert!, $options: StockMovementWarehouseTransferMutateOptions) {
-  stockMovementWarehouseTransferCreate(companyId: $companyId, data: $data, options: $options) {
+mutation ($companyId: Int!, $data: StockMovementWarehouseTransferInsert!) {
+  stockMovementWarehouseTransferCreate(companyId: $companyId, data: $data) {
     errors { field msg }
     data {
-      documentId
-      number
+      stockMovementId
+      type
+      direction
       date
-      documentSetName
-      entityName
+      qty
+      unitPrice
       totalValue
-      status
-      hash
+      notes
     }
   }
 }
@@ -37322,34 +37326,41 @@ mutation ($companyId: Int!, $data: StockMovementWarehouseTransferInsert!, $optio
 @mcp.tool()
 async def create_warehouse_transfer(
     company_id: int,
-    document: dict[str, Any],
-    default_language_id: int | None = None,
+    product_id: int,
+    from_warehouse_id: int,
+    to_warehouse_id: int,
+    qty: float,
+    date: str | None = None,
+    notes: str | None = None,
 ) -> Any:
-    """Cria uma transferência de stock entre armazéns (documento) numa empresa — move produtos
-    de um armazém de origem para um de destino.
+    """Cria uma transferência de stock entre armazéns — move UM produto de um armazém de origem
+    para um de destino (input `StockMovementWarehouseTransferInsert`). É de um único produto por
+    chamada (não um documento com lista de linhas).
 
-    ⚠️ CRIA UM DOCUMENTO REAL e MOVE O STOCK entre armazéns (saída na origem, entrada no
-    destino). Conforme o `status`, o documento pode ficar fechado/certificado (com `hash`).
-    Confirma os dados antes de criar.
+    ⚠️ MOVE O STOCK entre armazéns (saída na origem, entrada no destino). Confirma os dados
+    antes de criar.
 
-    O `document` é um dicionário (camelCase). Chaves OBRIGATÓRIAS típicas:
-      - `documentSetId` (int): série de documentos.
-      - `date` (str "YYYY-MM-DD"): data da transferência.
-      - `sourceWarehouseId` / `targetWarehouseId` (int): armazéns de origem e destino.
-      - `products` (list[dict]): linhas, cada uma com `productId` (int), `ordering` (int),
-        `qty` (float) a transferir; opcionais `name`, `price`, etc.
-    Chaves OPCIONAIS úteis: `notes`, `status`, `movementDate`.
-
-    Devolve a transferência criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
+    OBRIGATÓRIOS: `product_id`, `from_warehouse_id`, `to_warehouse_id`, `qty`. Devolve o
+    movimento criado com `stockMovementId`, `type`, `direction`, `qty`, `totalValue`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        document: dicionário com os dados da transferência a criar (ver acima).
-        default_language_id: idioma por omissão do documento (opção `defaultLanguageId`).
+        product_id: ID do produto a transferir.
+        from_warehouse_id: ID do armazém de ORIGEM (de onde sai o stock).
+        to_warehouse_id: ID do armazém de DESTINO (para onde entra o stock).
+        qty: quantidade a transferir (float).
+        date: opcional; data/hora do movimento (ISO, ex. "2026-06-30T10:00:00"). Por omissão, agora.
+        notes: opcional; notas do movimento.
     """
-    variables: dict[str, Any] = {"companyId": company_id, "data": document}
-    if default_language_id is not None:
-        variables["options"] = {"defaultLanguageId": default_language_id}
+    data: dict[str, Any] = {
+        "productId": product_id,
+        "fromWarehouseId": from_warehouse_id,
+        "toWarehouseId": to_warehouse_id,
+        "qty": qty,
+    }
+    optional = {"date": date, "notes": notes}
+    data.update({k: v for k, v in optional.items() if v is not None})
+    variables = {"companyId": company_id, "data": data}
     try:
         result = await _client.query(STOCK_MOVEMENT_WAREHOUSE_TRANSFER_CREATE_MUTATION, variables)
         return unwrap(result, "stockMovementWarehouseTransferCreate")
@@ -37429,13 +37440,13 @@ async def create_supplier_bills_of_lading(company_id: int, documents: list[dict[
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
       - `supplierId` (int): fornecedor.
       - `products` (list[dict]): linhas `DocumentProductInput` (`productId`, `ordering`, `qty`,
         opcionais `name`, `price`, `warehouseId`, etc.).
-      - dados de transporte: `deliveryLoadDate`/`deliveryLoadDatetime`, `deliveryLoadAddress`,
-        `deliveryUnloadAddress` (conforme exigido pelas guias de transporte).
-    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
-      `ourReference`, `currencyExchangeId`.
+    Chaves OPCIONAIS úteis: dados de transporte (`deliveryLoadDate`, `deliveryLoadAddress`,
+      `deliveryUnloadAddress`, conforme exigido pelas guias de transporte), `notes`,
+      `status` (0=rascunho, 1=fechado), `yourReference`, `ourReference`, `currencyExchangeId`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -37490,9 +37501,10 @@ async def create_supplier_bill_of_lading(
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de
     `create_supplier_bills_of_lading`: OBRIGATÓRIAS `documentSetId` (int), `date`
-    ("YYYY-MM-DD"), `supplierId` (int), `products` (list[dict] `DocumentProductInput`) e os
-    dados de transporte (`deliveryLoadDate`, `deliveryLoadAddress`, `deliveryUnloadAddress`).
-    Opcionais úteis: `notes`, `status`, `yourReference`, `ourReference`, etc.
+    ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"), `supplierId` (int) e `products` (list[dict]
+    `DocumentProductInput`). Opcionais úteis: dados de transporte (`deliveryLoadDate`,
+    `deliveryLoadAddress`, `deliveryUnloadAddress`), `notes`, `status`, `yourReference`,
+    `ourReference`, etc.
 
     Devolve a guia criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
 
@@ -37906,11 +37918,12 @@ async def create_supplier_credit_notes(company_id: int, documents: list[dict[str
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
       - `supplierId` (int): fornecedor.
+      - `relatedWith` (list[dict]): fatura(s) de compra abatida(s); cada item
+        `{relatedDocumentId (int), value (float)}`.
       - `products` (list[dict]): linhas `DocumentProductInput` (`productId`, `ordering`, `qty`,
         opcionais `name`, `price`, `taxes`, etc.).
-    Chaves OPCIONAIS úteis: `relatedWith` (faturas de compra abatidas, `{relatedDocumentId,
-      value}`), `notes`, `status` (0=rascunho, 1=fechado), `yourReference`, `ourReference`,
-      `currencyExchangeId`.
+    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
+      `ourReference`, `currencyExchangeId`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -37965,8 +37978,9 @@ async def create_supplier_credit_note(
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de
     `create_supplier_credit_notes`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
-    `supplierId` (int), `products` (list[dict] `DocumentProductInput`). Opcionais úteis:
-    `relatedWith`, `notes`, `status`, `yourReference`, `ourReference`, etc.
+    `supplierId` (int), `relatedWith` (list[dict] `{relatedDocumentId, value}`) e `products`
+    (list[dict] `DocumentProductInput`). Opcionais úteis: `notes`, `status`, `yourReference`,
+    `ourReference`, etc.
 
     Devolve a nota de crédito criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
 
@@ -38338,12 +38352,13 @@ async def create_supplier_invoices(company_id: int, documents: list[dict[str, An
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
       - `supplierId` (int): fornecedor.
       - `products` (list[dict]): linhas `DocumentProductInput` (`productId`, `ordering`, `qty`,
         opcionais `name`, `price`, `taxes`, `warehouseId`, etc.).
-    Chaves OPCIONAIS úteis: `expirationDate` (vencimento), `notes`, `status` (0=rascunho,
+    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho,
       1=fechado), `yourReference` (nº da fatura do fornecedor), `ourReference`,
-      `currencyExchangeId`.
+      `currencyExchangeId`, `maturityDateId`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -38397,8 +38412,8 @@ async def create_supplier_invoice(
     certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de `create_supplier_invoices`:
-    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `supplierId` (int), `products`
-    (list[dict] `DocumentProductInput`). Opcionais úteis: `expirationDate`, `notes`, `status`,
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"),
+    `supplierId` (int), `products` (list[dict] `DocumentProductInput`). Opcionais úteis: `notes`, `status`,
     `yourReference`, `ourReference`, etc.
 
     Devolve a fatura criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
@@ -38726,11 +38741,12 @@ async def create_supplier_purchase_orders(company_id: int, documents: list[dict[
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
-      - `supplierId` (int): fornecedor.
-      - `products` (list[dict]): linhas `DocumentProductInput` (`productId`, `ordering`, `qty`,
-        opcionais `name`, `price`, `taxes`, etc.).
-    Chaves OPCIONAIS úteis: `expirationDate`/`deliveryDate`, `notes`, `status` (0=rascunho,
-      1=fechado), `yourReference`, `ourReference`, `currencyExchangeId`.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
+      - `products` (list[dict]): linhas `DocumentProductSupplierInput` (`productId`, `ordering`,
+        `qty`, opcionais `name`, `price`, `taxes`, `supplierReference`, etc.).
+    Chaves OPCIONAIS úteis: `supplierId` (fornecedor; opcional no schema, mas recomendado),
+      `deliveryDate`, `notes`, `status` (0=rascunho, 1=fechado), `yourReference`, `ourReference`,
+      `currencyExchangeId`, `maturityDateId`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -38785,8 +38801,9 @@ async def create_supplier_purchase_order(
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de
     `create_supplier_purchase_orders`: OBRIGATÓRIAS `documentSetId` (int), `date`
-    ("YYYY-MM-DD"), `supplierId` (int), `products` (list[dict] `DocumentProductInput`).
-    Opcionais úteis: `expirationDate`/`deliveryDate`, `notes`, `status`, `yourReference`,
+    ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD") e `products` (list[dict]
+    `DocumentProductSupplierInput`). Opcionais úteis: `supplierId` (recomendado),
+    `deliveryDate`, `notes`, `status`, `yourReference`,
     `ourReference`, etc.
 
     Devolve a nota de encomenda criada com `documentId`, `number`, `status`, `totalValue`,
@@ -39122,11 +39139,11 @@ async def create_supplier_receipts(company_id: int, documents: list[dict[str, An
       - `supplierId` (int): fornecedor.
       - `relatedWith` (list[dict]): documento(s) de origem liquidado(s); cada item
         `{relatedDocumentId (int), value (float)}` (valor liquidado desse documento).
-      - `payments` (list[dict]): meio(s) de pagamento `DocumentPaymentMethodInput`, ex.
-        `[{"paymentMethodId": int, "value": float, "date": "YYYY-MM-DD"}]`.
       - `totalValue` (float): valor total do recibo.
-    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
-      `ourReference`, `currencyExchangeId`, `suspended`.
+    Chaves OPCIONAIS úteis: `payments` (list[dict] `DocumentPaymentMethodInput`, ex.
+      `[{"paymentMethodId": int, "value": float, "date": "YYYY-MM-DD"}]`), `notes`,
+      `status` (0=rascunho, 1=fechado), `yourReference`, `ourReference`, `currencyExchangeId`,
+      `suspended`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -39182,8 +39199,8 @@ async def create_supplier_receipt(
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de `create_supplier_receipts`:
     OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `supplierId` (int),
-    `relatedWith` (list[dict] `{relatedDocumentId, value}`), `payments` (list[dict]
-    `DocumentPaymentMethodInput`) e `totalValue` (float). Opcionais úteis: `notes`, `status`,
+    `relatedWith` (list[dict] `{relatedDocumentId, value}`) e `totalValue` (float). Opcionais
+    úteis: `payments` (list[dict] `DocumentPaymentMethodInput`), `notes`, `status`,
     `yourReference`, `ourReference`, `currencyExchangeId`, etc.
 
     Devolve o recibo criado com `documentId`, `number`, `status`, `totalValue`, `hash`.

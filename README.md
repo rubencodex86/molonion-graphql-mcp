@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.863.8` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.864.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -856,9 +856,9 @@ ou `/mcp`. Depois de alterares o `server.py`, reconecta (`/mcp` → reconnect).
 | `send_simplified_invoice_mail` | Envia faturas simplificadas por email. ⚠️ envia email real. |
 | `update_simplified_invoice` | Atualiza uma fatura simplificada (só rascunhos). ⚠️ altera documento real. |
 | `delete_manual_stock_movements` | Apaga movimentos de stock manuais (em lote). ⚠️ destrutivo e irreversível. |
-| `create_manual_stock_entry` | Cria um movimento de stock manual de entrada. ⚠️ cria documento e aumenta stock. |
-| `create_manual_stock_exit` | Cria um movimento de stock manual de saída. ⚠️ cria documento e reduz stock. |
-| `create_warehouse_transfer` | Cria uma transferência de stock entre armazéns. ⚠️ cria documento e move stock. |
+| `create_manual_stock_entry` | Cria um movimento de stock manual de entrada (um produto). ⚠️ aumenta stock. |
+| `create_manual_stock_exit` | Cria um movimento de stock manual de saída (um produto). ⚠️ reduz stock. |
+| `create_warehouse_transfer` | Transfere um produto entre armazéns (movimento de stock). ⚠️ move stock. |
 | `delete_warehouse_transfers` | Apaga transferências de stock entre armazéns (em lote). ⚠️ destrutivo e irreversível. |
 | `create_supplier_bills_of_lading` | Cria guias de transporte de fornecedor (documento) em lote. ⚠️ cria documentos reais. |
 | `create_supplier_bill_of_lading` | Cria uma guia de transporte de fornecedor (documento). ⚠️ cria documento real. |
