@@ -37818,9 +37818,9 @@ mutation ($companyId: Int!, $data: SupplierInsert!) {
 async def create_supplier(
     company_id: int,
     number: str,
+    name: str,
     country_id: int,
-    language_id: int,
-    name: str | None = None,
+    language_id: int | None = None,
     vat: str | None = None,
     email: str | None = None,
     phone: str | None = None,
@@ -37831,18 +37831,18 @@ async def create_supplier(
     payment_method_id: int | None = None,
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
-    """Cria um fornecedor numa empresa. OBRIGATÓRIOS: `number` (número/código único do
-    fornecedor), `country_id` e `language_id`. Os restantes campos comuns estão expostos como
-    parâmetros opcionais (`name`, `vat`, contactos, morada, condições). Para campos menos
-    comuns, usa `extra_fields` (dicionário camelCase, conforme `SupplierInsert`). Devolve o
-    fornecedor criado com o seu `supplierId`.
+    """Cria um fornecedor numa empresa. OBRIGATÓRIOS (conforme `SupplierInsert`): `number`
+    (número/código único), `name` e `country_id`. (Nota: ao contrário do cliente, o fornecedor
+    exige `name` mas NÃO exige `language_id`.) Os restantes campos comuns estão expostos como
+    parâmetros opcionais; para campos menos comuns, usa `extra_fields` (dicionário camelCase,
+    conforme `SupplierInsert`). Devolve o fornecedor criado com o seu `supplierId`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         number: número/código único do fornecedor.
+        name: nome do fornecedor.
         country_id: ID do país (ver `list_countries`).
-        language_id: ID do idioma (ver `list_languages`).
-        name: opcional; nome do fornecedor.
+        language_id: opcional; ID do idioma (ver `list_languages`).
         vat: opcional; NIF/número de contribuinte.
         email: opcional; email.
         phone: opcional; telefone.
@@ -37855,11 +37855,11 @@ async def create_supplier(
     """
     data: dict[str, Any] = {
         "number": number,
+        "name": name,
         "countryId": country_id,
-        "languageId": language_id,
     }
     optional = {
-        "name": name,
+        "languageId": language_id,
         "vat": vat,
         "email": email,
         "phone": phone,
@@ -39891,25 +39891,25 @@ mutation ($companyId: Int!, $data: VehicleInsert!) {
 async def create_vehicle(
     company_id: int,
     name: str,
-    license_plate: str | None = None,
+    license_plate: str,
     is_default: bool | None = None,
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
     """Cria um veículo numa empresa. Os veículos identificam o meio de transporte usado nas
-    guias de transporte/remessa (documentos com expedição). OBRIGATÓRIO: `name` (designação).
-    Para campos menos comuns, usa `extra_fields` (dicionário camelCase, conforme `VehicleInsert`).
-    Devolve o veículo criado com o seu `vehicleId`.
+    guias de transporte/remessa (documentos com expedição). OBRIGATÓRIOS (conforme
+    `VehicleInsert`): `name` (designação) e `license_plate` (matrícula). Para campos menos
+    comuns, usa `extra_fields` (dicionário camelCase). Devolve o veículo criado com o seu
+    `vehicleId`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         name: designação do veículo.
-        license_plate: opcional; matrícula do veículo.
+        license_plate: matrícula do veículo.
         is_default: opcional; marcar como veículo por omissão.
         extra_fields: opcional; dicionário com outros campos do `VehicleInsert` (camelCase).
     """
-    data: dict[str, Any] = {"name": name}
+    data: dict[str, Any] = {"name": name, "licensePlate": license_plate}
     optional = {
-        "licensePlate": license_plate,
         "isDefault": is_default,
     }
     data.update({k: v for k, v in optional.items() if v is not None})
@@ -40052,10 +40052,10 @@ async def create_warehouse(
     company_id: int,
     number: str,
     name: str,
-    address: str | None = None,
-    city: str | None = None,
-    zip_code: str | None = None,
-    country_id: int | None = None,
+    address: str,
+    city: str,
+    zip_code: str,
+    country_id: int,
     phone: str | None = None,
     contact_name: str | None = None,
     contact_email: str | None = None,
@@ -40063,31 +40063,34 @@ async def create_warehouse(
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
     """Cria um armazém numa empresa. Os armazéns localizam o stock e são referenciados nas
-    linhas dos documentos e nos movimentos de stock. OBRIGATÓRIOS: `number` (número/código) e
-    `name`. Os campos comuns (morada, contactos) estão expostos como parâmetros opcionais;
-    para campos menos comuns, usa `extra_fields` (dicionário camelCase, conforme
-    `WarehouseInsert`). Devolve o armazém criado com o seu `warehouseId`.
+    linhas dos documentos e nos movimentos de stock. OBRIGATÓRIOS (conforme `WarehouseInsert`):
+    `number` (número/código), `name`, `address`, `city`, `zip_code` e `country_id`. Os
+    contactos ficam opcionais; para campos menos comuns, usa `extra_fields` (dicionário
+    camelCase). Devolve o armazém criado com o seu `warehouseId`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         number: número/código único do armazém.
         name: nome do armazém.
-        address: opcional; morada.
-        city: opcional; cidade.
-        zip_code: opcional; código postal.
-        country_id: opcional; país (ver `list_countries`).
+        address: morada.
+        city: cidade.
+        zip_code: código postal.
+        country_id: país (ver `list_countries`).
         phone: opcional; telefone.
         contact_name: opcional; nome do contacto.
         contact_email: opcional; email do contacto.
         is_default: opcional; marcar como armazém por omissão.
         extra_fields: opcional; dicionário com outros campos do `WarehouseInsert` (camelCase).
     """
-    data: dict[str, Any] = {"number": number, "name": name}
-    optional = {
+    data: dict[str, Any] = {
+        "number": number,
+        "name": name,
         "address": address,
         "city": city,
         "zipCode": zip_code,
         "countryId": country_id,
+    }
+    optional = {
         "phone": phone,
         "contactName": contact_name,
         "contactEmail": contact_email,
