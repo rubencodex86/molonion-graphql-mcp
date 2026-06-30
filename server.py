@@ -37146,8 +37146,8 @@ async def update_simplified_invoice(
 
 
 STOCK_MOVEMENT_MANUAL_DELETE_MUTATION = """
-mutation ($companyId: Int!, $documentId: [Int!]!) {
-  stockMovementManualDelete(companyId: $companyId, documentId: $documentId) {
+mutation ($companyId: Int!, $stockMovementId: Int!) {
+  stockMovementManualDelete(companyId: $companyId, stockMovementId: $stockMovementId) {
     status
     deletedCount
     elementsCount
@@ -37158,32 +37158,29 @@ mutation ($companyId: Int!, $documentId: [Int!]!) {
 
 
 @mcp.tool()
-async def delete_manual_stock_movements(company_id: int, document_ids: list[int]) -> Any:
-    """Apaga um ou mais movimentos de stock manuais de uma empresa (em lote). Movimentos
-    manuais são acertos/entradas/saídas de stock registados à mão (não gerados por documentos
-    de venda/compra). Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+async def delete_manual_stock_movement(company_id: int, stock_movement_id: int) -> Any:
+    """Apaga UM movimento de stock manual de uma empresa. Movimentos manuais são
+    acertos/entradas/saídas de stock registados à mão (não gerados por documentos de
+    venda/compra). A mutation aceita um único `stockMovementId` por chamada. Devolve
+    `{status, deletedCount, elementsCount, errors}`.
 
-    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente os movimentos indicados e
-    reverte o respetivo impacto no stock. Confirma os IDs antes de executar.
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente o movimento indicado e
+    reverte o respetivo impacto no stock. Confirma o ID antes de executar.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        document_ids: lista de IDs dos movimentos de stock manuais a apagar.
+        stock_movement_id: ID (`stockMovementId`) do movimento de stock manual a apagar.
     """
-    variables = {"companyId": company_id, "documentId": document_ids}
+    variables = {"companyId": company_id, "stockMovementId": stock_movement_id}
     try:
         raw = await _client.query(STOCK_MOVEMENT_MANUAL_DELETE_MUTATION, variables)
-        nodes = (raw or {}).get("stockMovementManualDelete") or []
-        return [
-            {
-                "status": n.get("status"),
-                "deletedCount": n.get("deletedCount"),
-                "elementsCount": n.get("elementsCount"),
-                "errors": n.get("errors"),
-            }
-            for n in nodes
-            if n
-        ]
+        node = (raw or {}).get("stockMovementManualDelete") or {}
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+            "errors": node.get("errors"),
+        }
     except MolonionError as e:
         return _err(e)
 
@@ -37369,8 +37366,8 @@ async def create_warehouse_transfer(
 
 
 STOCK_MOVEMENT_WAREHOUSE_TRANSFER_DELETE_MUTATION = """
-mutation ($companyId: Int!, $documentId: [Int!]!) {
-  stockMovementWarehouseTransferDelete(companyId: $companyId, documentId: $documentId) {
+mutation ($companyId: Int!, $stockMovementId: Int!) {
+  stockMovementWarehouseTransferDelete(companyId: $companyId, stockMovementId: $stockMovementId) {
     status
     deletedCount
     elementsCount
@@ -37381,31 +37378,27 @@ mutation ($companyId: Int!, $documentId: [Int!]!) {
 
 
 @mcp.tool()
-async def delete_warehouse_transfers(company_id: int, document_ids: list[int]) -> Any:
-    """Apaga uma ou mais transferências de stock entre armazéns de uma empresa (em lote).
-    Devolve, por ID, `{status, deletedCount, elementsCount, errors}`.
+async def delete_warehouse_transfer(company_id: int, stock_movement_id: int) -> Any:
+    """Apaga UMA transferência de stock entre armazéns de uma empresa. A mutation aceita um
+    único `stockMovementId` por chamada. Devolve `{status, deletedCount, elementsCount, errors}`.
 
-    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente as transferências indicadas
-    e reverte o respetivo movimento de stock entre armazéns. Confirma os IDs antes de executar.
+    ⚠️ OPERAÇÃO DESTRUTIVA e IRREVERSÍVEL — apaga definitivamente a transferência indicada e
+    reverte o respetivo movimento de stock entre armazéns. Confirma o ID antes de executar.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        document_ids: lista de IDs das transferências a apagar.
+        stock_movement_id: ID (`stockMovementId`) da transferência a apagar.
     """
-    variables = {"companyId": company_id, "documentId": document_ids}
+    variables = {"companyId": company_id, "stockMovementId": stock_movement_id}
     try:
         raw = await _client.query(STOCK_MOVEMENT_WAREHOUSE_TRANSFER_DELETE_MUTATION, variables)
-        nodes = (raw or {}).get("stockMovementWarehouseTransferDelete") or []
-        return [
-            {
-                "status": n.get("status"),
-                "deletedCount": n.get("deletedCount"),
-                "elementsCount": n.get("elementsCount"),
-                "errors": n.get("errors"),
-            }
-            for n in nodes
-            if n
-        ]
+        node = (raw or {}).get("stockMovementWarehouseTransferDelete") or {}
+        return {
+            "status": node.get("status"),
+            "deletedCount": node.get("deletedCount"),
+            "elementsCount": node.get("elementsCount"),
+            "errors": node.get("errors"),
+        }
     except MolonionError as e:
         return _err(e)
 
