@@ -4202,8 +4202,8 @@ async def list_document_at_communication_statuses(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        communication_type: opcional; lista de tipos de comunicação a filtrar (valores
-            do enum `DocumentATCommunicationTypeEnum`).
+        communication_type: opcional; lista de tipos de comunicação a filtrar. Valores do enum
+            `DocumentATCommunicationTypeEnum`: `transport` (transporte), `invoicing` (faturação).
     """
     variables: dict[str, Any] = {"companyId": company_id}
     if communication_type is not None:
@@ -4459,8 +4459,13 @@ async def get_document_next_number(
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         document_set_id: ID da série de documentos.
-        api_code: código do tipo de documento (valor do enum `ApiCode`, ex.
-            "invoices", "creditNotes", "deliveryNotes").
+        api_code: código do tipo de documento (valor do enum `ApiCode`, em singular). Ex.:
+            `invoice`, `simplifiedInvoice`, `invoiceReceipt`, `creditNote`, `debitNote`,
+            `receipt`, `estimate`, `proFormaInvoice`, `deliveryNote`, `billsOfLading`, `waybill`,
+            `purchaseOrder`, `settlementNote`, `customerReturnNote`, `salespersonPayment`,
+            `serviceSheet`, `tableConsult`; compras: `supplierInvoice`, `supplierCreditNote`,
+            `supplierReceipt`, `supplierPurchaseOrder`, `supplierBillsOfLading`. (Existem ainda
+            variantes `migrated*` e outros — ver enum `ApiCode` para o conjunto completo.)
     """
     variables = {
         "companyId": company_id,
@@ -4645,8 +4650,9 @@ async def get_document_relatable(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        api_code: código do tipo de documento a procurar (valor do enum `ApiCode`, ex.
-            "invoices", "billsOfLading", "creditNotes").
+        api_code: código do tipo de documento a procurar (valor do enum `ApiCode`, em singular,
+            ex. `invoice`, `billsOfLading`, `creditNote`, `receipt`, `supplierInvoice` — ver a
+            lista completa de valores nas outras tools que usam `api_code`).
         entity_id: ID da entidade (cliente/fornecedor) cujos documentos relacionáveis se procuram.
         page: opcional; página da paginação (começa em 1). Requer também `qty`.
         qty: opcional; número de registos por página. Requer também `page`.
@@ -14845,10 +14851,14 @@ async def get_purchases_analysis_by_date(
 
     Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
     `field`/`comparison`/`value` da Moloni ON: passa uma lista de dicionários, ex.
-    `[{"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"},
-      {"field": "date", "comparison": "LESS_OR_EQUAL", "value": "2026-03-31"}]`.
-    Os nomes de `field`/`comparison` válidos são os dos enums `PurchasesAnalysisFilterField`
-    e `Comparison` da API.
+    `[{"field": "document__date", "comparison": "gte", "value": "2026-01-01"},
+      {"field": "document__date", "comparison": "lte", "value": "2026-03-31"}]`.
+    Valores de `comparison` (enum `Comparison`): `gt` (maior), `gte` (maior ou igual),
+    `lt` (menor), `lte` (menor ou igual), `eq` (igual), `ne` (diferente), `like`, `notLike`,
+    `in`, `notIn`, `not`.
+    Valores de `field` (enum `PurchasesAnalysisFilterField`): `productId`,
+    `product__productCategoryId`, `document__date`, `document__supplierId`,
+    `document__documentTypeId`, `document__documentSetId`, `document__geographicZoneId`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
@@ -14923,8 +14933,8 @@ async def get_purchases_analysis_by_date_docs(
 
     Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
     `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários, ex.
-    `[{"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"}]`
-    (ver `get_purchases_analysis_by_date`).
+    `[{"field": "document__date", "comparison": "gte", "value": "2026-01-01"}]`
+    (operadores `comparison` e nomes de `field` válidos: ver `get_purchases_analysis_by_date`).
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
@@ -16660,10 +16670,15 @@ async def get_sales_analysis_by_date(
 
     Os filtros (incluindo o intervalo de datas) usam a estrutura genérica
     `field`/`comparison`/`value` da Moloni ON: passa uma lista de dicionários, ex.
-    `[{"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"},
-      {"field": "date", "comparison": "LESS_OR_EQUAL", "value": "2026-03-31"}]`.
-    Os nomes de `field`/`comparison` válidos são os dos enums `SalesAnalysisFilterField`
-    e `Comparison` da API.
+    `[{"field": "document__date", "comparison": "gte", "value": "2026-01-01"},
+      {"field": "document__date", "comparison": "lte", "value": "2026-03-31"}]`.
+    Valores de `comparison` (enum `Comparison`): `gt` (maior), `gte` (maior ou igual),
+    `lt` (menor), `lte` (menor ou igual), `eq` (igual), `ne` (diferente), `like`, `notLike`,
+    `in`, `notIn`, `not`.
+    Valores de `field` (enum `SalesAnalysisFilterField`): `productId`,
+    `product__productCategoryId`, `product__price`, `document__date`, `document__customerId`,
+    `document__salespersonId`, `document__documentTypeId`, `document__documentSetId`,
+    `document__payments__paymentMethodId`, `document__geographicZoneId`, `document__terminalId`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
@@ -24343,8 +24358,8 @@ async def send_customer_gdpr_mail(
         company_id: ID da empresa (obtém-se via `me`).
         customer_id: ID do cliente a quem o email diz respeito.
         to: lista de endereços de email dos destinatários (pelo menos um).
-        gdpr_types: lista de tipos de email RGPD (valores do enum `CustomerGdprEmailType`
-            da Moloni ON).
+        gdpr_types: lista de tipos de email RGPD. Valores do enum `CustomerGdprEmailType`:
+            `personalData` (dados pessoais), `consentAndPersonalData` (consentimento + dados pessoais).
         cc: opcional; lista de endereços em cópia (CC).
         bcc: opcional; lista de endereços em cópia oculta (BCC).
     """
@@ -27105,7 +27120,7 @@ async def generate_at_inventory_v1_file(
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         date_end: data de referência do inventário ("YYYY-MM-DD").
-        format: formato do ficheiro (valor do enum `ATInventoryFormats`).
+        format: formato do ficheiro (enum `ATInventoryFormats`): `XML` ou `CSV`.
     """
     options = {"dateEnd": date_end, "format": format}
     variables = {"companyId": company_id, "options": options}
@@ -27146,8 +27161,10 @@ async def generate_at_inventory_v2_file(
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         date_end: data de referência/fim do inventário ("YYYY-MM-DD").
-        format: formato do ficheiro (valor do enum `ATInventoryFormats`).
-        costing_method: método de custeio (valor do enum `ATInventoryCostingMethods`).
+        format: formato do ficheiro (enum `ATInventoryFormats`): `XML` ou `CSV`.
+        costing_method: método de custeio (enum `ATInventoryCostingMethods`): `WAC` (custo médio
+            ponderado), `FIFO` (primeiro a entrar, primeiro a sair), `Cheapest_Supplier_Cost`
+            (custo do fornecedor mais barato).
         date_start: opcional; data de início do período ("YYYY-MM-DD").
     """
     options: dict[str, Any] = {
@@ -27193,7 +27210,7 @@ async def generate_edi_xml(
     Args:
         company_id: ID da empresa (obtém-se via `me`).
         document_ids: lista de IDs dos documentos a incluir no EDI XML.
-        format: formato EDI (valor do enum `EDIFormats`, ex. UBL / CIUS-PT).
+        format: formato EDI (enum `EDIFormats`): `UBL2_1` (UBL 2.1) ou `CIUS_PT` (CIUS-PT).
     """
     variables = {
         "companyId": company_id,
@@ -27526,10 +27543,13 @@ async def generate_customer_history_pdf(
 
     O cliente e o intervalo de datas indicam-se via `filters`, com a estrutura genérica
     `field`/`comparison`/`value` da Moloni ON — passa uma lista de dicionários (ex.
-    `[{"field": "customerId", "comparison": "EQUALS", "value": "123"},
-      {"field": "date", "comparison": "GREATER_OR_EQUAL", "value": "2026-01-01"}]`).
-    Os nomes de `field`/`comparison` válidos são os dos enums `CustomerHistoryFilterField`
-    e `Comparison` da API.
+    `[{"field": "customerId", "comparison": "eq", "value": "123"},
+      {"field": "date", "comparison": "gte", "value": "2026-01-01"}]`).
+    Valores de `comparison` (enum `Comparison`): `gt` (maior), `gte` (maior ou igual),
+    `lt` (menor), `lte` (menor ou igual), `eq` (igual), `ne` (diferente), `like`, `notLike`,
+    `in`, `notIn`, `not`.
+    Valores de `field` (enum `CustomerHistoryFilterField`): `date`, `customerId`,
+    `documentTypeId`, `documentSetId`, `geographicZoneId`, `terminalId`.
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
@@ -29115,8 +29135,12 @@ async def generate_salespersons_payments_history_pdf(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        export_type: tipo de exportação (valor do enum
-            `SalespersonsPaymentsHistoryExportTypes`, ex. agregado ou por vendedor).
+        export_type: tipo de exportação (enum `SalespersonsPaymentsHistoryExportTypes`):
+            `salespersonsPaymentsHistoryByDocuments` (por documento),
+            `salespersonsPaymentsHistoryBySalesperson` (por vendedor),
+            `salespersonsPaymentsHistoryBySalespersonHeaders` (por vendedor, só cabeçalhos),
+            `salespersonsPaymentsHistoryBySalespersonSingle` (um único vendedor — exige
+            `salesperson_id`).
         salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
             variante por vendedor individual (`salespersonsPaymentsHistoryBySalespersonSingle`).
         filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
@@ -29162,8 +29186,12 @@ async def generate_salespersons_payments_history_xls(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        export_type: tipo de exportação (valor do enum
-            `SalespersonsPaymentsHistoryExportTypes`, ex. agregado ou por vendedor).
+        export_type: tipo de exportação (enum `SalespersonsPaymentsHistoryExportTypes`):
+            `salespersonsPaymentsHistoryByDocuments` (por documento),
+            `salespersonsPaymentsHistoryBySalesperson` (por vendedor),
+            `salespersonsPaymentsHistoryBySalespersonHeaders` (por vendedor, só cabeçalhos),
+            `salespersonsPaymentsHistoryBySalespersonSingle` (um único vendedor — exige
+            `salesperson_id`).
         salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
             variante por vendedor individual (`salespersonsPaymentsHistoryBySalespersonSingle`).
         filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
@@ -29209,8 +29237,12 @@ async def generate_salespersons_payments_pending_pdf(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        export_type: tipo de exportação (valor do enum
-            `SalespersonsPaymentsPendingExportTypes`, ex. agregado ou por vendedor).
+        export_type: tipo de exportação (enum `SalespersonsPaymentsPendingExportTypes`):
+            `salespersonsPaymentsPendingByDocuments` (por documento),
+            `salespersonsPaymentsPendingBySalesperson` (por vendedor),
+            `salespersonsPaymentsPendingBySalespersonHeaders` (por vendedor, só cabeçalhos),
+            `salespersonsPaymentsPendingBySalespersonSingle` (um único vendedor — exige
+            `salesperson_id`).
         salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
             variante por vendedor individual (`salespersonsPaymentsPendingBySalespersonSingle`).
         filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
@@ -29256,8 +29288,12 @@ async def generate_salespersons_payments_pending_xls(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        export_type: tipo de exportação (valor do enum
-            `SalespersonsPaymentsPendingExportTypes`, ex. agregado ou por vendedor).
+        export_type: tipo de exportação (enum `SalespersonsPaymentsPendingExportTypes`):
+            `salespersonsPaymentsPendingByDocuments` (por documento),
+            `salespersonsPaymentsPendingBySalesperson` (por vendedor),
+            `salespersonsPaymentsPendingBySalespersonHeaders` (por vendedor, só cabeçalhos),
+            `salespersonsPaymentsPendingBySalespersonSingle` (um único vendedor — exige
+            `salesperson_id`).
         salesperson_id: opcional; ID do vendedor — OBRIGATÓRIO quando `export_type` é a
             variante por vendedor individual (`salespersonsPaymentsPendingBySalespersonSingle`).
         filters: opcional; lista de filtros `{field, comparison, value}` (ex. intervalo de
@@ -29824,8 +29860,13 @@ async def create_hook(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        model: entidade a observar (valor do enum `HookModelField`, ex. documento, cliente).
-        operation: operação a observar (valor do enum `HookOperationField`, ex. criar/atualizar).
+        model: entidade a observar (enum `HookModelField`): `BankingInfo`, `Customer`,
+            `DeliveryMethod`, `Document`, `DocumentSet`, `GeographicZone`, `MaturityDate`,
+            `MeasurementUnit`, `PaymentMethod`, `PriceClass`, `Product`, `Property`,
+            `PropertyGroup`, `PropertyValue`, `Retention`, `Salesperson`, `Supplier`, `Tax`,
+            `Vehicle`, `Warehouse`.
+        operation: operação a observar (enum `HookOperationField`): `create`, `update`, `delete`,
+            `pdfStartGenerating`, `pdfGenerated`, `stockChanged`.
         url: URL de callback que recebe a notificação (POST) quando o evento ocorre.
     """
     data = {"model": model, "operation": operation, "url": url}
@@ -29913,8 +29954,10 @@ async def update_hook(
         company_id: ID da empresa (obtém-se via `me`).
         hook_id: ID (String) do webhook a atualizar.
         url: URL de callback (obrigatório, mesmo que não mude).
-        model: opcional; lista de entidades a observar (valores do enum `HookModelField`).
-        operation: opcional; lista de operações (valores do enum `HookOperationField`).
+        model: opcional; lista de entidades a observar (enum `HookModelField`, ex. `Document`,
+            `Customer`, `Product`, `Supplier`, `Tax`, `Warehouse`… — ver `create_hook`).
+        operation: opcional; lista de operações (enum `HookOperationField`): `create`, `update`,
+            `delete`, `pdfStartGenerating`, `pdfGenerated`, `stockChanged`.
     """
     data: dict[str, Any] = {"hookId": hook_id, "url": url}
     if model is not None:
@@ -30924,8 +30967,8 @@ async def generate_labels_pdf(
     size: int,
     collate: bool,
     num_labels: int,
-    fields: list[str],
-    products: list[dict[str, Any]],
+    fields: list[list[dict[str, Any]]],
+    products: list[list[dict[str, Any]]],
     document_name: str | None = None,
 ) -> Any:
     """Gera, do lado do servidor, um PDF com etiquetas de produtos, renderizadas segundo o
@@ -30934,15 +30977,20 @@ async def generate_labels_pdf(
 
     Args:
         company_id: ID da empresa (obtém-se via `me`).
-        entity: tipo de entidade das etiquetas (valor do enum `EntityEnum`).
+        entity: tipo de entidade das etiquetas (enum `EntityEnum`): `customer` ou `supplier`.
         fiscal_zone: zona fiscal aplicável (ex. "pt", "pt_madeira", "pt_azores").
         size: tamanho/modelo de etiqueta (Int — formato da folha de etiquetas).
         collate: se `True`, intercala (collate) as etiquetas na impressão.
         num_labels: número total de etiquetas a gerar.
-        fields: lista de campos a incluir na etiqueta (valores do enum `LabelExportField`,
-            ex. nome, preço, código de barras).
-        products: lista de produtos a etiquetar — cada item um dicionário `LabelExportProduct`
-            (camelCase), tipicamente `{"productId": int, "quantity": int}`.
+        fields: LISTA DE LISTAS de campos da etiqueta (`[[LabelExportField]]`) — a lista exterior
+            tem uma entrada por etiqueta/modelo, e cada lista interior são os campos dessa
+            etiqueta. Cada campo é um dicionário `LabelExportField` (todos obrigatórios):
+            `{"img": bool, "lines": int, "price": bool, "strikethrough": bool,
+              "name": <LabelTemplateFieldName>, "pos": <LabelTemplateFieldPosition>,
+              "size": <LabelTemplateFieldSize>}` (os 3 últimos são valores dos enums homónimos).
+        products: LISTA DE LISTAS de produtos (`[[LabelExportProduct]]`), com a mesma estrutura
+            por etiqueta. Cada produto é um dicionário `{"productId": int, "qty": int}` (ambos
+            obrigatórios) com `"priceClassId": int` opcional.
         document_name: opcional; nome a dar ao documento/ficheiro gerado.
     """
     options: dict[str, Any] = {
@@ -31969,7 +32017,7 @@ async def create_payment_method(
         is_default: Marcar como método por omissão.
         commission: Comissão em percentagem.
         fixed_commission: Comissão fixa (valor).
-        type: Tipo do método (código interno).
+        type: Tipo do método (Int, código interno da Moloni ON — sem enum no schema).
         extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
     """
     data: dict[str, Any] = {"name": name}
@@ -32077,7 +32125,7 @@ async def update_payment_method(
         is_default: Marcar como método por omissão.
         commission: Comissão em percentagem.
         fixed_commission: Comissão fixa (valor).
-        type: Tipo do método (código interno).
+        type: Tipo do método (Int, código interno da Moloni ON — sem enum no schema).
         extra_fields: Campos adicionais do input (camelCase), fundidos no `data`.
     """
     data: dict[str, Any] = {"paymentMethodId": payment_method_id}
@@ -39531,18 +39579,24 @@ async def create_tax(
     company_id: int,
     name: str,
     value: float,
-    type: int | None = None,
-    fiscal_zone: str | None = None,
+    type: int,
+    fiscal_zone: str,
+    country_id: int,
+    fiscal_zone_finance_type: int,
     exemption_reason: str | None = None,
     is_default: bool | None = None,
-    country_id: int | None = None,
+    fiscal_zone_finance_type_mode: str | None = None,
+    special_tax_scheme_id: int | None = None,
+    visible: int | None = None,
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
     """Cria uma taxa de imposto (IVA) numa empresa. As taxas aplicam-se às linhas dos
-    documentos. OBRIGATÓRIOS: `name` e `value` (percentagem). Os campos comuns estão expostos
-    como parâmetros opcionais; para campos menos comuns (zona fiscal detalhada, regime especial),
-    usa `extra_fields` (dicionário camelCase, conforme `TaxInsert`). Devolve a taxa criada com
-    o seu `taxId`.
+    documentos. Devolve a taxa criada com o seu `taxId`.
+
+    OBRIGATÓRIOS (conforme `TaxInsert`): `name`, `value` (percentagem), `type` (Int — código
+    interno da Moloni ON; não há enum definido), `fiscal_zone`, `country_id` e
+    `fiscal_zone_finance_type` (Int). Para campos menos comuns, usa `extra_fields` (dicionário
+    camelCase, ex. `flags`).
 
     Nota: quando `value` é 0 (isenta), normalmente é preciso indicar `exemption_reason`.
 
@@ -39550,21 +39604,32 @@ async def create_tax(
         company_id: ID da empresa (obtém-se via `me`).
         name: nome da taxa (ex.: "IVA 23%").
         value: valor da taxa em percentagem (ex.: 23.0; 0 para isenta).
-        type: opcional; tipo da taxa (código interno).
-        fiscal_zone: opcional; zona fiscal (ex.: "PT", "PT-AC", "PT-MA").
-        exemption_reason: opcional; razão de isenção (obrigatória quando `value` é 0).
+        type: tipo da taxa (Int, código interno da Moloni ON — sem enum no schema).
+        fiscal_zone: zona fiscal (ex.: "PT", "PT-AC", "PT-MA", "ES").
+        country_id: país da taxa (ver `list_countries`).
+        fiscal_zone_finance_type: tipo de finanças da zona fiscal (Int, código interno).
+        exemption_reason: opcional; razão de isenção em texto (obrigatória quando `value` é 0).
         is_default: opcional; marcar como taxa por omissão.
-        country_id: opcional; país da taxa (ver `list_countries`).
+        fiscal_zone_finance_type_mode: opcional; modo do tipo de finanças (String).
+        special_tax_scheme_id: opcional; ID do regime especial de imposto.
+        visible: opcional; visibilidade (Int).
         extra_fields: opcional; dicionário com outros campos do `TaxInsert` (camelCase),
-            ex. `fiscalZoneFinanceType`, `fiscalZoneFinanceTypeMode`, `specialTaxScheme`.
+            ex. `flags` (lista de Int).
     """
-    data: dict[str, Any] = {"name": name, "value": value}
-    optional = {
+    data: dict[str, Any] = {
+        "name": name,
+        "value": value,
         "type": type,
         "fiscalZone": fiscal_zone,
+        "countryId": country_id,
+        "fiscalZoneFinanceType": fiscal_zone_finance_type,
+    }
+    optional = {
         "exemptionReason": exemption_reason,
         "isDefault": is_default,
-        "countryId": country_id,
+        "fiscalZoneFinanceTypeMode": fiscal_zone_finance_type_mode,
+        "specialTaxSchemeId": special_tax_scheme_id,
+        "visible": visible,
     }
     data.update({k: v for k, v in optional.items() if v is not None})
     if extra_fields:
@@ -39723,9 +39788,13 @@ async def update_tax(
     value: float | None = None,
     type: int | None = None,
     fiscal_zone: str | None = None,
+    country_id: int | None = None,
+    fiscal_zone_finance_type: int | None = None,
     exemption_reason: str | None = None,
     is_default: bool | None = None,
-    country_id: int | None = None,
+    fiscal_zone_finance_type_mode: str | None = None,
+    special_tax_scheme_id: int | None = None,
+    visible: int | None = None,
     extra_fields: dict[str, Any] | None = None,
 ) -> Any:
     """Atualiza uma taxa de imposto (IVA) de uma empresa. Identifica-se pelo `tax_id`
@@ -39741,12 +39810,16 @@ async def update_tax(
         tax_id: ID da taxa a atualizar.
         name: opcional; nome da taxa.
         value: opcional; valor da taxa em percentagem.
-        type: opcional; tipo da taxa (código interno).
-        fiscal_zone: opcional; zona fiscal (ex.: "PT", "PT-AC", "PT-MA").
-        exemption_reason: opcional; razão de isenção (quando `value` é 0).
-        is_default: opcional; marcar como taxa por omissão.
+        type: opcional; tipo da taxa (Int, código interno da Moloni ON — sem enum no schema).
+        fiscal_zone: opcional; zona fiscal (ex.: "PT", "PT-AC", "PT-MA", "ES").
         country_id: opcional; país da taxa (ver `list_countries`).
-        extra_fields: opcional; dicionário com outros campos do `TaxUpdate` (camelCase).
+        fiscal_zone_finance_type: opcional; tipo de finanças da zona fiscal (Int, código interno).
+        exemption_reason: opcional; razão de isenção em texto (quando `value` é 0).
+        is_default: opcional; marcar como taxa por omissão.
+        fiscal_zone_finance_type_mode: opcional; modo do tipo de finanças (String).
+        special_tax_scheme_id: opcional; ID do regime especial de imposto.
+        visible: opcional; visibilidade (Int).
+        extra_fields: opcional; dicionário com outros campos do `TaxUpdate` (camelCase), ex. `flags`.
     """
     data: dict[str, Any] = {"taxId": tax_id}
     optional = {
@@ -39754,9 +39827,13 @@ async def update_tax(
         "value": value,
         "type": type,
         "fiscalZone": fiscal_zone,
+        "countryId": country_id,
+        "fiscalZoneFinanceType": fiscal_zone_finance_type,
         "exemptionReason": exemption_reason,
         "isDefault": is_default,
-        "countryId": country_id,
+        "fiscalZoneFinanceTypeMode": fiscal_zone_finance_type_mode,
+        "specialTaxSchemeId": special_tax_scheme_id,
+        "visible": visible,
     }
     data.update({k: v for k, v in optional.items() if v is not None})
     if extra_fields:
