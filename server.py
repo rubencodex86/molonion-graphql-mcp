@@ -24931,6 +24931,7 @@ async def create_debit_notes(
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
       - `customerId` (int): cliente.
       - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
       - `relatedWith` (list[dict]): documento(s) de origem; cada item
@@ -24985,8 +24986,9 @@ async def create_debit_note(company_id: int, document: dict[str, Any]) -> Any:
     certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de `create_debit_notes`:
-    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
-    `products` (list[dict]) e `relatedWith` (list[dict] `{relatedDocumentId, value}`).
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"),
+    `customerId` (int), `products` (list[dict]) e `relatedWith` (list[dict]
+    `{relatedDocumentId, value}`).
     Opcionais úteis: `notes`, `status`, `yourReference`, `salespersonId`, etc.
 
     Devolve a nota de débito criada com `documentId`, `number`, `status`, `totalValue`,
@@ -25442,6 +25444,7 @@ async def create_delivery_notes(
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
       - `customerId` (int): cliente.
       - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
       - `deliveryLoadDate` (str "YYYY-MM-DD HH:MM:SS"): data/hora de carga (documento de
@@ -25497,8 +25500,8 @@ async def create_delivery_note(company_id: int, document: dict[str, Any]) -> Any
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de
     `create_delivery_notes`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
-    `customerId` (int), `products` (list[dict]) e `deliveryLoadDate`
-    ("YYYY-MM-DD HH:MM:SS"). Opcionais úteis: `notes`, `status`, `yourReference`, dados de
+    `expirationDate` ("YYYY-MM-DD"), `customerId` (int), `products` (list[dict]) e
+    `deliveryLoadDate` ("YYYY-MM-DD HH:MM:SS"). Opcionais úteis: `notes`, `status`, `yourReference`, dados de
     transporte, etc.
 
     Devolve a guia de remessa criada com `documentId`, `number`, `status`, `totalValue`,
@@ -30219,9 +30222,10 @@ async def create_invoices(company_id: int, documents: list[dict[str, Any]]) -> A
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data de emissão.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
       - `customerId` (int): cliente.
       - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
-    Chaves OPCIONAIS úteis: `maturityDateId` ou `expirationDate` (vencimento), `notes`,
+    Chaves OPCIONAIS úteis: `maturityDateId` (vencimento), `notes`,
       `yourReference`, `ourReference`, `status` (0=rascunho, 1=fechado), `globalDiscount`,
       `salespersonId`, `paymentMethodId`.
 
@@ -30272,8 +30276,8 @@ async def create_invoice(company_id: int, document: dict[str, Any]) -> Any:
     `hash`, comunicada à AT) e deixa de ser editável. Confirma os dados antes de criar.
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de `create_invoices`:
-    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int) e
-    `products` (list[dict]). Opcionais úteis: `maturityDateId`/`expirationDate`, `notes`,
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"),
+    `customerId` (int) e `products` (list[dict]). Opcionais úteis: `maturityDateId`, `notes`,
     `status`, `yourReference`, `globalDiscount`, `salespersonId`, `paymentMethodId`.
 
     Devolve a fatura criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
@@ -30504,6 +30508,7 @@ async def create_invoice_receipts(
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data de emissão.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
       - `customerId` (int): cliente.
       - `products` (list[dict]): linhas (ver `create_bills_of_lading`).
       - `payments` (list[dict]): métodos de pagamento que liquidam o documento, cada um
@@ -30558,8 +30563,8 @@ async def create_invoice_receipt(company_id: int, document: dict[str, Any]) -> A
     (com `hash`, comunicado à AT) e deixa de ser editável. Confirma os dados antes de criar.
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de `create_invoice_receipts`:
-    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
-    `products` (list[dict]) e `payments` (list[dict], cada um
+    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `expirationDate` ("YYYY-MM-DD"),
+    `customerId` (int), `products` (list[dict]) e `payments` (list[dict], cada um
     `{"paymentMethodId": int, "value": float}`). Opcionais úteis: `notes`, `status`,
     `yourReference`, `globalDiscount`, `salespersonId`.
 
@@ -36381,13 +36386,16 @@ async def create_settlement_notes(company_id: int, documents: list[dict[str, Any
     certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
 
     Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+      - `number` (int): número sequencial do documento dentro da sua série (ao contrário da
+        maioria dos documentos, a nota de acerto exige o número explicitamente).
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
       - `customerId` (int): cliente/entidade.
       - `relatedWith` (list[dict]): documento(s) regularizado(s); cada item
         `{relatedDocumentId (int), value (float)}`.
+      - `totalValue` (float): valor total do documento.
     Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
-      `ourReference`, `currencyExchangeId`, `suspended`.
+      `ourReference`, `currencyExchangeId`, `suspended`, `payments`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -36441,9 +36449,10 @@ async def create_settlement_note(
     certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de `create_settlement_notes`:
-    OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"), `customerId` (int),
-    `relatedWith` (list[dict] `{relatedDocumentId, value}`). Opcionais úteis: `notes`,
-    `status`, `yourReference`, `ourReference`, `currencyExchangeId`, etc.
+    OBRIGATÓRIAS `number` (int, número sequencial explícito), `documentSetId` (int),
+    `date` ("YYYY-MM-DD"), `customerId` (int), `relatedWith` (list[dict]
+    `{relatedDocumentId, value}`) e `totalValue` (float). Opcionais úteis: `notes`,
+    `status`, `yourReference`, `ourReference`, `currencyExchangeId`, `payments`, etc.
 
     Devolve a nota de acerto criada com `documentId`, `number`, `status`, `totalValue`, `hash`.
 
@@ -36768,15 +36777,19 @@ async def create_simplified_invoices(company_id: int, documents: list[dict[str, 
     ⚠️ CRIA DOCUMENTOS REAIS. Conforme o `status`, o documento pode ficar fechado/
     certificado (com `hash`) e deixa de ser editável. Confirma os dados antes de criar.
 
-    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento:
+    Cada item de `documents` é um dicionário (camelCase). Chaves OBRIGATÓRIAS por documento
+    (conforme `SimplifiedInvoiceInsert`):
       - `documentSetId` (int): série de documentos.
       - `date` (str "YYYY-MM-DD"): data do documento.
+      - `expirationDate` (str "YYYY-MM-DD"): data de vencimento.
+      - `customerId` (int): cliente.
       - `products` (list[dict]): linhas `DocumentProductInput`, cada uma com
         `productId` (int), `ordering` (int, 1,2,3…), `qty` (float) e opcionais `name`,
         `price`, `discount`, `taxes` (`[{taxId, value}]`), etc.
-    Chaves OPCIONAIS úteis: `customerId` (int, opcional nas simplificadas), `notes`,
-      `status` (0=rascunho, 1=fechado), `payments`, `yourReference`, `ourReference`,
-      `currencyExchangeId`, `suspended`.
+      - `payments` (list[dict]): meio(s) de pagamento `DocumentPaymentMethodInput`, ex.
+        `[{"paymentMethodId": int, "value": float, "date": "YYYY-MM-DD"}]`.
+    Chaves OPCIONAIS úteis: `notes`, `status` (0=rascunho, 1=fechado), `yourReference`,
+      `ourReference`, `currencyExchangeId`, `suspended`, `globalDiscount`, `maturityDateId`.
 
     Devolve, por documento, `{errors, data}` (data com `documentId`, `number`, `status`,
     `totalValue`, `hash`).
@@ -36831,8 +36844,9 @@ async def create_simplified_invoice(
 
     O `document` é um dicionário (camelCase) com as mesmas chaves de
     `create_simplified_invoices`: OBRIGATÓRIAS `documentSetId` (int), `date` ("YYYY-MM-DD"),
-    `products` (list[dict] `DocumentProductInput`). Opcionais úteis: `customerId`, `notes`,
-    `status`, `payments`, `yourReference`, `ourReference`, etc.
+    `expirationDate` ("YYYY-MM-DD"), `customerId` (int), `products` (list[dict]
+    `DocumentProductInput`) e `payments` (list[dict] `DocumentPaymentMethodInput`). Opcionais
+    úteis: `notes`, `status`, `yourReference`, `ourReference`, `globalDiscount`, etc.
 
     Devolve a fatura simplificada criada com `documentId`, `number`, `status`, `totalValue`,
     `hash`.
