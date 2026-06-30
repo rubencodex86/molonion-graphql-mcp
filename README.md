@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.867.0` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.867.1` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 
@@ -930,6 +930,28 @@ As restantes operações são adicionadas à medida que avançamos pelos links d
 Cada tool é uma função `async` decorada com `@mcp.tool()`. O padrão completo (como
 mapear *inputs*/*objects* interligados, o envelope `{errors, data}`, nomes em inglês +
 docstrings em português) está documentado no [CLAUDE.md](CLAUDE.md).
+
+## Validação contra o schema
+
+Como cada *selection set* e cada lista de parâmetros é escrita à mão, podem divergir
+da API real (campos obrigatórios em falta, nomes errados, campos inexistentes). Por isso
+fez-se uma **passagem de validação** que cruza cada tool com as páginas de
+[`docs.molonion.pt/reference`](https://docs.molonion.pt/reference) (`/inputs`, `/objects`,
+`/mutations`, `/enums`), por *input/object* partilhado (não tool-a-tool — as tools são
+invólucros finos sobre tipos partilhados).
+
+Cobertura atual (✅ validado contra a fonte):
+
+- **Inputs de escrita** — `*Insert`, `*BulkInsert` e `*Update` (documentos + config):
+  campos obrigatórios, nomes camelCase e estrutura.
+- **Objects de retorno** — os *selection sets* não pedem campos inexistentes.
+- **Listas de referência** e **inputs de query** (paginação/filtro/ordenação).
+
+O processo e as descobertas (ex.: `expirationDate` é obrigatório na maioria dos documentos
+de venda; os movimentos de stock são de um produto, não documentos) estão em
+[CLAUDE.md](CLAUDE.md#validação-contra-o-schema). **Regra prática:** ao adicionar uma tool,
+confirma os campos contra `/reference` em vez de inferir — os bugs encontrados estavam
+sempre nas tools construídas por inferência cega.
 
 ## Versionamento
 

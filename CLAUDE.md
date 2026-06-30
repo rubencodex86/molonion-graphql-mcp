@@ -139,6 +139,55 @@ async def apply_price_class(company_id: int, price_class_id: int, percentage: fl
 - Não fazer crawl autónomo dos docs — implementa só o link que o utilizador der.
 - Manter `README.md` e a memória do Claude atualizados quando surgem descobertas.
 
+## Validação contra o schema
+
+Como escrevemos cada *selection set* e cada lista de parâmetros à mão, há risco de
+divergir da API real. Fez-se uma passagem de validação (ver memória
+`molonion-schema-validation`) que confirmou as tools contra a fonte. **Se construíres ou
+mexeres numa tool de escrita, valida-a — não infiras.**
+
+### Como validar (por *input/object*, não tool-a-tool)
+
+As tools são invólucros finos sobre tipos partilhados, por isso valida-se o **tipo** uma
+vez e a conclusão propaga-se a todas as tools que o usam. Ordem por risco: inputs de
+mutation → objects de retorno → inputs de query.
+
+1. Lê no `server.py` a query/mutation + a assinatura da tool.
+2. Vai à página do schema com `WebFetch` (não consegues abrir os docs de outra forma):
+   - `/reference/inputs/XxxInsert` · `/XxxUpdate` — campos **obrigatórios** (`!`), nomes
+     camelCase e **estrutura** (lista? lista-de-listas `[[...]]`? objeto vs escalar?).
+   - `/reference/objects/XxxRead` — confirma que o *selection set* não pede campos
+     inexistentes (o retorno `Xxx!` é o envelope `{errors, data: XxxRead}`).
+   - `/reference/mutations/xxx` — quando há dúvida no nome do tipo do argumento ou se
+     existe `options` (resolve ambiguidades que o `WebFetch` aos *inputs* não resolve).
+3. Compara e corrige: obrigatório em falta, nome errado, campo inexistente, forma errada.
+
+### O que procurar (4 eixos)
+
+1. **Obrigatórios** — todo o campo `!` do input está exposto como parâmetro *required*?
+2. **Tipos/forma** — listas vs listas-de-listas, objeto vs escalar (ex. `fields` de
+   etiquetas e `products`/`payments` são `[[...]]`).
+3. **Nomes** — camelCase correto (`qty` ≠ `quantity`), nome da operação/campo.
+4. **Enums** — valores escritos como na fonte (ex. `comparison` = `gte`/`lte`/`eq`, não
+   `GREATER_OR_EQUAL`; `ApiCode` em singular `invoice`, não `invoices`).
+
+### Notas práticas (aprendidas na passagem)
+
+- Os bugs estiveram **sempre** nas tools construídas por **inferência cega**; tudo o que
+  foi escrito a ler a fonte saiu correto. Exemplos corrigidos: faltava `expirationDate`
+  (obrigatório na maioria dos documentos de venda); as tools de stock eram de **um produto
+  plano** (`StockMovementManualInsert`, sem `options`, retorno `StockMovementRead`), não
+  documentos; `VehicleInsert`/`VehicleRead` não têm `isDefault`.
+- `*BulkInsert` é só `{documents: [XxxInsert]}` — valida o `XxxInsert` e está coberto.
+- `*Update` são quase todos opcionais (só o ID obrigatório) — o risco é expor um campo
+  inexistente, não faltar um obrigatório.
+- A *list input coercion* do GraphQL embrulha um escalar numa lista de um, por isso passar
+  `str` a um campo `[Date]!` funciona.
+- O `WebFetch` usa um modelo pequeno e por vezes erra (deu falso-negativo a um campo real)
+  ou devolve a lista de navegação em vez da página — **confirma achados surpreendentes**
+  com um segundo *fetch* dirigido.
+- Correções de docstring/obrigatórios → bump **PATCH**; mudanças de assinatura → **MINOR**.
+
 ## Versionamento (SemVer — semver.org)
 
 `MAJOR.MINOR.PATCH`:
