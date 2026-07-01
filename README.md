@@ -8,7 +8,7 @@ A API é grande (**497 queries**, **464 mutations**); este servidor expõe um
 subconjunto **curado** de operações, adicionadas uma a uma. Cada operação GraphQL
 vira uma **tool** dedicada, tipada e documentada.
 
-> **Versão atual:** `0.867.1` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
+> **Versão atual:** `0.867.2` — desenvolvimento inicial (ver [Versionamento](#versionamento)).
 
 ## Requisitos
 

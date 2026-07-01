@@ -168,7 +168,10 @@ query {
     errors { field msg }
     data {
       userId
-      userCompanies { companyId name }
+      userCompanies {
+        companyId
+        company { companyId name }
+      }
     }
   }
 }
@@ -31595,7 +31598,10 @@ mutation ($data: MeCreatePassword!) {
     errors { field msg }
     data {
       userId
-      userCompanies { companyId name }
+      userCompanies {
+        companyId
+        company { companyId name }
+      }
     }
   }
 }
@@ -31627,7 +31633,10 @@ mutation ($data: MeUpdate!) {
     errors { field msg }
     data {
       userId
-      userCompanies { companyId name }
+      userCompanies {
+        companyId
+        company { companyId name }
+      }
     }
   }
 }
